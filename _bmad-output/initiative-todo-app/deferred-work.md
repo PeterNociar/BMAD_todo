@@ -4,3 +4,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/plan-ad-21-backend-settings.md`
   summary: The AD-21 Alembic precedence step 1 (a caller-passed `config.attributes["connection"]`, reused and never closed) has no test, and a caller-set `sqlalchemy.url` containing `%` would break configparser interpolation.
   evidence: No caller exists yet; `env.py` is outside the coverage source. Entry 1.2's AD-15 migration test is the first consumer. It should pass a connection in online mode and assert the migration ran on it and the connection is still usable, and it should escape `%` as `%%` when it sets `sqlalchemy.url`.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-task-model-ordering-and-the-shared-ordering-fixtures-plan.md`
+  summary: A caller-set `sqlalchemy.url` containing `%` still breaks configparser interpolation in `alembic/env.py`. The passed-connection half of the AD-21 entry above is now covered by `backend/tests/test_migrations.py`.
+  evidence: `env.py` reads `config.get_main_option("sqlalchemy.url")` without escaping, so any caller that calls `set_main_option` must escape `%` as `%%`. No caller sets a URL today; revisit when one does.

@@ -3,8 +3,8 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Text
-from sqlmodel import Field, Session, SQLModel, select
+from sqlalchemy import Column, DateTime, Text, case
+from sqlmodel import Field, Session, SQLModel, col, select
 
 
 class Task(SQLModel, table=True):
@@ -18,5 +18,14 @@ class Task(SQLModel, table=True):
     )
 
     @classmethod
-    def list_all(cls, session: Session) -> list[Task]:
-        return list(session.exec(select(cls)).all())
+    def list_ordered(cls, session: Session) -> list[Task]:
+        """AD-6 canonical order, done in SQL: open tasks by `added_at` ascending, then
+        completed tasks by `completed_at` descending, ties by `id` ascending."""
+        completed_at = col(cls.completed_at)
+        statement = select(cls).order_by(
+            completed_at.is_not(None),
+            case((completed_at.is_(None), col(cls.added_at))).asc(),
+            completed_at.desc().nulls_last(),
+            col(cls.id).asc(),
+        )
+        return list(session.exec(statement).all())
