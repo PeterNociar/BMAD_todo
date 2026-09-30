@@ -47,6 +47,7 @@ flowchart LR
     D --> SV[services/*]
     D --> K[clock.py]
     D --> DBM[db.py]
+    D --> CF[config.py]
     SV --> M[models/*]
     SV --> K
     SV --> SC
@@ -186,20 +187,20 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 
 - **Binds:** FR-14, NFR-8; `backend/alembic/`, backend entrypoint, test suite
 - **Prevents:** `create_all()` in app code; multiple heads from parallel stories; models drifting from migrations
-- **Rule:** The backend entrypoint runs `alembic upgrade head` and then starts uvicorn. App code never calls `create_all()`. Test fixtures may use `metadata.create_all` for speed. One dedicated migration test checks three things: there is exactly one head, `upgrade head` succeeds on an empty DB, and `alembic check` reports no drift.
+- **Rule:** The backend entrypoint runs `alembic upgrade head` and then starts uvicorn (`--factory app.main:create_app`, AD-21). App code never calls `create_all()`. Test fixtures may use `metadata.create_all` for speed. One dedicated migration test checks three things: there is exactly one head, `upgrade head` succeeds on an empty DB, and `alembic check` reports no drift.
 
 ### AD-16 — Runtime envelope: compose profiles, bind address, health [ADOPTED]
 
 - **Binds:** NFR-4, NFR-5; `docker-compose.yml`, Dockerfiles, nginx config
 - **Prevents:** tests wiping real data; profiles that are expected to swap services; the unauthenticated app exposed on every network; startup races
 - **Rule:**
-  - Every service belongs to a profile. A committed `.env` sets `COMPOSE_PROFILES=app`, so a plain `docker-compose up` runs the app.
+  - Every service belongs to a profile. `.env` is gitignored. Setup copies the committed `.env.example` to `.env`, which sets `COMPOSE_PROFILES=app`, so `docker-compose up` then runs the app. The README makes the copy a required step.
 
 | Profile | Services | Published |
 |---|---|---|
 | `app` | `db`, `backend`, `frontend` (all `restart: unless-stopped`) | `${APP_BIND:-127.0.0.1}:8081` → `frontend` |
-| `dev` | `db`, `backend-dev` (`--reload`, source bind-mounted), `frontend-dev` (Vite dev server) | `8000`, `5173` on `127.0.0.1` |
-| `test` | `db-test` (own volume), `backend-test` (`APP_ENV=test`), `frontend-test` | `127.0.0.1:8082` → `frontend-test`, `127.0.0.1:5436` → `db-test` (for pytest) |
+| `dev` | `db`, `backend-dev` (`--reload`, only `app/` and `alembic/` bind-mounted), `frontend-dev` (Vite dev server) | `8000`, `5173` on `127.0.0.1` |
+| `test` | `db-test` (own volume; databases `todo_pytest` for pytest and `todo_e2e` for `backend-test`, the second created by an init script; no compose service points at `todo_pytest`), `backend-test` (`APP_ENV=test`), `frontend-test` | `127.0.0.1:8082` → `frontend-test`, `127.0.0.1:5436` → `db-test` (for pytest) |
 
   - Inside containers, uvicorn listens on `8000` and nginx on `8080`. Host ports are moved off 8080 and 5433 (app `8081`, test `8082`, `db-test` `5436`) so the stack runs beside a local Postgres and other dev servers (2026-09-30).
   - **nginx upstream:** `API_UPSTREAM` is `host:port` with no scheme. The config is `frontend/nginx/default.conf.template`, copied to `/etc/nginx/templates/`, with `proxy_pass http://${API_UPSTREAM};` and no URI part. `vite.config.ts` proxies `/api` to `http://${API_UPSTREAM ?? 'localhost:8000'}` with `server.host: true`. Compose sets `API_UPSTREAM` for `frontend`, `frontend-dev` and `frontend-test`.
@@ -250,9 +251,22 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 - **Binds:** all backend units, backend tests
 - **Prevents:** a mix of sync and async sessions; services built in different ways; tests patching module globals
 - **Rule:**
-  - `app/db.py` owns the engine and `get_session()`, which yields a sync `Session`, using the `postgresql+psycopg://` URL.
+  - `app/db.py` owns `make_engine()` and `get_session()`, which yields a sync `Session` on the engine that `create_app` puts on `app.state` (AD-21), using the `postgresql+psycopg://` URL.
   - `app/deps.py` owns `get_clock()` and `get_task_service()`. Routers receive `TaskService` only through `Depends(get_task_service)`.
   - Tests swap the session and the clock through `app.dependency_overrides`.
+
+### AD-21 — Backend configuration is read only through Pydantic Settings
+
+- **Binds:** all backend units, `backend/alembic/env.py`, backend tests, backend compose services
+- **Prevents:** `os.environ` reads scattered across modules; config defaults defined in two places; a mistyped or leaked `APP_ENV` mounting or hiding the testing router; tests patching environment variables; config fixed at import time where tests cannot reach it
+- **Rule:**
+  - **One owner.** `app/config.py` defines `Settings(BaseSettings)` and a cached `get_settings()`. It is the only app code that reads the environment. Fields: `database_url: str` (required, no default) and `app_env: Literal["app", "test"] = "app"`. Invalid, unknown or missing values fail at startup.
+  - **Sources, highest first:** init arguments, then real environment variables, then `backend/.env`. `model_config` pins `env_file` to the absolute path of `backend/.env` (resolved from `config.py`, never the working directory), with `extra="ignore"` and no `env_prefix`. `backend/.env` must be gitignored (the root `.gitignore` entry `.env` covers it) and must be listed in `backend/.dockerignore`. The root `.env.example` stays the one list of every variable.
+  - **Nothing is read at import.** The app is built by `create_app(settings: Settings | None = None)`, which falls back to `get_settings()`. uvicorn starts it with `--factory app.main:create_app`, and there is no module-level `app`. `create_app` stores the settings and the engine it builds from `settings.database_url` on `app.state`. `get_session()` and a `get_settings` dependency read `app.state`.
+  - **One test-mode switch.** Everything that behaves differently in test mode (the AD-14 router mount, the AD-7 clock offset) reads `settings.app_env`, never the environment.
+  - **Alembic.** `alembic/env.py` uses, in order: a connection passed in `config.attributes["connection"]`, then `sqlalchemy.url` if the caller set it, then `get_settings().database_url`. The AD-15 migration test passes its scratch URL this way.
+  - **Tests.** Tests never patch the environment. They build `Settings(_env_file=None, …)` and pass it to `create_app`. A second session-scoped app built with `app_env="test"` is allowed for testing-router tests. `TEST_DATABASE_URL` is read by a separate test-only `BaseSettings` in `backend/tests/`, with the same `env_file` and `extra="ignore"`. The app's `Settings` never reads it.
+  - **Compose.** Every backend service (`backend`, `backend-dev`, `backend-test`) sets `DATABASE_URL` and `APP_ENV` explicitly, so a host `backend/.env` can never decide them in a container.
 
 ## Consistency Conventions
 
@@ -263,10 +277,10 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 | IDs | UUID strings on the wire. The frontend's client `key` is separate from `id` (AD-4). |
 | Backend naming | `routers/tasks.py`, `services/task_service.py` (`TaskService`), `models/task.py` (`Task`), `schemas/task.py` (`TaskCreate`, `TaskRead`). |
 | Frontend naming | Components are `PascalCase.svelte` in `src/components/`. Logic lives in `src/lib/*.ts`, and runes modules are named `*.svelte.ts`. |
-| Config | Environment variables only (`DATABASE_URL`, `TEST_DATABASE_URL`, `APP_ENV`, `APP_BIND`, `API_UPSTREAM`, `COMPOSE_PROFILES`), with defaults inline in compose. The frontend has no runtime config. The theme choice lives only in the browser's `localStorage`. |
+| Config | Environment variables (`DATABASE_URL`, `TEST_DATABASE_URL`, `APP_ENV`, `APP_BIND`, `API_UPSTREAM`, `COMPOSE_PROFILES`), with defaults only in compose and `.env.example`; the one exception is the `app_env` default, which lives in `Settings`. The backend reads them only through Pydantic Settings, which also loads an uncommitted `backend/.env` (AD-21). The frontend has no runtime config. The theme choice lives only in the browser's `localStorage`. |
 | Errors | `{detail, code}` (AD-5). No stack traces in responses. Unhandled exceptions → `500 internal_error`. |
 | Logging | stdout/stderr, default uvicorn/nginx formats. |
-| Backend tests | `uv run pytest` against its own `TEST_DATABASE_URL` (default `postgresql+psycopg://…@127.0.0.1:5436/todo_pytest` on `db-test`), with one rolled-back transaction per test and one app per session. Integration tests cover every endpoint. The migration test (AD-15) creates and drops its own scratch database. Coverage uses `--cov-branch --cov-fail-under=70`. |
+| Backend tests | `uv run pytest` against its own `TEST_DATABASE_URL` (default `postgresql+psycopg://…@127.0.0.1:5436/todo_pytest` on `db-test`), with one rolled-back transaction per test and one app per session (plus one `app_env="test"` app for testing-router tests, AD-21). Integration tests cover every endpoint. The migration test (AD-15) creates and drops its own scratch database. Coverage uses `--cov-branch --cov-fail-under=70`. |
 | Frontend tests | `npm test` / `npm run test:coverage` in `frontend/`: Vitest + `@testing-library/svelte` for `lib/*` and components. The clock is faked through `lib/clock.svelte.ts`. `coverage-v8` thresholds are 70 over `src/lib` and `src/components`. |
 | E2E | `npm test` in `e2e/`: Playwright against the compose `test` stack (`:8082`), with one worker. Seeding and server time go through AD-14, browser time through `page.clock`, and API failures are injected with `page.route`. Accessibility checks use `@axe-core/playwright`. |
 | Python deps | `uv` with `pyproject.toml` + `uv.lock` in `backend/`. |
@@ -285,6 +299,7 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 | uvicorn | 0.54 |
 | SQLAlchemy | 2.0 (`<2.1`, required by SQLModel) |
 | Pydantic | 2.13 |
+| pydantic-settings | 2.15 |
 | pytest | 9.1 |
 | pytest-cov | 7.1 |
 | uv | 0.12 |
@@ -334,6 +349,7 @@ erDiagram
     alembic/                       # migrations (AD-15)
     app/
       main.py                      # app factory; mounts testing router only if APP_ENV=test
+      config.py                    # Settings, the only env reader (AD-21)
       db.py  deps.py               # engine/session, dependency providers (AD-20)
       clock.py                     # Clock dependency (AD-7)
       routers/tasks.py  routers/health.py  routers/testing.py
