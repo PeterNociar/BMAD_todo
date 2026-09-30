@@ -1,0 +1,63 @@
+name: todo
+
+services:
+  db:
+    image: postgres:18
+    profiles: [app]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-todo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-todo}
+      POSTGRES_DB: ${POSTGRES_DB:-todo}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    profiles: [app]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://todo:todo@db:5432/todo}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    profiles: [app]
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: ${API_UPSTREAM:-backend:8000}
+    ports:
+      - "${APP_BIND:-127.0.0.1}:8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  db-test:
+    image: postgres:18
+    profiles: [test]
+    environment:
+      POSTGRES_USER: todo
+      POSTGRES_PASSWORD: todo
+      POSTGRES_DB: todo_pytest
+    volumes:
+      - db-test-data:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todo -d todo_pytest"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  db-data:
+  db-test-data:
