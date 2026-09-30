@@ -5,15 +5,8 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.clock import Clock
+from app.exceptions import TaskNotFound
 from app.models.task import Task
-
-
-class TaskNotFound(Exception):
-    """No task has the requested id (AD-11: `404 task_not_found`)."""
-
-    def __init__(self, task_id: UUID | str) -> None:
-        super().__init__(f"Task {task_id} not found")
-        self.task_id = task_id
 
 
 class TaskService:
@@ -52,7 +45,7 @@ class TaskService:
     def _get(self, task_id: UUID) -> Task:
         task = Task.get_by_id(self._session, task_id)
         if task is None:
-            raise TaskNotFound(task_id)
+            raise TaskNotFound()
         return task
 
     def _save(self, task: Task) -> Task:
