@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX Design Validation: BMAD_todo</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em; background: rgba(120,113,108,0.10); padding: 1px 4px; border-radius: 3px; }
+  .sev-counts { display: flex; gap: 10px; flex-wrap: wrap; margin: -8px 0 24px; }
+  .sev-counts .badge { font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="report-header">
+      <div class="title">
+        <h1>BMAD_todo — UX Design Validation Report</h1>
+        <div class="subtitle">/home/noco/repos/nearform/BMAD_todo/_bmad-output/initiative-todo-app/ux-todo-app/DESIGN.md · /home/noco/repos/nearform/BMAD_todo/_bmad-output/initiative-todo-app/ux-todo-app/EXPERIENCE.md</div>
+      </div>
+    </header>
+    <div class="synthesis">
+      <p>The pair is a clean contract that a downstream consumer can extract from. Every one of the 34 distinct token references resolves, all 19 light colour tokens have <code>-dark</code> twins with hex values, the contrast table checks out when recomputed, UJ-1..3 are reused verbatim with Peter, numbered steps and a climax each, and component names match across both files. What still blocks a consumer is a few load-bearing behaviours that are left open or contradicted: focus return on touch (the soft keyboard), scroll and focus return on long lists, several adds during the ~3s hold, and two decisions that DESIGN.md commits to while EXPERIENCE.md still lists them as open questions. Settle those before story slicing. The rest is polish.</p>
+      <p>The accessibility and adversarial reviewers shift that picture. The rubric saw no critical issues; after dedupe there are three. The <code>/</code> jump-to-input shortcut is a single-character key active anywhere outside the input, which fails WCAG 2.1.4 as written and would fail a manual AA audit even though axe passes. The adversarial pass found that the optimistic model has no identity or ordering rules: a tick or delete on a new task whose save has not been confirmed has nothing to target and can resurrect or wrongly toast the task, and a quick tick then untick can leave the row out of step with the server. Both reviewers also add high-severity gaps around focus when a focused toast or row disappears, screen-reader success feedback, toasts covering the held task, merging adds made during a failed load, lost texts after several failed adds, and an invisible but tappable delete on hybrid devices. On the other side of the ledger, the user has since settled OQ1 (2-state theme toggle), OQ2 (each add settles the previous one), OQ3 ("Couldn't save new task. It's too long.") and OQ5 (no strikethrough) in the memlog, which clears the rubric's hold-stacking blocker and both cross-spine contradictions. The spines still show them as open, so they belong in the next Update along with the unresolved criticals and highs.</p>
+    </div>
+    <div class="sev-counts"><span class="badge badge-sev-critical">critical: 3</span> <span class="badge badge-sev-high">high: 9 (1 resolved)</span> <span class="badge badge-sev-medium">medium: 17 (2 resolved)</span> <span class="badge badge-sev-low">low: 28 (1 resolved)</span></div>
+    <div class="dimension-summary">
+      <div class="dim-card">
+        <div class="dim-name">Flow coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Token completeness</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Component coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">State coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Visual reference coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Bloat & overspecification</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Inheritance discipline</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Shape fit</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+    </div>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>1. Flow coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Every UJ in the sources (PRD §2.2 UJ-1..3) has a Key Flow titled verbatim, with protagonist Peter, numbered steps and a bold Climax beat; UJ-1 and UJ-2 have failure paths that match the PRD edge cases. The gaps are phone use and focus location, not missing journeys.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Focus return on touch opens the soft keyboard after every tick or delete</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns; § Responsive &amp; Platform; § Key Flows UJ-2</span>
+            </header>
+            <div class="finding-note">The flows only show laptop use, but the memlog says phone use mirrors laptop use. On touch, "focus returns to the input after every task action" (FR-2) means every tick or delete tap focuses the input; <code>input.focus()</code> inside a tap handler counts as a user gesture on iOS and Android, so the keyboard slides up, the visual viewport shrinks by about half and the list reflows, on every action during UJ-2 backlog clearing. Autofocus on load, by contrast, does not open the keyboard on iOS or Android, so behaviour differs by entry point. None of this is decided.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a Responsive &amp; Platform row "Focus return on touch": return focus to the input only for fine/hover-capable pointers or keyboard activation (the PRD says "by mouse or keyboard"); on touch (<code>pointerType === 'touch'</code>) do not move focus after row actions and blur the input if it was not already focused. State that phone autofocus is best-effort and walk UJ-2 on a phone in one line.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, adversarial (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">UJ-1 climax assumes focus is in the input when Peter returns to the tab</h3>
+              <span class="finding-location">EXPERIENCE § Key Flows UJ-1 step 2; § Interaction Primitives</span>
+            </header>
+            <div class="finding-note">Nothing says what happens if focus was elsewhere when he left: on the theme toggle after a keyboard toggle, on a row after arrow-key navigation, or on the page body after a click in empty space. No behaviour is specified for a click on blank page area, nor for <code>visibilitychange</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Commit a rule, e.g. "a click on non-interactive page area, or the tab becoming visible with focus on <code>body</code>, focuses the input", or explicitly accept a keyboard shortcut as the recovery path (see the <code>/</code> critical finding).</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">UJ-3 has no failure path</h3>
+              <span class="finding-location">EXPERIENCE § Key Flows UJ-3</span>
+            </header>
+            <div class="finding-note">A realistic failure is a backgrounded tab or sleeping laptop where timers are throttled. Age Nudge covers it (recompute on <code>visibilitychange</code>), but the flow does not show it. See also the adversarial wake-from-sleep finding, which argues <code>visibilitychange</code> alone is not enough.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add one line: "Failure: the laptop slept through the crossing; on wake the tab becomes visible and the bar and label update at once."</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No flow walks a keyboard-only run</h3>
+              <span class="finding-location">EXPERIENCE § Key Flows UJ-2</span>
+            </header>
+            <div class="finding-note">NFR-1 and NFR-7 make keyboard add/tick/untick/delete a tested path. The rules exist in Interaction Primitives, but no flow exercises Down, Space, focus back to the input.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a one-sentence keyboard variant to UJ-2.</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>2. Token completeness</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>All frontmatter tokens and all 34 distinct <code>{path.to.token}</code> references resolve; every colour has a hex and a <code>-dark</code> twin; every contrast figure in the DESIGN.md table recomputes correctly. Gaps are a hard-coded shadow, an ambiguous gradient method and one sub-3:1 boundary.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Toast shadow is a hard-coded colour outside the token set</h3>
+              <span class="finding-location">DESIGN § Elevation &amp; Depth; frontmatter components.toast</span>
+            </header>
+            <div class="finding-note"><code>rgba(24,32,44,.12)</code> / <code>rgba(0,0,0,.45)</code> sit inside an [ASSUMPTION]. This breaks DESIGN.md's own Don't ("Hard-code a colour outside the token set") and has no frontmatter home, so the resolver cannot emit it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add <code>shadow-toast</code> / <code>shadow-toast-dark</code> tokens (or an <code>elevation</code> key) and reference them from <code>components.toast</code>.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Age gradient's normative method is ambiguous</h3>
+              <span class="finding-location">DESIGN § Colors › Age gradient</span>
+            </header>
+            <div class="finding-note">The spine allows continuous computation or interpolation between stops, both of which "must reproduce these hexes". But the gamut-reduction method and the "L nudge" are unspecified and per-stop OKLCH values live only in <code>.working/color-themes-1.html</code>, so a continuous implementation cannot reproduce the hexes deterministically.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Make one method normative (e.g. "interpolate linearly in OKLCH between the stored stops") and add each stop's OKLCH triplet next to its hex.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Unfocused input boundary is below 3:1 (SC 1.4.11) and missing from the contrast table</h3>
+              <span class="finding-location">DESIGN § Colors › Border; Contrast table</span>
+            </header>
+            <div class="finding-note"><code>border</code> on <code>bg</code> is 1.41 light / 1.55 dark and <code>surface</code> on <code>bg</code> is 1.10 / 1.08. The spine leans on the surface step to identify the input ([ASSUMPTION]). When focus is elsewhere (on a row, the toggle) and text has been typed so there is no placeholder cue, the boundary fails 1.4.11.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Use <code>{colors.check-ring}</code> for the unfocused input border (3.18 on bg / 3.51 on surface light; 3.87 / 3.59 dark), or add a text-muted bottom rule. Alternatively record the 1.4.11 reasoning explicitly and accept the risk.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, accessibility (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Component tokens reference only light names</h3>
+              <span class="finding-location">DESIGN frontmatter components; § Colors intro</span>
+            </header>
+            <div class="finding-note">Dark resolution depends on the prose convention "every dark token is the <code>-dark</code> twin", which a resolver will not apply by itself.</div>
+            <div class="finding-fix"><strong>Fix:</strong> State the mapping rule once in a frontmatter comment, or say consumers build CSS variables with the light name as the variable and the <code>-dark</code> value under the dark scheme.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Several raw values sit outside the scale</h3>
+              <span class="finding-location">DESIGN frontmatter components.empty-state, theme-toggle, tick-ring, delete-button; § Layout &amp; Spacing</span>
+            </header>
+            <div class="finding-note"><code>14px</code> (twice), <code>22px x 18px</code>, <code>16px</code>, <code>20px</code>, 1.5px / 1.6px strokes and the 600px breakpoint.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add named tokens (<code>gap-input-list-phone</code>, <code>breakpoint-compact</code>, <code>icon-sm</code>), or declare the values component-local.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title"><code>accent</code> as toast action text is not in the contrast table</h3>
+              <span class="finding-location">DESIGN § Colors › Contrast table</span>
+            </header>
+            <div class="finding-note"><code>accent</code> is also the "Retry" text, which needs 4.5:1; the table states it only as a focus ring at 3.0. It passes (6.60 / 7.47), but the text use is not stated.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add "accent as toast action text on surface, min 4.5".</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>3. Component coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>All 13 component names have a DESIGN.md entry and frontmatter block; EXPERIENCE.md Component Patterns covers 10 with real rules. Header, List and Focus ring have no row. The rubric's toast-variants finding is consolidated under Accessibility (focus destination, high).</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">List has no behavioural row; list and page semantics are unset</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns; § Information Architecture; DESIGN § Typography</span>
+            </header>
+            <div class="finding-note">List semantics (<code>ul</code>/<code>li</code>, accessible name), behaviour with hundreds of rows (page scroll or own scroll region) and its role as container for empty state and skeleton are not committed. Landmarks, <code>&lt;title&gt;</code> and <code>lang</code> are not set, and DESIGN says "No headings", so axe best-practice rules (<code>page-has-heading-one</code>, <code>region</code>) will flag moderate issues and add noise to the zero-violations gate.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a List row: <code>&lt;ul aria-label="Tasks"&gt;</code> with one <code>&lt;li&gt;</code> per task, <code>aria-busy="true"</code> while loading, scroll owner, FR-6 ordering by reference. Specify <code>&lt;html lang="en"&gt;</code>, <code>&lt;title&gt;Todo&lt;/title&gt;</code>, <code>&lt;header&gt;</code> + <code>&lt;main&gt;</code>, and the wordmark as a visually unchanged <code>&lt;h1&gt;</code>.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, accessibility (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Header and Focus ring have no Component Patterns row</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns</span>
+            </header>
+            <div class="finding-note">Header is non-interactive and Focus ring is covered in Interaction Primitives and Accessibility Floor, so this is a completeness gap only.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add one-line rows ("Header: not a landmark nav; wordmark is text, not a link"; "Focus ring: <code>:focus-visible</code> only").</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No hover appearance for the tick ring or theme toggle</h3>
+              <span class="finding-location">DESIGN § Components</span>
+            </header>
+            <div class="finding-note">Only the row tint and the delete hover are specified.</div>
+            <div class="finding-fix"><strong>Fix:</strong> State "no own hover state; the row tint is the hover cue", or give one.</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>4. State coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Cold load, empty, load error, retry, loaded, held task, overdue, clock drift, rollback and action error are all covered; offline and permission-denied correctly do not apply. The gaps are the in-between states that concurrency and long lists create. The rubric's optimistic-rows finding is consolidated under Adversarial (two criticals) and its theme-storage finding under Adversarial (theme resolution). OQ2 is now resolved in the memlog.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Scroll and long-list behaviour uncommitted: input is not sticky, so focus return, FR-4 and scroll collide</h3>
+              <span class="finding-location">EXPERIENCE § State Patterns; § Age Nudge › New-task hold; § Interaction Primitives; § Information Architecture; DESIGN § Layout &amp; Spacing</span>
+            </header>
+            <div class="finding-note">With 500 tasks (NFR-2), Peter scrolls to row 300 and ticks it. Focus returns to the input and a plain <code>focus()</code> scrolls the page to the top, losing his place on every action. With <code>preventScroll</code>, the next Enter adds into an off-screen input, the held task "directly under the input" is off-screen too (breaks FR-4), and the toast layer is off-screen so failures go unseen. The spines imply both "never scroll" and "always visible".</div>
+            <div class="finding-fix"><strong>Fix:</strong> Pick one model: (a) header, input and toast layer are <code>position: sticky</code>, focus return uses <code>preventScroll</code>, and the held row renders in the sticky zone; or (b) refocus with <code>preventScroll</code> and scroll the input into view on Enter.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, adversarial (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Several adds within the ~3s hold left as Open Question 2 — resolved in memlog</h3>
+              <span class="finding-location">EXPERIENCE § Open Questions 2; § Age Nudge › New-task hold</span>
+            </header>
+            <div class="finding-note">FR-1 explicitly supports entering several tasks in a row, so the case is certain to occur and changes both the list model and the animation. The adversarial reviewer raised the same gap (a builder would pick a stacking rule at random).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Decide before stories. Record the chosen rule in EXPERIENCE.md and remove OQ2.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, adversarial (deduplicated)</div><div class="finding-fix"><strong>Status:</strong> Resolved in memlog (2026-09-30): each new add ends the previous task's hold at once (it slides to its sorted place); only the newest task is held under the input. Resolves OQ2. The spines still list OQ2 as open, so fold this into the next Update.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Enter during IME composition and multi-line paste undefined</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns › Input</span>
+            </header>
+            <div class="finding-note">Enter during IME composition must not add a task, and pasted multi-line text needs a defined result. The adversarial reviewer adds that "input is empty" is untested for whitespace-only input or an active composition.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add both to the Input row, and define "empty" as trimmed-empty with no active composition.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, adversarial (deduplicated)</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>5. Visual reference coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Both <code>.working/</code> renders are referenced with what they illustrate, "spines win on conflict" is stated, and the two known render conflicts are called out. No orphans; only link hygiene remains.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Render references are code spans, only in intro sections</h3>
+              <span class="finding-location">DESIGN § Colors, § Layout &amp; Spacing</span>
+            </header>
+            <div class="finding-note">Colors and Layout lean on the renders ("Values come from the Ledger render") without linking them where the values are used.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Make them relative Markdown links and repeat the link inline in Colors and Layout.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Render files also contain rejected options</h3>
+              <span class="finding-location">.working/directions-1.html; .working/color-themes-1.html</span>
+            </header>
+            <div class="finding-note">Directions A and C and other palette variations sit in the same files. A consumer opening them without the spine's pointer could lift the wrong variant.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Name the exact panel or section ID in the link, or promote the chosen panels to <code>mockups/</code>.</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>6. Bloat & overspecification</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Both files are lean. DESIGN.md prose carries decision-tied voice, EXPERIENCE.md uses tables and cites FR numbers instead of copying requirements.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Components prose repeats frontmatter pixel values</h3>
+              <span class="finding-location">DESIGN § Components › Theme toggle, Tick ring, Delete button</span>
+            </header>
+            <div class="finding-note">22×18px, 16px ring, 20px box, 4px padding and 1.5px stroke appear twice and can drift apart.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep values in the frontmatter only; let the prose describe anatomy and state.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">State Patterns Hover and Focus rows repeat Interaction Primitives</h3>
+              <span class="finding-location">EXPERIENCE § State Patterns</span>
+            </header>
+            <div class="finding-note">They restate rules already in Interaction Primitives.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Drop them or reduce each to a pointer.</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>7. Inheritance discipline</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>All 6 source paths resolve, UJ titles are verbatim, glossary terms and component names are consistent, and the FR-16 override is recorded and applied uniformly. The two cross-spine contradictions (OQ1, OQ5) and the FR-3 copy gap (OQ3) are now resolved in the memlog; the spines still need the Update.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Strikethrough committed in DESIGN.md but open in EXPERIENCE.md (OQ5) — resolved in memlog</h3>
+              <span class="finding-location">EXPERIENCE § Open Questions 5 vs DESIGN § Components, Do's and Don'ts</span>
+            </header>
+            <div class="finding-note">DESIGN.md says "no strikethrough (Ledger render)" and forbids it, while EXPERIENCE.md OQ5 asks to confirm. A consumer cannot tell which is binding, and FR-11's example suggests strikethrough.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Close OQ5 as decided in EXPERIENCE.md.</div>
+            <div class="finding-fix"><strong>Status:</strong> Resolved in memlog (2026-09-30): no strikethrough confirmed. Completed style stays Ledger: filled round check, muted text, no age bar, 'done 2h' label (FR-11's strikethrough was only an example). Resolves OQ5. EXPERIENCE.md still lists OQ5 as open, so fold this into the next Update.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Returning to "follow system" after a manual theme choice left as Open Question 1 — resolved in memlog</h3>
+              <span class="finding-location">EXPERIENCE § Open Questions 1; § Component Patterns › Theme toggle</span>
+            </header>
+            <div class="finding-note">It decides the toggle's state model and what goes into local storage; the memlog's "three-way effective behaviour" wording suggested it was meant to be settled. The adversarial reviewer also asked to close it ("one click locks the user out of follow-system permanently").</div>
+            <div class="finding-fix"><strong>Fix:</strong> Record the decision in the Theme toggle row and remove OQ1.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, adversarial (deduplicated)</div><div class="finding-fix"><strong>Status:</strong> Resolved in memlog (2026-09-30): the theme toggle is 2-state (light/dark) once chosen; there is no in-app way back to following the system (clearing site data resets it). Resolves OQ1. The spines still list OQ1 as open, so fold this into the next Update.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">FR-3 length safeguard copy deviates quietly (Open Question 3) — resolved in memlog</h3>
+              <span class="finding-location">EXPERIENCE § Voice and Tone; § State Patterns › Add rollback; § Open Questions 3</span>
+            </header>
+            <div class="finding-note">The PRD says the toast "explains why", but the spine reuses "Couldn't save new task.". The adversarial reviewer adds that an identical toast invites an infinite retry loop.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add the distinct over-length copy to Voice and Tone and remove OQ3.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> rubric, adversarial (deduplicated)</div><div class="finding-fix"><strong>Status:</strong> Resolved in memlog (2026-09-30): the too-long add failure toast reads "Couldn't save new task. It's too long." (explains why per FR-3, no echo of the text). Resolves OQ3. The spines still list OQ3 as open, so fold this into the next Update.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Undeclared spine terms</h3>
+              <span class="finding-location">EXPERIENCE § Foundation</span>
+            </header>
+            <div class="finding-note">Foundation says glossary terms are "used exactly", but the spines add <em>age bar</em>, <em>tick ring</em>, <em>held (new) task</em>, <em>row</em>, <em>list container</em> without defining them.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a short "Spine terms" line defining these as UI names, not glossary terms.</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>8. Shape fit</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>DESIGN.md follows the canonical section order exactly; EXPERIENCE.md has all 8 required defaults plus a justified Responsive &amp; Platform section. Invented sections (Age Nudge, Open Questions) earn their place.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Inspiration &amp; Anti-patterns section absent</h3>
+              <span class="finding-location">EXPERIENCE (missing section)</span>
+            </header>
+            <div class="finding-note">The memlog records reference options and rejections (directions A and C, unused palette variations, strikethrough rejected, no celebration on completion).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a 4–5 bullet section: what was taken from Ledger and C, what was rejected, and why.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Key Flows sits before Responsive &amp; Platform</h3>
+              <span class="finding-location">EXPERIENCE section order</span>
+            </header>
+            <div class="finding-note">The reference examples end with Key Flows.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Optionally move Responsive &amp; Platform above Key Flows.</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Accessibility review</h2>
+          <span class="reviewer-source">review-accessibility.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Close to AA, with one conformance blocker and a few gaps. The colour work holds up: every contrast claim recomputed matches within 0.01. Colour is never the only cue, reduced motion is covered, and the keyboard model follows FR-2. What stands between these spines and a clean AA pass is behaviour the spines leave unspecified. The <code>/</code> shortcut fails 2.1.4 as written. Focus has nowhere defined to go when a focused toast or row disappears. Screen-reader users get no confirmation when an action succeeds. The input, the list and the page landmarks have no semantics set. axe would probably pass a straight build of the spines. A manual AA audit would not.</p>
+            <p><em>Findings shared with another reviewer are listed once, under the reviewer who rated them highest (ties go to the rubric category), with all raisers named.</em></p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title"><code>/</code> single-key shortcut fails SC 2.1.4 Character Key Shortcuts</h3>
+              <span class="finding-location">EXPERIENCE § Interaction Primitives › Keyboard; memlog keyboard decision</span>
+            </header>
+            <div class="finding-note">The <code>/</code> shortcut is a single printable-character shortcut active "from anywhere outside" the input, with no way to turn it off or remap it, and not limited to one component having focus. That fails SC 2.1.4 as written. Speech-input users can trigger it by accident. axe will not catch this; a manual audit will.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Esc and Up-from-first-row already reach the input, so drop <code>/</code>. Or make it fire only while focus is inside the list, or put it behind a modifier (Alt+/ or Ctrl+/). Record the choice in the memlog.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Focus has no defined destination when the focused element disappears (toasts, rows, Retry)</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns › Toast; § State Patterns › Load error</span>
+            </header>
+            <div class="finding-note">Cases: (a) a keyboard user is on a toast's × or Retry when it auto-dismisses or closes after a successful retry; (b) a toast closed from the keyboard, since only pointer close returns focus; (c) a row control has focus while the row re-renders; (d) Retry succeeds. In each case focus drops to <code>&lt;body&gt;</code>, breaking FR-2 and SC 2.4.3. The rubric adds that every toast, including the persistent load-failure toast, gets a close × with no rule for retrying afterwards. The adversarial reviewer: "his next keystrokes go nowhere."</div>
+            <div class="finding-fix"><strong>Fix:</strong> One rule: "whenever the focused element is removed, focus moves to the input". Closing any toast by any means returns focus to the input. Pause a toast's auto-dismiss while it has focus or hover. The load-failure toast has no close × (Retry only).</div>
+            <div class="finding-fix"><strong>Raised by:</strong> accessibility, rubric, adversarial (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Screen-reader users get no feedback when add, tick, untick or delete succeeds</h3>
+              <span class="finding-location">EXPERIENCE § Accessibility Floor › Live regions; § Open Questions 4</span>
+            </header>
+            <div class="finding-note">Focus jumps back to the input, the row moves or vanishes, and nothing is announced. OQ4 covers add only (and is still open). Under SC 4.1.3 the user cannot tell the action worked.</div>
+            <div class="finding-fix"><strong>Fix:</strong> One polite, visually hidden status region announcing "Added: X", "Marked done: X", "Marked not done: X", "Deleted: X"; don't announce the held task's move; announce "No tasks left" after the last delete. Close OQ4.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Input has no specified accessible name</h3>
+              <span class="finding-location">EXPERIENCE § Voice and Tone › Screen-reader labels; DESIGN § Components › Input</span>
+            </header>
+            <div class="finding-note">The placeholder "What needs doing?" is the only label. It disappears once the user types and some SR/browser pairs don't read it as a name reliably (SC 3.3.2, 4.1.2).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a visually hidden <code>&lt;label&gt;</code> "New task" (or <code>aria-label</code>) to the label table; add <code>autocomplete="off"</code> and <code>enterkeyhint="enter"</code>.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Focus handling for the held new task and arrow navigation onto moving rows undefined</h3>
+              <span class="finding-location">EXPERIENCE § Age Nudge and New-Task Hold; § Interaction Primitives › Shortcuts</span>
+            </header>
+            <div class="finding-note">If a keyboard or SR user arrows onto the held task, the row slides away under them three seconds later; if it re-renders, focus is lost; if placed first with CSS <code>order</code>, DOM and visual order diverge (SC 1.3.2, 2.4.3). The adversarial reviewer adds that focus riding along auto-scrolls the page, rollbacks re-inserting rows shift "next", and it's unclear whether Down from the input targets the held row or the oldest task.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Make the held row first in the DOM; key rows by id so focus survives the move; postpone settling while any control in the held row has focus. Compute arrow navigation from current DOM order at keypress time.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> accessibility, adversarial (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Reflow target is 360px; SC 1.4.10 needs 320 CSS px</h3>
+              <span class="finding-location">EXPERIENCE § Foundation, § Responsive; DESIGN § Layout &amp; Spacing › Phone</span>
+            </header>
+            <div class="finding-note">At 400% zoom a laptop viewport is about 190px tall, and toast overlay plus header plus input could cover most of it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> State "no horizontal scroll and no loss of function from 320px"; add a 320×256 check to the Playwright a11y suite.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">~5s toast auto-dismiss is short for magnifier users</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns › Toast; PRD FR-18</span>
+            </header>
+            <div class="finding-note">The toast sits under the input, possibly outside the magnified view. Info-only toasts pass SC 2.2.1, but only just.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Pause the timer on hover, focus-within and window blur; consider 6–8s; never put an action other than close on a timed toast.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Arrow keys clash with native behaviour</h3>
+              <span class="finding-location">EXPERIENCE § Interaction Primitives › Shortcuts</span>
+            </header>
+            <div class="finding-note">Down moves the caret to the end on macOS and opens the autofill history list. Rows are not a composite widget, so arrow navigation is undiscoverable and SR browse mode swallows it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Set <code>autocomplete="off"</code>; keep Tab as the documented primary path; consider a visually hidden hint linked via <code>aria-describedby</code> on the first tick ring.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Theme toggle state is weak in forced-colors mode</h3>
+              <span class="finding-location">DESIGN § Components › Theme toggle; EXPERIENCE › Theme toggle</span>
+            </header>
+            <div class="finding-note">Label swap is correct (don't add <code>aria-pressed</code>). The active segment is only a surface fill (1.10:1), so state shows via icon colour alone (2.81 / 2.37).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep the label swap; under <code>forced-colors: active</code> outline the active segment with <code>CanvasText</code>.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Hidden delete must use opacity, not display/visibility</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns › Delete button; DESIGN › Delete button</span>
+            </header>
+            <div class="finding-note"><code>display:none</code>/<code>visibility:hidden</code> drops it from the Tab order, contradicting "always in the Tab order". Voice-control users can't target an unrevealed ×. See the adversarial hybrid-device finding for the opposite risk (an invisible × that can still be tapped).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Specify <code>opacity:0</code> → 1 on <code>:hover</code>/<code>:focus-within</code>; optionally show delete at low emphasis always.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Contrast table's delete-hover figure is not the worst case</h3>
+              <span class="finding-location">DESIGN § Colors › Contrast</span>
+            </header>
+            <div class="finding-note">"delete on hover 5.38" is the icon on the row tint. The button's own hover background is <code>{colors.divider}</code>: 4.51 light / 4.88 dark. Still passes 3:1. The rubric's mechanical notes list the same unstated pair.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add "delete on divider (button hover): 4.51 / 4.88".</div>
+            <div class="finding-fix"><strong>Raised by:</strong> accessibility, rubric (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Tick ring button reads task text twice</h3>
+              <span class="finding-location">EXPERIENCE › Tick ring; § Voice and Tone</span>
+            </header>
+            <div class="finding-note">The label-swapping button is valid but SRs read the task text in the button name and again as row text.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Hide the duplicate visible text with <code>aria-hidden</code>, or use <code>&lt;input type="checkbox"&gt;</code> labelled by the task text.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Age labels must stay out of live regions; "now" wording undefined</h3>
+              <span class="finding-location">EXPERIENCE § Accessibility Floor; § Voice and Tone</span>
+            </header>
+            <div class="finding-note">Otherwise labels are read aloud every 30s. The words form for "now" is not defined.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Note that age labels are not live; add "added just now" / "completed just now".</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Failed load retry is not re-announced</h3>
+              <span class="finding-location">EXPERIENCE § State Patterns › Load error</span>
+            </header>
+            <div class="finding-note">The alert text doesn't change, so the user presses Retry and hears nothing.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Announce "Still couldn't load your tasks." politely on each failed retry.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Live regions must exist before messages are injected</h3>
+              <span class="finding-location">EXPERIENCE § Accessibility Floor</span>
+            </header>
+            <div class="finding-note">Otherwise the first toast is often missed.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Render empty <code>role="status"</code> and <code>role="alert"</code> containers on first paint.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Text resize and spacing (SC 1.4.4, 1.4.12)</h3>
+              <span class="finding-location">DESIGN § Typography, § Components</span>
+            </header>
+            <div class="finding-note">All type is px, toggle segments are fixed 22×18, line-height fixed at 1.35; user default font size is ignored and fixed heights could clip.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Use rem for type; no fixed heights on rows, toasts or empty state; test with the text-spacing bookmarklet.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Target size (advisory, WCAG 2.2)</h3>
+              <span class="finding-location">EXPERIENCE › Pointer vs touch</span>
+            </header>
+            <div class="finding-note">"Hit areas at least 24×24" meets 2.5.8. On touch the row is about 35px tall, so 44px can't be reached vertically (2.5.5 is AAA). See the adversarial hit-area overlap finding.</div>
+            <div class="finding-fix"><strong>Fix:</strong> No change needed for AA. Make the delete hit area span full row height on coarse pointers.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Focus not obscured by toasts (advisory, SC 2.4.11)</h3>
+              <span class="finding-location">EXPERIENCE › Toast; memlog toast decision</span>
+            </header>
+            <div class="finding-note">Toasts overlay the top of the list and can cover the focused tick ring or delete of the first rows, where overdue and held tasks live.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Use <code>scroll-margin-top</code> equal to the toast stack height on row controls, or dim/shift the toast while a covered control has focus.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Reduced motion coverage is complete</h3>
+              <span class="finding-location">EXPERIENCE § Motion</span>
+            </header>
+            <div class="finding-note">Slides, held-task settle, gap closing and toast fades are all covered. The held task still jumps after 3s, which is acceptable.</div>
+            <div class="finding-fix"><strong>Fix:</strong> None required. Optionally note forced-colors: the filled check must stay visible (SVG with <code>currentColor</code>).</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Adversarial / edge-case review</h2>
+          <span class="reviewer-source">review-adversarial.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The spines describe each action well when it happens alone and the server answers promptly. Once actions overlap, run on a phone, or run against a long list, a builder is left guessing: optimistic actions on unconfirmed tasks, out-of-order responses, focus-return side effects and the non-sticky input all lack rules, and some of those guesses break FR-2, FR-4 or SM-4.</p>
+            <p><em>Findings shared with another reviewer are listed once, under the reviewer who rated them highest (ties go to the rubric category), with all raisers named.</em></p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Actions on a held task whose add has not been confirmed yet</h3>
+              <span class="finding-location">EXPERIENCE § Age Nudge and New-Task Hold, last bullet; § State Patterns › Add rollback</span>
+            </header>
+            <div class="finding-note">Peter presses Enter, then immediately ticks or deletes the held row while the POST is still in flight. The spine says "the action applies immediately", but the task has no server id yet, so the tick/delete request has nothing to target. Worse, if Peter deletes it and the add then fails, add rollback runs on a row that is already gone: a "Couldn't save new task." toast appears for a task he chose to delete, and its text comes back into his empty input. If the add succeeds after the delete was dropped client-side, the task comes back on the next load (breaks FR-13). The rubric raised the same gap at medium ("optimistic rows still in flight have no defined state").</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define an identity and queueing rule: a client-generated id (UUID) accepted by the API, or queue row actions until the add confirms. Specify every pairing: delete then add fails means silent (no toast, no text restore); delete then add succeeds means send the delete; tick then add fails means row removed plus the add toast only.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> adversarial, rubric (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Rapid tick/untick and out-of-order server responses</h3>
+              <span class="finding-location">EXPERIENCE § State Patterns › Action error; § Component Patterns › Tick ring</span>
+            </header>
+            <div class="finding-note">Peter ticks, notices the wrong row and unticks within 300ms. Two requests are in flight. The untick succeeds, then the tick's failure arrives late, and "the row returns to its exact previous state" puts it back as open… or as completed if the builder snapshots state per request. Either way the UI no longer matches the server. Who sets the completed time? If the server does, the completed group re-sorts on response and rows jump with no user action. "Exact previous position" is undefined when other rows moved meanwhile. The rubric raised the tick-then-quick-untick case at medium.</div>
+            <div class="finding-fix"><strong>Fix:</strong> One in-flight mutation per task, later intents coalesced or queued (last intent wins; reconcile only the final server state). Rollback re-derives position from FR-6 instead of restoring an index. The server timestamp replaces the optimistic one without animation unless order actually changes.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> adversarial, rubric (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Toasts cover the held task, and the load-failure toast covers it indefinitely</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns › Toast; § Age Nudge; § State Patterns › Add while loading or after load error</span>
+            </header>
+            <div class="finding-note">Peter adds A, which fails, then adds B: the A-failure toast sits exactly where held B is, so FR-4 fails. With the list failed to load, the persistent toast overlays the top of the list; every task he adds is held under it, then "slides into its sorted place" in a blank list area. His new tasks are hidden for as long as the API is down. No cap on toast count: ticking 10 rows with the server down stacks 10 toasts over the rings he is trying to tap.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Cap visible toasts (e.g. 2, collapsing the rest, or dedupe identical messages with a count). Reserve space instead of overlaying while a held task or persistent toast is present, or render held rows above the toast stack. Define where post-load-error adds render.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Merge rules for adds during loading or after a load error are a single [ASSUMPTION]</h3>
+              <span class="finding-location">EXPERIENCE § State Patterns › Add while loading or after load error; Load error</span>
+            </header>
+            <div class="finding-note">Peter adds X during a slow first load. If the GET was issued before the POST, a naive "replace list with response" deletes X from view even though it saved; if served after, X appears twice. After a load error, does Retry's skeleton replace tasks he added meanwhile? If the 3s hold expires before the list arrives, slide into what? If he deletes all tasks added during a failed load, is that the empty state (forbidden after load failure) or blank?</div>
+            <div class="finding-fix"><strong>Fix:</strong> Reconcile by id (server list ∪ pending optimistic, dedupe by client id). Skeleton rows render below locally added rows, never replacing them. A hold never ends into an unloaded list. After a load error, local tasks show in a list container and the empty state stays suppressed until a load succeeds.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Multiple failed adds break "nothing lost"</h3>
+              <span class="finding-location">EXPERIENCE § Voice and Tone › Override of FR-16; § State Patterns › Add rollback</span>
+            </header>
+            <div class="finding-note">With the API down, Peter types and enters three tasks in 2s. All three fail while the input is empty. Which text returns? If "each on failure", the second overwrites the first and the third the second, so two tasks vanish with no trace, which goes beyond the accepted override (that only covered "user already typed new text"). The held-task stacking (OQ2) and over-length copy (OQ3) parts of this finding are now resolved in the memlog; the multi-failure text loss is not.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restore only the most recent failed text and name the loss explicitly as accepted, or keep a small failed-text queue.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">On hybrid devices an invisible delete button can be tapped</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns › Delete button; § Interaction Primitives › Pointer vs touch; DESIGN § Components</span>
+            </header>
+            <div class="finding-note">On a touchscreen laptop or iPad with trackpad, <code>(hover: hover)</code> reports the primary pointer as fine, so delete is hidden until hover but stays in the Tab order (hidden by opacity). Peter touches the right edge of a row to scroll or tap, hits the invisible ×, and the task is permanently deleted with no undo.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Show delete whenever <code>(any-pointer: coarse)</code> matches, or make the hidden state <code>pointer-events: none</code>, re-enabled on hover/focus-within only for <code>pointerType === 'mouse'</code>. State it in the spine because the failure is irreversible.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Theme resolution: first paint, live system change and storage failure</h3>
+              <span class="finding-location">EXPERIENCE § Component Patterns › Theme toggle</span>
+            </header>
+            <div class="finding-note">A stored "dark" preference read after the framework mounts flashes light first. With no stored choice, the OS switches to dark at sunset and nothing says the app listens to <code>matchMedia('(prefers-color-scheme: dark)')</code>. In a private window <code>localStorage</code> throws and the toggle may crash. The rubric raised the storage case at low. The OQ1 part of the original finding is resolved (2-state, no way back to system), which makes the "nothing stored yet" path the only one that follows the system.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Apply the theme in an inline pre-paint script. Follow live system changes while nothing is stored. Wrap storage in try/catch, falling back to session-only.</div>
+            <div class="finding-fix"><strong>Raised by:</strong> adversarial, rubric (deduplicated)</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Enlarged touch hit areas overlap neighbouring rows' delete buttons</h3>
+              <span class="finding-location">EXPERIENCE § Interaction Primitives › Hit areas; DESIGN § Layout › Task row</span>
+            </header>
+            <div class="finding-note">A single-line row is about 35px tall. Extending the delete target towards 44px vertically overlaps the row above or below. A tap near a divider deletes the neighbour, permanently.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Hit areas extend horizontally only or are clamped to the row box, or raise the coarse-pointer row min-height to 44px. Pick one.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Client clock ahead of the server is unhandled</h3>
+              <span class="finding-location">EXPERIENCE § State Patterns › Clock drift; PRD FR-15</span>
+            </header>
+            <div class="finding-note">The spine only covers future timestamps (client behind). With the laptop clock 90 minutes fast, every add shows "now"/green, then flips to "1h" and a yellow-green bar when the server's time replaces the client's. Fresh tasks look stale and the held task's label jumps mid-hold.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Estimate the server offset (Date header or a <code>serverTime</code> field) and compute ages against <code>Date.now() + offset</code>; keep the clamp as a backstop.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Wake from sleep and long-hidden tabs</h3>
+              <span class="finding-location">EXPERIENCE § Age Nudge › Live ages</span>
+            </header>
+            <div class="finding-note">Peter closes the lid with the tab visible and opens it two days later. <code>visibilitychange</code> often does not fire, the 30s interval may be deferred, labels show "20h" instead of "2d", and the list is two days stale with no refetch. bfcache has the same problem.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Recompute on <code>visibilitychange</code>, <code>focus</code>, <code>pageshow</code> (persisted) and whenever the interval detects a wall-clock gap much larger than 30s. Decide whether a long gap triggers a silent refetch and how it merges without moving focus.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Refresh or navigation while an add is in flight silently loses the task</h3>
+              <span class="finding-location">EXPERIENCE § State Patterns; PRD SM-4, §4.6</span>
+            </header>
+            <div class="finding-note">Peter presses Enter and immediately hits Cmd+R. The input is already cleared and the POST is aborted. On reload the task is gone, with no toast. "Nothing silently lost" has a hole.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Register <code>beforeunload</code> while any mutation is pending, or persist pending adds to <code>sessionStorage</code> and replay on load. State which.</div>
+            
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Age column width, font swap and inconsistent time snapshots</h3>
+              <span class="finding-location">DESIGN § Typography; § Components › Age label; age-column-min: 62px</span>
+            </header>
+            <div class="finding-note">"done 100d" is about 65px at 12px mono, exceeding the 62px min, so the column misaligns after about 3 months (completed tasks are never archived). The webfont swap changes metrics so rows jump after first paint. If label and colour call <code>Date.now()</code> separately, a row can read "1d" with a non-overdue colour.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Size the column for the longest realistic label (<code>ch</code>-based) or cap at "99d+". Use metric-matched fallbacks and preload both fonts. Compute label and colour from one <code>now</code> snapshot per render.</div>
+            
+          </article>
+        </div>
+      </details>
+    </section>
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>Token references: 34 distinct <code>{path.to.token}</code> references across both files, 0 unresolved.</li>
+        <li>Light/dark pairs: 19/19 complete (12 UI tokens and 7 age stops per mode).</li>
+        <li>Contrast recomputed by both rubric and accessibility reviewers: every DESIGN.md figure matches. Unstated pairs worth adding: <code>border</code>/<code>bg</code> 1.41 / 1.55, <code>surface</code>/<code>bg</code> 1.10 / 1.08, delete on <code>divider</code> 4.51 / 4.88, <code>text-muted</code> on <code>hover</code> 5.38 / 5.54, age stops on <code>bg</code> min 3.66 light / 5.99 dark.</li>
+        <li>Typography frontmatter: <code>age-label</code> uses <code>note</code> to carry CSS; <code>age-label</code> and <code>wordmark</code> have no <code>lineHeight</code>.</li>
+        <li>Values outside tokens: 14px (twice), 22×18px, 16px, 20px, 1.5px / 1.6px strokes, 600px breakpoint, toast shadow rgba. Motion durations are fine in EXPERIENCE.md.</li>
+        <li>Frontmatter complete in both files (both <code>status: draft</code>); all 6 source paths resolve; component naming identical across files; no Mermaid.</li>
+        <li>Memlog alignment: every (decision) and (override) is reflected in the spines, except the four 2026-09-30 resolutions of OQ1, OQ2, OQ3 and OQ5, which are in the memlog only.</li>
+        <li>Dedupe: 66 raw findings (rubric 29, accessibility 21, adversarial 16) consolidated to 57.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: /home/noco/repos/nearform/BMAD_todo/_bmad-output/initiative-todo-app/ux-todo-app/review-rubric.md</span>
+        <span>Accessibility: /home/noco/repos/nearform/BMAD_todo/_bmad-output/initiative-todo-app/ux-todo-app/review-accessibility.md</span>
+        <span>Adversarial: /home/noco/repos/nearform/BMAD_todo/_bmad-output/initiative-todo-app/ux-todo-app/review-adversarial.md</span>
+        <span>DESIGN.md: /home/noco/repos/nearform/BMAD_todo/_bmad-output/initiative-todo-app/ux-todo-app/DESIGN.md</span>
+        <span>EXPERIENCE.md: /home/noco/repos/nearform/BMAD_todo/_bmad-output/initiative-todo-app/ux-todo-app/EXPERIENCE.md</span>
+        <span>Generated: 2026-09-30</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
