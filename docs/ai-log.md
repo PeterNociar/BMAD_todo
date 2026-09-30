@@ -72,3 +72,20 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - **Missing assertion.** Nothing asserted that tick, untick and delete advertise no 422.
 
 **Human decisions.** The error-code vocabulary and the malformed-id behaviour were the user's calls. A narrower race window, a delete landing between commit and refresh, was accepted as a known low risk.
+
+## Ticket 4 — Test and dev compose profiles with the gated testing router
+
+**Agents.** The dev persona (bmad-build) planned the ticket and asked the user one question before starting: may the one-time `db-test` volume be recreated so the `todo_e2e` init script runs? The user said yes, limited to `todo_db-test-data`; `docker compose down -v` was forbidden because it could also delete the app's data. A subagent implemented the plan, then four review lenses read the diff.
+
+**What was built.**
+- The AD-14 testing router (seed, reset, clock offset), imported and mounted only in test mode.
+- One shared `Clock` on `app.state` that holds the offset.
+- The `dev` profile: `backend-dev` with `--reload` and read-only bind mounts, and `frontend-dev` on `node:24-alpine`, which runs `npm ci` inside the container so no glibc host binaries end up in musl.
+- The `test` profile: `backend-test` on `todo_e2e`, and `frontend-test` on `:8082`.
+
+**What AI missed, and what review caught.**
+- The first `db-test` health check used `pg_isready -d todo_e2e`, which ignores whether the database exists. An old volume would have looked healthy while `backend-test` crash-looped. It now runs a real query.
+- The seed and clock bodies silently ignored misspelled keys, and they accepted negative offsets that could stamp `completed_at` before `added_at`.
+- The README didn't warn that `dev` and `app` share one database and both migrate it at startup.
+
+**Verification.** None of the compose wiring is covered by automated tests (deferred to entry 1.5's E2E suite). The main session ran and recorded the stack checks itself, including a live reload triggered by touching a source file.

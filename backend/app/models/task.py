@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Text, case
+from sqlalchemy import Column, DateTime, Text, case, delete
 from sqlmodel import Field, Session, SQLModel, col, select
 
 
@@ -34,3 +34,8 @@ class Task(SQLModel, table=True):
     def get_by_id(cls, session: Session, task_id: UUID) -> Task | None:
         statement = select(cls).where(col(cls.id) == task_id)
         return session.exec(statement).first()
+
+    @classmethod
+    def delete_all(cls, session: Session) -> None:
+        """Delete every task. The caller commits."""
+        session.exec(delete(cls))  # type: ignore[call-overload]

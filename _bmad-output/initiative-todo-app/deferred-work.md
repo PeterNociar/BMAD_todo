@@ -7,3 +7,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-task-model-ordering-and-the-shared-ordering-fixtures-plan.md`
   summary: A caller-set `sqlalchemy.url` containing `%` still breaks configparser interpolation in `alembic/env.py`. The passed-connection half of the AD-21 entry above is now covered by `backend/tests/test_migrations.py`.
   evidence: `env.py` reads `config.get_main_option("sqlalchemy.url")` without escaping, so any caller that calls `set_main_option` must escape `%` as `%%`. No caller sets a URL today; revisit when one does.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-test-and-dev-compose-profiles-with-the-gated-testing-router-plan.md`
+  summary: No automated check exercises the compose `test` and `dev` profiles, the `entrypoint.sh` argument pass-through (`--reload`), or `frontend-test` proxying to `backend-test`.
+  evidence: pytest builds apps in-process and never reads compose; the repo has no CI. Entry 1.5's E2E suite, pointed at `:8082`, will cover the test stack. A smoke script (bring up `COMPOSE_PROFILES=test`, then `POST :8082/api/test/reset` gives 204 and `:8081` gives 404) could guard it sooner.

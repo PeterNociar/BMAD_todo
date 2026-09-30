@@ -15,8 +15,9 @@ def current_settings(request: Request) -> Settings:
     return request.app.state.settings
 
 
-def get_clock() -> Clock:
-    return Clock()
+def get_clock(request: Request) -> Clock:
+    """The app's one shared clock, so a test-mode offset applies to every request."""
+    return request.app.state.clock
 
 
 def get_task_service(

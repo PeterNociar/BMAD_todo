@@ -34,11 +34,61 @@ Open <http://127.0.0.1:8081>. `docker compose up` is the Compose v2 form of `doc
 - The backend runs `alembic upgrade head` on every start, then starts uvicorn.
 - API docs are at <http://127.0.0.1:8081/api/docs>.
 - Logs: `docker compose logs -f backend` (or `frontend`, `db`).
-- Stop: `docker compose down`. Data lives in the `db-data` volume; `docker compose down -v` deletes it.
+- Stop: `docker compose down`. Data lives in the `db-data` volume; `docker compose down -v` deletes it (and `db-test-data`), so don't use `-v` unless you mean it.
+
+## Compose profiles
+
+Every service belongs to at least one profile (`db` is in both `app` and `dev`). `.env` picks the default (`COMPOSE_PROFILES=app`); a `COMPOSE_PROFILES` in the shell overrides it for one command.
+
+| Profile | Services | Host ports (all on `127.0.0.1` unless `APP_BIND` says otherwise) |
+|---|---|---|
+| `app` | `db`, `backend`, `frontend` | `8081` → nginx (bound to `APP_BIND`) |
+| `dev` | `db` (shared with `app`), `backend-dev`, `frontend-dev` | `8000` → uvicorn with `--reload`, `5173` → Vite |
+| `test` | `db-test`, `backend-test`, `frontend-test` | `5436` → `db-test` (pytest), `8082` → nginx for E2E |
+
+### Dev (hot reload)
+
+```sh
+COMPOSE_PROFILES=dev docker compose up -d --build --wait
+```
+
+- Open <http://127.0.0.1:5173>. Vite proxies `/api` to `backend-dev`, so <http://127.0.0.1:5173/api/health> answers through the proxy.
+- `backend-dev` bind-mounts only `backend/app` and `backend/alembic`, read-only. uvicorn restarts when a file in `backend/app` changes. A new migration needs `docker compose restart backend-dev`, because migrations run at container start. A dependency change needs `--build`.
+- `frontend-dev` is `node:24-alpine` with `./frontend` mounted. It runs `npm ci` into its own `node_modules` volume on every start (the host `node_modules` is never used), so the first start takes a minute.
+- `dev` uses the same `db` and `db-data` volume as `app`, so both show the same tasks. `backend` and `backend-dev` both run `alembic upgrade head` at start, so run one of the two profiles at a time, and after adding a migration in dev, rebuild the `app` images (`docker compose up -d --build`) before going back to `app`.
+- Stop: `COMPOSE_PROFILES=dev docker compose stop backend-dev frontend-dev`.
+
+### Test (E2E stack)
+
+```sh
+COMPOSE_PROFILES=test docker compose up -d --build --wait
+```
+
+- `backend-test` runs with `APP_ENV=test` on the `todo_e2e` database of `db-test`, and `frontend-test` serves it on <http://127.0.0.1:8082>. Its data never mixes with the app's.
+- Only in this mode does the backend mount the test-only router (AD-14). Under `APP_ENV=app` every `/api/test/*` path is `404 not_found`.
+  - `POST /api/test/tasks {"text", "added_ago_ms", "completed_ago_ms" | null}` → `201` Task, with times relative to the server clock.
+  - `POST /api/test/clock {"offset_ms": int}` → `204`; shifts the server clock (0 clears it).
+  - `POST /api/test/reset` → `204`; deletes every task and clears the offset.
+- The test stack has one server clock and one reset shared by every request, so E2E runs with one worker, and only one user (or suite) should drive a test stack at a time.
+
+```sh
+curl -s -XPOST -H 'content-type: application/json' -d '{"text":"old","added_ago_ms":90000000,"completed_ago_ms":null}' http://127.0.0.1:8082/api/test/tasks
+```
+
+### Existing `db-test` volume: recreate it once
+
+`db-test` creates `todo_e2e` from `db-test/init/01-create-e2e.sql`. Postgres runs init scripts only on an empty data directory, so a `db-test-data` volume created before this script existed has no `todo_e2e`, and `backend-test` fails to start. The volume holds only pytest scratch data, so recreate it once:
+
+```sh
+docker compose --profile test rm -sf db-test && docker volume rm todo_db-test-data
+docker compose --profile test up -d --wait db-test
+```
+
+Remove only that volume. Never use `docker compose down -v`: it also deletes `db-data`, the app's tasks.
 
 ## Backend tests and lint
 
-The backend tests run against their own Postgres, `db-test`, in the `test` profile. It is published on `127.0.0.1:5436` and has its own volume, so tests never touch the app's data.
+The backend tests run against their own Postgres, `db-test`, in the `test` profile. It is published on `127.0.0.1:5436` and has its own volume, so tests never touch the app's data. pytest uses the `todo_pytest` database; no compose service points at it.
 
 ```sh
 docker compose --profile test up -d --wait db-test
@@ -80,6 +130,7 @@ npm run check            # svelte-check + tsc
 npm run lint             # ESLint; {@html} is an error
 npm run format           # Prettier (format:check to verify only)
 npm run dev              # Vite dev server on :5173, proxies /api to $API_UPSTREAM or localhost:8000
+                         # (or run it in Docker: the dev profile above)
 ```
 
 ## End-to-end tests
@@ -108,6 +159,7 @@ The app has no login, so it only listens on `127.0.0.1` by default. There are tw
 ```text
 backend/    FastAPI app (app/), Alembic migrations, pytest suite, Dockerfile
 frontend/   Svelte 5 + Vite SPA, Vitest suite, nginx template, Dockerfile
+db-test/    init script that creates the todo_e2e database
 e2e/        Playwright package
 docs/       Exercise, original PRD, AI integration log
 _bmad-output/  BMad planning artifacts and ticket plans

@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, FastAPI
 
+from app.clock import Clock
 from app.config import Settings, get_settings
 from app.db import make_engine
 from app.errors import install_error_handlers
@@ -18,9 +19,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.engine = make_engine(settings.database_url)
+    app.state.clock = Clock()
     api = APIRouter(prefix="/api")
     api.include_router(tasks.router)
     api.include_router(health.router)
+    if settings.app_env == "test":
+        # AD-14: the testing router is imported and mounted only in test mode.
+        from app.routers import testing
+
+        api.include_router(testing.router)
     app.include_router(api)
     install_error_handlers(app)
     return app
