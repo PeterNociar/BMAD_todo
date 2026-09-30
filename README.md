@@ -48,9 +48,26 @@ uv run pytest                    # coverage gate: 70%, branch coverage on
 uv run ruff check . && uv run ruff format --check .
 ```
 
-Set `TEST_DATABASE_URL` to point pytest at another database. The default is `postgresql+psycopg://todo:todo@127.0.0.1:5436/todo_pytest`.
+Set `TEST_DATABASE_URL` (in the environment or in `backend/.env`) to point pytest at another database. The default is `postgresql+psycopg://todo:todo@127.0.0.1:5436/todo_pytest`.
 
-To run the backend outside Docker against the app database, start `db` and set `DATABASE_URL`, then run `uv run alembic upgrade head` and `uv run uvicorn app.main:app --reload`.
+### Running the backend outside Docker
+
+The backend reads its configuration only through Pydantic Settings (`backend/app/config.py`). For local runs you can put the values in `backend/.env` instead of exporting them. That file is not committed (`.gitignore` covers it) and is never copied into the image (`backend/.dockerignore`).
+
+- Keys it may hold: `DATABASE_URL` (required, no default), `APP_ENV` (`app` or `test`, default `app`) and `TEST_DATABASE_URL` (read only by the pytest settings). Other keys are ignored.
+- Real environment variables always win over `backend/.env`.
+- The file is found from the code, not the working directory, so it applies wherever you start the command.
+- Compose sets `DATABASE_URL` and `APP_ENV` on every backend service, so `backend/.env` never decides them in a container.
+
+The `db` service does not publish a port, so point `DATABASE_URL` at a Postgres you can reach from the host, then run:
+
+```sh
+cd backend
+uv run alembic upgrade head
+uv run uvicorn --factory app.main:create_app --reload
+```
+
+There is no module-level `app`: uvicorn builds it by calling `create_app()` (`--factory`).
 
 ## Frontend tests and lint
 

@@ -1,3 +1,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-walking-skeleton-through-every-layer-plan.md`
   summary: nginx resolves the `backend` hostname once at startup, so recreating only the backend container could leave the frontend proxying to a stale IP (502) until it restarts.
   evidence: Unverified, medium if true. To settle it, recreate `backend` so it gets a new IP (`docker compose up -d --force-recreate --no-deps backend`, having started another container first to take the old IP), keep `frontend` running, and curl `/api/health` through :8081. A fix would add `resolver 127.0.0.11 valid=10s;` and proxy through a variable while keeping no URI part (AD-16).
+- source_plan: `_bmad-output/initiative-todo-app/plan-ad-21-backend-settings.md`
+  summary: The AD-21 Alembic precedence step 1 (a caller-passed `config.attributes["connection"]`, reused and never closed) has no test, and a caller-set `sqlalchemy.url` containing `%` would break configparser interpolation.
+  evidence: No caller exists yet; `env.py` is outside the coverage source. Entry 1.2's AD-15 migration test is the first consumer. It should pass a connection in online mode and assert the migration ran on it and the connection is still usable, and it should escape `%` as `%%` when it sets `sqlalchemy.url`.

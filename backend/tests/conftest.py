@@ -1,4 +1,3 @@
-import os
 from collections.abc import Iterator
 
 import pytest
@@ -9,13 +8,12 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session, SQLModel
 
 import app.models  # noqa: F401  (registers table metadata)
+from app.config import Settings
 from app.db import get_session, make_engine
 from app.main import create_app
+from tests.settings import TestSettings
 
-TEST_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+psycopg://todo:todo@127.0.0.1:5436/todo_pytest",
-)
+TEST_DATABASE_URL = TestSettings().test_database_url
 
 
 @pytest.fixture(scope="session")
@@ -60,7 +58,7 @@ def db_session(session_factory: sessionmaker[Session]) -> Iterator[Session]:
 
 @pytest.fixture(scope="session")
 def application() -> FastAPI:
-    return create_app()
+    return create_app(Settings(_env_file=None, database_url=TEST_DATABASE_URL, app_env="app"))
 
 
 @pytest.fixture()
