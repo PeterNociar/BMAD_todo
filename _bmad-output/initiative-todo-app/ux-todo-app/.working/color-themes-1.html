@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todo Colour Themes</title>
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--page:#E6E7EA;--pageink:#1F2023;--pagemuted:#5A5C61;--rule:rgba(0,0,0,.14)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1A1B1E;--pageink:#E6E6E6;--pagemuted:#A0A0A0;--rule:rgba(255,255,255,.14)}}
+:root[data-theme="dark"]{--page:#1A1B1E;--pageink:#E6E6E6;--pagemuted:#A0A0A0;--rule:rgba(255,255,255,.14)}
+body{background:var(--page);color:var(--pageink);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:32px 16px 80px}
+.intro{max-width:1200px;margin:0 auto 28px}
+.intro h1{font-size:22px;font-weight:600;margin-bottom:8px}
+.intro p{color:var(--pagemuted);font-size:14px;line-height:1.55;max-width:820px;margin-bottom:6px}
+.var{max-width:1200px;margin:0 auto 56px;padding-top:24px;border-top:1px solid var(--rule)}
+.var h2{font-size:20px;font-weight:650;margin-bottom:4px}
+.var .reg{font-size:14px;color:var(--pagemuted);margin-bottom:2px}
+.var .acc{font-size:13px;color:var(--pagemuted);margin-bottom:16px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:20px}
+.panel{background:var(--bg);color:var(--text);border-radius:10px;padding:18px;border:1px solid var(--divider);min-width:0}
+.ptitle{font:600 11px/1 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:var(--secondary);margin-bottom:12px}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:16px}
+.chip{display:flex;gap:7px;align-items:flex-start;font:11px/1.35 ui-monospace,'SF Mono',Menlo,Consolas,monospace;color:var(--text);background:var(--surface);border:1px solid var(--divider);border-radius:5px;padding:5px 6px}
+.chip b{flex:none;width:16px;height:16px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(127,127,127,.35)}
+.chip em{display:block;font-style:normal;font-family:system-ui,sans-serif;color:var(--secondary);font-size:10.5px}
+.striplabel{font:11px/1 system-ui,sans-serif;color:var(--secondary);margin-bottom:6px}
+.strip{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;background:var(--surface);border:1px solid var(--divider);border-radius:6px;padding:8px;margin-bottom:18px}
+.sw{display:grid;gap:3px;font:10px/1.2 ui-monospace,'SF Mono',Menlo,Consolas,monospace;color:var(--secondary);min-width:0}
+.sw i{display:block;height:22px;border-radius:2px}
+.sw .sn{color:var(--text);font-weight:600}
+.sw .sh{overflow:hidden;text-overflow:ellipsis}
+.app{background:var(--bg);border:1px solid var(--divider);border-radius:8px;padding:14px 16px 18px}
+.apphead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.appname{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.toggle{display:inline-flex;border:1px solid var(--divider);border-radius:999px;padding:2px;gap:2px}
+.seg{width:22px;height:18px;border-radius:999px;padding:2px 4px;color:var(--muted);display:block}
+.seg.on{background:var(--surface);color:var(--text);box-shadow:inset 0 0 0 1px var(--divider)}
+svg{width:100%;height:100%;display:block}
+.input{font-size:15px;padding:9px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:6px;box-shadow:0 0 0 1px var(--accent);margin-bottom:14px;color:var(--text);display:flex;align-items:center}
+.caret{display:inline-block;width:1.5px;height:1.15em;background:var(--accent);margin-right:3px}
+.ph{color:var(--muted)}
+.list{list-style:none;background:var(--surface);border:1px solid var(--divider);border-radius:6px;overflow:hidden}
+.row{position:relative;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;font-size:14px;line-height:1.35;border-top:1px solid var(--divider)}
+.row:first-child{border-top:0}
+.row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--bar,transparent)}
+.row.done::before{display:none}
+.tick{flex:none;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--ring);display:block}
+.tick.on{border:0;background:var(--fill);color:var(--surface);padding:1px}
+.title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.age{flex:none;font-family:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--secondary);text-align:right;min-width:56px;font-variant-numeric:tabular-nums}
+.done .title,.done .age{color:var(--muted)}
+.del{flex:none;width:20px;height:20px;padding:4px;color:var(--delete);border-radius:4px;visibility:hidden;display:block}
+.hover{background:var(--hover)}
+.hover .del{visibility:visible}
+.hovernote{position:absolute;right:34px;top:-1px;font:8.5px/1 ui-monospace,monospace;letter-spacing:.05em;text-transform:uppercase;padding:2px 4px;border-radius:0 0 3px 3px;background:var(--divider);color:var(--secondary)}
+@media (max-width:560px){.strip{grid-template-columns:repeat(4,1fr)}.title{white-space:normal}}
+
+/* ================= Variation 1. Slate (slate) =================
+   Register: Cool and composed. Blue-grey neutrals, the closest to the original Ledger direction.
+   Accent = muted slate-blue (desaturated, near the text hue) for focus ring, caret and check fill.
+   Age gradient: <1h = fresh endpoint, >=24h = overdue endpoint. For 1h..24h, t = (hours-1)/23 (linear in time);
+   OKLCH interpolation: L and C linear, hue decreasing green -> amber -> orange -> red (shorter arc).
+   Out-of-gamut chroma is reduced; L is nudged only when a stop would drop below 3:1 on the row surface.
+   ---- LIGHT ----
+   background                       #F2F4F7
+   surface / row                    #FFFFFF
+   row hover                        #F4F6F9
+   text-primary                     #18202C
+   text-secondary (age labels)      #475263
+   text-muted (completed)           #5B6676
+   divider / hairline               #DEE3EA
+   focus ring / caret / accent      #4A5E7C
+   check-ring (empty)               #7D8A9C
+   check-fill (done)                #4A5E7C
+   delete icon                      #5B6676
+   age endpoints: fresh oklch(0.58, 0.13, 155)  overdue oklch(0.56, 0.17, 25)
+   age now   #249057  oklch(0.58, 0.13, 155.0)
+   age 1h    #249057  oklch(0.58, 0.13, 155.0)
+   age 3h    #428D42  oklch(0.578, 0.133, 143.7)
+   age 6h    #638718  oklch(0.576, 0.139, 126.7)
+   age 12h   #8F7506  oklch(0.57, 0.149, 92.8)
+   age 18h   #AE5F01  oklch(0.565, 0.16, 58.9)
+   age 23h   #C44231  oklch(0.561, 0.168, 30.7)
+   age 24h+  #C43F3E  oklch(0.56, 0.17, 25.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      16.38:1 (min 4.5) PASS
+     text-primary vs bg                           14.87:1 (min 4.5) PASS
+     text-secondary vs surface                     7.91:1 (min 4.5) PASS
+     text-secondary vs row-hover                   7.31:1 (min 4.5) PASS
+     text-muted vs background                      5.28:1 (min 4.5) PASS
+     text-muted vs surface                         5.82:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          5.82:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                   5.99:1 (min 3.0) PASS
+     focus ring vs surface (non-text)              6.60:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              3.51:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            3.24:1 (min 3.0) PASS
+     check-fill vs surface (non-text)              6.60:1 (min 3.0) PASS
+     check glyph (surface) on check-fill           6.60:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           5.38:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.29:1
+     age now #249057 vs surface (non-text)         4.04:1 (min 3.0) PASS
+     age now #249057 vs row-hover (non-text)       3.73:1 (min 3.0) PASS
+     age 1h #249057 vs surface (non-text)          4.04:1 (min 3.0) PASS
+     age 1h #249057 vs row-hover (non-text)        3.73:1 (min 3.0) PASS
+     age 3h #428D42 vs surface (non-text)          4.10:1 (min 3.0) PASS
+     age 3h #428D42 vs row-hover (non-text)        3.79:1 (min 3.0) PASS
+     age 6h #638718 vs surface (non-text)          4.19:1 (min 3.0) PASS
+     age 6h #638718 vs row-hover (non-text)        3.87:1 (min 3.0) PASS
+     age 12h #8F7506 vs surface (non-text)         4.45:1 (min 3.0) PASS
+     age 12h #8F7506 vs row-hover (non-text)       4.11:1 (min 3.0) PASS
+     age 18h #AE5F01 vs surface (non-text)         4.73:1 (min 3.0) PASS
+     age 18h #AE5F01 vs row-hover (non-text)       4.37:1 (min 3.0) PASS
+     age 23h #C44231 vs surface (non-text)         5.04:1 (min 3.0) PASS
+     age 23h #C44231 vs row-hover (non-text)       4.65:1 (min 3.0) PASS
+     age 24h+ #C43F3E vs surface (non-text)        5.09:1 (min 3.0) PASS
+     age 24h+ #C43F3E vs row-hover (non-text)      4.70:1 (min 3.0) PASS
+   ---- DARK ----
+   background                       #0E131A
+   surface / row                    #151B24
+   row hover                        #1B222D
+   text-primary                     #E4E9EF
+   text-secondary (age labels)      #AAB4C2
+   text-muted (completed)           #8E99A8
+   divider / hairline               #242C37
+   focus ring / caret / accent      #98ACC8
+   check-ring (empty)               #667385
+   check-fill (done)                #98ACC8
+   delete icon                      #8E99A8
+   age endpoints: fresh oklch(0.74, 0.14, 155)  overdue oklch(0.68, 0.16, 25)
+   age now   #55C483  oklch(0.74, 0.14, 155.0)
+   age 1h    #55C483  oklch(0.74, 0.14, 155.0)
+   age 3h    #6EC06D  oklch(0.735, 0.142, 143.7)
+   age 6h    #8FB74A  oklch(0.727, 0.144, 126.7)
+   age 12h   #C19E00  oklch(0.711, 0.15, 92.8)
+   age 18h   #E28120  oklch(0.696, 0.155, 58.9)
+   age 23h   #EB6D5A  oklch(0.683, 0.159, 30.7)
+   age 24h+  #EA6A64  oklch(0.68, 0.16, 25.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      14.17:1 (min 4.5) PASS
+     text-primary vs bg                           15.27:1 (min 4.5) PASS
+     text-secondary vs surface                     8.25:1 (min 4.5) PASS
+     text-secondary vs row-hover                   7.63:1 (min 4.5) PASS
+     text-muted vs background                      6.45:1 (min 4.5) PASS
+     text-muted vs surface                         5.99:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          5.99:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                   8.05:1 (min 3.0) PASS
+     focus ring vs surface (non-text)              7.47:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              3.59:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            3.32:1 (min 3.0) PASS
+     check-fill vs surface (non-text)              7.47:1 (min 3.0) PASS
+     check glyph (surface) on check-fill           7.47:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           5.54:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.23:1
+     age now #55C483 vs surface (non-text)         7.92:1 (min 3.0) PASS
+     age now #55C483 vs row-hover (non-text)       7.32:1 (min 3.0) PASS
+     age 1h #55C483 vs surface (non-text)          7.92:1 (min 3.0) PASS
+     age 1h #55C483 vs row-hover (non-text)        7.32:1 (min 3.0) PASS
+     age 3h #6EC06D vs surface (non-text)          7.76:1 (min 3.0) PASS
+     age 3h #6EC06D vs row-hover (non-text)        7.18:1 (min 3.0) PASS
+     age 6h #8FB74A vs surface (non-text)          7.45:1 (min 3.0) PASS
+     age 6h #8FB74A vs row-hover (non-text)        6.88:1 (min 3.0) PASS
+     age 12h #C19E00 vs surface (non-text)         6.72:1 (min 3.0) PASS
+     age 12h #C19E00 vs row-hover (non-text)       6.21:1 (min 3.0) PASS
+     age 18h #E28120 vs surface (non-text)         6.09:1 (min 3.0) PASS
+     age 18h #E28120 vs row-hover (non-text)       5.63:1 (min 3.0) PASS
+     age 23h #EB6D5A vs surface (non-text)         5.66:1 (min 3.0) PASS
+     age 23h #EB6D5A vs row-hover (non-text)       5.23:1 (min 3.0) PASS
+     age 24h+ #EA6A64 vs surface (non-text)        5.55:1 (min 3.0) PASS
+     age 24h+ #EA6A64 vs row-hover (non-text)      5.14:1 (min 3.0) PASS
+*/
+.v-slate .m-light{--bg:#F2F4F7;--surface:#FFFFFF;--hover:#F4F6F9;--text:#18202C;--secondary:#475263;--muted:#5B6676;--divider:#DEE3EA;--accent:#4A5E7C;--ring:#7D8A9C;--fill:#4A5E7C;--delete:#5B6676;--border:#C9D0DA;--age-0:#249057;--age-1:#249057;--age-2:#428D42;--age-3:#638718;--age-4:#8F7506;--age-5:#AE5F01;--age-6:#C44231;--age-7:#C43F3E;font-family:Inter, 'SF Pro Text', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif}
+
+.v-slate .m-dark{--bg:#0E131A;--surface:#151B24;--hover:#1B222D;--text:#E4E9EF;--secondary:#AAB4C2;--muted:#8E99A8;--divider:#242C37;--accent:#98ACC8;--ring:#667385;--fill:#98ACC8;--delete:#8E99A8;--border:#2E3744;--age-0:#55C483;--age-1:#55C483;--age-2:#6EC06D;--age-3:#8FB74A;--age-4:#C19E00;--age-5:#E28120;--age-6:#EB6D5A;--age-7:#EA6A64;font-family:Inter, 'SF Pro Text', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif}
+
+/* ================= Variation 2. Graphite (mono) =================
+   Register: True monochrome. Zero-chroma greys, so the age bars are the only hue on the page.
+   Accent = ink itself (#262626 / #E5E5E5): the focus ring, caret and check fill carry no hue at all.
+   Age gradient: <1h = fresh endpoint, >=24h = overdue endpoint. For 1h..24h, t = (hours-1)/23 (linear in time);
+   OKLCH interpolation: L and C linear, hue decreasing green -> amber -> orange -> red (shorter arc).
+   Out-of-gamut chroma is reduced; L is nudged only when a stop would drop below 3:1 on the row surface.
+   ---- LIGHT ----
+   background                       #F4F4F4
+   surface / row                    #FFFFFF
+   row hover                        #F6F6F6
+   text-primary                     #1A1A1A
+   text-secondary (age labels)      #4D4D4D
+   text-muted (completed)           #636363
+   divider / hairline               #E2E2E2
+   focus ring / caret / accent      #262626
+   check-ring (empty)               #8A8A8A
+   check-fill (done)                #3A3A3A
+   delete icon                      #636363
+   age endpoints: fresh oklch(0.58, 0.14, 150)  overdue oklch(0.56, 0.18, 27)
+   age now   #2A904B  oklch(0.58, 0.14, 150.0)
+   age 1h    #2A904B  oklch(0.58, 0.14, 150.0)
+   age 3h    #478D33  oklch(0.578, 0.143, 139.3)
+   age 6h    #698603  oklch(0.576, 0.149, 123.3)
+   age 12h   #917406  oklch(0.57, 0.159, 91.2)
+   age 18h   #AE5F01  oklch(0.565, 0.17, 59.1)
+   age 23h   #C83E26  oklch(0.561, 0.178, 32.3)
+   age 24h+  #C83A35  oklch(0.56, 0.18, 27.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      17.40:1 (min 4.5) PASS
+     text-primary vs bg                           15.82:1 (min 4.5) PASS
+     text-secondary vs surface                     8.45:1 (min 4.5) PASS
+     text-secondary vs row-hover                   7.82:1 (min 4.5) PASS
+     text-muted vs background                      5.46:1 (min 4.5) PASS
+     text-muted vs surface                         6.01:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          6.01:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                  13.76:1 (min 3.0) PASS
+     focus ring vs surface (non-text)             15.13:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              3.45:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            3.19:1 (min 3.0) PASS
+     check-fill vs surface (non-text)             11.37:1 (min 3.0) PASS
+     check glyph (surface) on check-fill          11.37:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           5.56:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.30:1
+     age now #2A904B vs surface (non-text)         4.05:1 (min 3.0) PASS
+     age now #2A904B vs row-hover (non-text)       3.74:1 (min 3.0) PASS
+     age 1h #2A904B vs surface (non-text)          4.05:1 (min 3.0) PASS
+     age 1h #2A904B vs row-hover (non-text)        3.74:1 (min 3.0) PASS
+     age 3h #478D33 vs surface (non-text)          4.10:1 (min 3.0) PASS
+     age 3h #478D33 vs row-hover (non-text)        3.79:1 (min 3.0) PASS
+     age 6h #698603 vs surface (non-text)          4.19:1 (min 3.0) PASS
+     age 6h #698603 vs row-hover (non-text)        3.88:1 (min 3.0) PASS
+     age 12h #917406 vs surface (non-text)         4.46:1 (min 3.0) PASS
+     age 12h #917406 vs row-hover (non-text)       4.13:1 (min 3.0) PASS
+     age 18h #AE5F01 vs surface (non-text)         4.73:1 (min 3.0) PASS
+     age 18h #AE5F01 vs row-hover (non-text)       4.38:1 (min 3.0) PASS
+     age 23h #C83E26 vs surface (non-text)         5.03:1 (min 3.0) PASS
+     age 23h #C83E26 vs row-hover (non-text)       4.66:1 (min 3.0) PASS
+     age 24h+ #C83A35 vs surface (non-text)        5.11:1 (min 3.0) PASS
+     age 24h+ #C83A35 vs row-hover (non-text)      4.73:1 (min 3.0) PASS
+   ---- DARK ----
+   background                       #0D0D0D
+   surface / row                    #161616
+   row hover                        #1D1D1D
+   text-primary                     #EBEBEB
+   text-secondary (age labels)      #B0B0B0
+   text-muted (completed)           #929292
+   divider / hairline               #282828
+   focus ring / caret / accent      #E5E5E5
+   check-ring (empty)               #6E6E6E
+   check-fill (done)                #C8C8C8
+   delete icon                      #929292
+   age endpoints: fresh oklch(0.74, 0.15, 150)  overdue oklch(0.68, 0.17, 27)
+   age now   #5AC576  oklch(0.74, 0.15, 150.0)
+   age 1h    #5AC576  oklch(0.74, 0.15, 150.0)
+   age 3h    #74C05F  oklch(0.735, 0.152, 139.3)
+   age 6h    #94B638  oklch(0.727, 0.154, 123.3)
+   age 12h   #C39D0B  oklch(0.711, 0.16, 91.2)
+   age 18h   #E57F09  oklch(0.696, 0.165, 59.1)
+   age 23h   #EF6A51  oklch(0.683, 0.169, 32.3)
+   age 24h+  #EF675C  oklch(0.68, 0.17, 27.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      15.18:1 (min 4.5) PASS
+     text-primary vs bg                           16.30:1 (min 4.5) PASS
+     text-secondary vs surface                     8.34:1 (min 4.5) PASS
+     text-secondary vs row-hover                   7.77:1 (min 4.5) PASS
+     text-muted vs background                      6.25:1 (min 4.5) PASS
+     text-muted vs surface                         5.82:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          5.82:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                  15.43:1 (min 3.0) PASS
+     focus ring vs surface (non-text)             14.37:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              3.55:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            3.31:1 (min 3.0) PASS
+     check-fill vs surface (non-text)             10.82:1 (min 3.0) PASS
+     check glyph (surface) on check-fill          10.82:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           5.42:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.23:1
+     age now #5AC576 vs surface (non-text)         8.34:1 (min 3.0) PASS
+     age now #5AC576 vs row-hover (non-text)       7.77:1 (min 3.0) PASS
+     age 1h #5AC576 vs surface (non-text)          8.34:1 (min 3.0) PASS
+     age 1h #5AC576 vs row-hover (non-text)        7.77:1 (min 3.0) PASS
+     age 3h #74C05F vs surface (non-text)          8.14:1 (min 3.0) PASS
+     age 3h #74C05F vs row-hover (non-text)        7.58:1 (min 3.0) PASS
+     age 6h #94B638 vs surface (non-text)          7.76:1 (min 3.0) PASS
+     age 6h #94B638 vs row-hover (non-text)        7.23:1 (min 3.0) PASS
+     age 12h #C39D0B vs surface (non-text)         7.02:1 (min 3.0) PASS
+     age 12h #C39D0B vs row-hover (non-text)       6.54:1 (min 3.0) PASS
+     age 18h #E57F09 vs surface (non-text)         6.35:1 (min 3.0) PASS
+     age 18h #E57F09 vs row-hover (non-text)       5.92:1 (min 3.0) PASS
+     age 23h #EF6A51 vs surface (non-text)         5.90:1 (min 3.0) PASS
+     age 23h #EF6A51 vs row-hover (non-text)       5.50:1 (min 3.0) PASS
+     age 24h+ #EF675C vs surface (non-text)        5.83:1 (min 3.0) PASS
+     age 24h+ #EF675C vs row-hover (non-text)      5.43:1 (min 3.0) PASS
+*/
+.v-mono .m-light{--bg:#F4F4F4;--surface:#FFFFFF;--hover:#F6F6F6;--text:#1A1A1A;--secondary:#4D4D4D;--muted:#636363;--divider:#E2E2E2;--accent:#262626;--ring:#8A8A8A;--fill:#3A3A3A;--delete:#636363;--border:#CCCCCC;--age-0:#2A904B;--age-1:#2A904B;--age-2:#478D33;--age-3:#698603;--age-4:#917406;--age-5:#AE5F01;--age-6:#C83E26;--age-7:#C83A35;font-family:Inter, 'SF Pro Text', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif}
+
+.v-mono .m-dark{--bg:#0D0D0D;--surface:#161616;--hover:#1D1D1D;--text:#EBEBEB;--secondary:#B0B0B0;--muted:#929292;--divider:#282828;--accent:#E5E5E5;--ring:#6E6E6E;--fill:#C8C8C8;--delete:#929292;--border:#333333;--age-0:#5AC576;--age-1:#5AC576;--age-2:#74C05F;--age-3:#94B638;--age-4:#C39D0B;--age-5:#E57F09;--age-6:#EF6A51;--age-7:#EF675C;font-family:Inter, 'SF Pro Text', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif}
+
+/* ================= Variation 3. Linen (greige) =================
+   Register: Quietly warm. Greige neutrals soften the ledger without turning it into paper.
+   Accent = dark taupe (warm near-ink) for focus ring, caret and check fill; age hues slightly softened in chroma.
+   Age gradient: <1h = fresh endpoint, >=24h = overdue endpoint. For 1h..24h, t = (hours-1)/23 (linear in time);
+   OKLCH interpolation: L and C linear, hue decreasing green -> amber -> orange -> red (shorter arc).
+   Out-of-gamut chroma is reduced; L is nudged only when a stop would drop below 3:1 on the row surface.
+   ---- LIGHT ----
+   background                       #F5F3EF
+   surface / row                    #FFFEFB
+   row hover                        #F8F6F2
+   text-primary                     #27241F
+   text-secondary (age labels)      #554F47
+   text-muted (completed)           #68625A
+   divider / hairline               #E5E0D7
+   focus ring / caret / accent      #6B6055
+   check-ring (empty)               #8E867B
+   check-fill (done)                #6B6055
+   delete icon                      #68625A
+   age endpoints: fresh oklch(0.58, 0.11, 145)  overdue oklch(0.56, 0.15, 30)
+   age now   #4D8B50  oklch(0.58, 0.11, 145.0)
+   age 1h    #4D8B50  oklch(0.58, 0.11, 145.0)
+   age 3h    #5B8840  oklch(0.578, 0.113, 135.0)
+   age 6h    #708326  oklch(0.576, 0.119, 120.0)
+   age 12h   #927305  oklch(0.57, 0.129, 90.0)
+   age 18h   #AC6003  oklch(0.565, 0.14, 60.0)
+   age 23h   #BB4D32  oklch(0.561, 0.148, 35.0)
+   age 24h+  #BC4A3C  oklch(0.56, 0.15, 30.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      15.33:1 (min 4.5) PASS
+     text-primary vs bg                           13.95:1 (min 4.5) PASS
+     text-secondary vs surface                     8.02:1 (min 4.5) PASS
+     text-secondary vs row-hover                   7.50:1 (min 4.5) PASS
+     text-muted vs background                      5.44:1 (min 4.5) PASS
+     text-muted vs surface                         5.98:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          5.98:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                   5.53:1 (min 3.0) PASS
+     focus ring vs surface (non-text)              6.07:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              3.56:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            3.33:1 (min 3.0) PASS
+     check-fill vs surface (non-text)              6.07:1 (min 3.0) PASS
+     check glyph (surface) on check-fill           6.07:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           5.59:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.30:1
+     age now #4D8B50 vs surface (non-text)         4.06:1 (min 3.0) PASS
+     age now #4D8B50 vs row-hover (non-text)       3.80:1 (min 3.0) PASS
+     age 1h #4D8B50 vs surface (non-text)          4.06:1 (min 3.0) PASS
+     age 1h #4D8B50 vs row-hover (non-text)        3.80:1 (min 3.0) PASS
+     age 3h #5B8840 vs surface (non-text)          4.13:1 (min 3.0) PASS
+     age 3h #5B8840 vs row-hover (non-text)        3.86:1 (min 3.0) PASS
+     age 6h #708326 vs surface (non-text)          4.20:1 (min 3.0) PASS
+     age 6h #708326 vs row-hover (non-text)        3.92:1 (min 3.0) PASS
+     age 12h #927305 vs surface (non-text)         4.45:1 (min 3.0) PASS
+     age 12h #927305 vs row-hover (non-text)       4.16:1 (min 3.0) PASS
+     age 18h #AC6003 vs surface (non-text)         4.70:1 (min 3.0) PASS
+     age 18h #AC6003 vs row-hover (non-text)       4.39:1 (min 3.0) PASS
+     age 23h #BB4D32 vs surface (non-text)         4.93:1 (min 3.0) PASS
+     age 23h #BB4D32 vs row-hover (non-text)       4.61:1 (min 3.0) PASS
+     age 24h+ #BC4A3C vs surface (non-text)        4.98:1 (min 3.0) PASS
+     age 24h+ #BC4A3C vs row-hover (non-text)      4.65:1 (min 3.0) PASS
+   ---- DARK ----
+   background                       #14120F
+   surface / row                    #1C1A16
+   row hover                        #23201C
+   text-primary                     #EBE7E0
+   text-secondary (age labels)      #B6AFA4
+   text-muted (completed)           #999185
+   divider / hairline               #2D2A25
+   focus ring / caret / accent      #C2B6A6
+   check-ring (empty)               #716A5F
+   check-fill (done)                #C2B6A6
+   delete icon                      #999185
+   age endpoints: fresh oklch(0.74, 0.12, 145)  overdue oklch(0.69, 0.14, 30)
+   age now   #78BF7B  oklch(0.74, 0.12, 145.0)
+   age 1h    #78BF7B  oklch(0.74, 0.12, 145.0)
+   age 3h    #88BB6B  oklch(0.736, 0.122, 135.0)
+   age 6h    #9DB353  oklch(0.729, 0.124, 120.0)
+   age 12h   #C39F31  oklch(0.716, 0.13, 90.0)
+   age 18h   #DC893D  oklch(0.703, 0.135, 60.0)
+   age 23h   #E4795E  oklch(0.692, 0.139, 35.0)
+   age 24h+  #E57766  oklch(0.69, 0.14, 30.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      14.10:1 (min 4.5) PASS
+     text-primary vs bg                           15.17:1 (min 4.5) PASS
+     text-secondary vs surface                     7.99:1 (min 4.5) PASS
+     text-secondary vs row-hover                   7.46:1 (min 4.5) PASS
+     text-muted vs background                      6.00:1 (min 4.5) PASS
+     text-muted vs surface                         5.58:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          5.58:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                   9.38:1 (min 3.0) PASS
+     focus ring vs surface (non-text)              8.72:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              3.25:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            3.03:1 (min 3.0) PASS
+     check-fill vs surface (non-text)              8.72:1 (min 3.0) PASS
+     check glyph (surface) on check-fill           8.72:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           5.21:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.22:1
+     age now #78BF7B vs surface (non-text)         7.89:1 (min 3.0) PASS
+     age now #78BF7B vs row-hover (non-text)       7.37:1 (min 3.0) PASS
+     age 1h #78BF7B vs surface (non-text)          7.89:1 (min 3.0) PASS
+     age 1h #78BF7B vs row-hover (non-text)        7.37:1 (min 3.0) PASS
+     age 3h #88BB6B vs surface (non-text)          7.75:1 (min 3.0) PASS
+     age 3h #88BB6B vs row-hover (non-text)        7.23:1 (min 3.0) PASS
+     age 6h #9DB353 vs surface (non-text)          7.45:1 (min 3.0) PASS
+     age 6h #9DB353 vs row-hover (non-text)        6.96:1 (min 3.0) PASS
+     age 12h #C39F31 vs surface (non-text)         6.89:1 (min 3.0) PASS
+     age 12h #C39F31 vs row-hover (non-text)       6.43:1 (min 3.0) PASS
+     age 18h #DC893D vs surface (non-text)         6.36:1 (min 3.0) PASS
+     age 18h #DC893D vs row-hover (non-text)       5.94:1 (min 3.0) PASS
+     age 23h #E4795E vs surface (non-text)         5.95:1 (min 3.0) PASS
+     age 23h #E4795E vs row-hover (non-text)       5.56:1 (min 3.0) PASS
+     age 24h+ #E57766 vs surface (non-text)        5.93:1 (min 3.0) PASS
+     age 24h+ #E57766 vs row-hover (non-text)      5.53:1 (min 3.0) PASS
+*/
+.v-greige .m-light{--bg:#F5F3EF;--surface:#FFFEFB;--hover:#F8F6F2;--text:#27241F;--secondary:#554F47;--muted:#68625A;--divider:#E5E0D7;--accent:#6B6055;--ring:#8E867B;--fill:#6B6055;--delete:#68625A;--border:#D3CCC1;--age-0:#4D8B50;--age-1:#4D8B50;--age-2:#5B8840;--age-3:#708326;--age-4:#927305;--age-5:#AC6003;--age-6:#BB4D32;--age-7:#BC4A3C;font-family:Inter, 'SF Pro Text', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif}
+
+.v-greige .m-dark{--bg:#14120F;--surface:#1C1A16;--hover:#23201C;--text:#EBE7E0;--secondary:#B6AFA4;--muted:#999185;--divider:#2D2A25;--accent:#C2B6A6;--ring:#716A5F;--fill:#C2B6A6;--delete:#999185;--border:#38342E;--age-0:#78BF7B;--age-1:#78BF7B;--age-2:#88BB6B;--age-3:#9DB353;--age-4:#C39F31;--age-5:#DC893D;--age-6:#E4795E;--age-7:#E57766;font-family:Inter, 'SF Pro Text', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif}
+
+/* ================= Variation 4. Ink (crisp) =================
+   Register: High contrast, crisp. Pure white page, near-black ink, stronger hairlines; reads like print.
+   Accent = pure ink (#0A0A0A / #FFFFFF) with a 2px ring; age hues at full chroma for maximum separation.
+   Age gradient: <1h = fresh endpoint, >=24h = overdue endpoint. For 1h..24h, t = (hours-1)/23 (linear in time);
+   OKLCH interpolation: L and C linear, hue decreasing green -> amber -> orange -> red (shorter arc).
+   Out-of-gamut chroma is reduced; L is nudged only when a stop would drop below 3:1 on the row surface.
+   ---- LIGHT ----
+   background                       #FFFFFF
+   surface / row                    #FFFFFF
+   row hover                        #F5F5F5
+   text-primary                     #0A0A0A
+   text-secondary (age labels)      #333333
+   text-muted (completed)           #575757
+   divider / hairline               #D0D0D0
+   focus ring / caret / accent      #0A0A0A
+   check-ring (empty)               #767676
+   check-fill (done)                #0A0A0A
+   delete icon                      #4A4A4A
+   age endpoints: fresh oklch(0.56, 0.16, 148)  overdue oklch(0.55, 0.2, 27)
+   age now   #078C38  oklch(0.56, 0.16, 148.0)
+   age 1h    #078C38  oklch(0.56, 0.16, 148.0)
+   age 3h    #3D8911  oklch(0.559, 0.163, 137.5)
+   age 6h    #687F00  oklch(0.558, 0.169, 121.7)
+   age 12h   #8D6F01  oklch(0.555, 0.179, 90.1)
+   age 18h   #A95B00  oklch(0.553, 0.19, 58.6)
+   age 23h   #CC2D0F  oklch(0.55, 0.198, 32.3)
+   age 24h+  #CC2827  oklch(0.55, 0.2, 27.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      19.80:1 (min 4.5) PASS
+     text-primary vs bg                           19.80:1 (min 4.5) PASS
+     text-secondary vs surface                    12.63:1 (min 4.5) PASS
+     text-secondary vs row-hover                  11.59:1 (min 4.5) PASS
+     text-muted vs background                      7.23:1 (min 4.5) PASS
+     text-muted vs surface                         7.23:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          7.23:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                  19.80:1 (min 3.0) PASS
+     focus ring vs surface (non-text)             19.80:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              4.54:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            4.17:1 (min 3.0) PASS
+     check-fill vs surface (non-text)             19.80:1 (min 3.0) PASS
+     check glyph (surface) on check-fill          19.80:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           8.13:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.54:1
+     age now #078C38 vs surface (non-text)         4.36:1 (min 3.0) PASS
+     age now #078C38 vs row-hover (non-text)       4.00:1 (min 3.0) PASS
+     age 1h #078C38 vs surface (non-text)          4.36:1 (min 3.0) PASS
+     age 1h #078C38 vs row-hover (non-text)        4.00:1 (min 3.0) PASS
+     age 3h #3D8911 vs surface (non-text)          4.39:1 (min 3.0) PASS
+     age 3h #3D8911 vs row-hover (non-text)        4.03:1 (min 3.0) PASS
+     age 6h #687F00 vs surface (non-text)          4.54:1 (min 3.0) PASS
+     age 6h #687F00 vs row-hover (non-text)        4.17:1 (min 3.0) PASS
+     age 12h #8D6F01 vs surface (non-text)         4.77:1 (min 3.0) PASS
+     age 12h #8D6F01 vs row-hover (non-text)       4.37:1 (min 3.0) PASS
+     age 18h #A95B00 vs surface (non-text)         5.02:1 (min 3.0) PASS
+     age 18h #A95B00 vs row-hover (non-text)       4.60:1 (min 3.0) PASS
+     age 23h #CC2D0F vs surface (non-text)         5.32:1 (min 3.0) PASS
+     age 23h #CC2D0F vs row-hover (non-text)       4.88:1 (min 3.0) PASS
+     age 24h+ #CC2827 vs surface (non-text)        5.38:1 (min 3.0) PASS
+     age 24h+ #CC2827 vs row-hover (non-text)      4.94:1 (min 3.0) PASS
+   ---- DARK ----
+   background                       #000000
+   surface / row                    #0A0A0A
+   row hover                        #161616
+   text-primary                     #FFFFFF
+   text-secondary (age labels)      #D0D0D0
+   text-muted (completed)           #A8A8A8
+   divider / hairline               #333333
+   focus ring / caret / accent      #FFFFFF
+   check-ring (empty)               #8C8C8C
+   check-fill (done)                #FFFFFF
+   delete icon                      #BDBDBD
+   age endpoints: fresh oklch(0.76, 0.17, 148)  overdue oklch(0.7, 0.19, 25)
+   age now   #57CE70  oklch(0.76, 0.17, 148.0)
+   age 1h    #57CE70  oklch(0.76, 0.17, 148.0)
+   age 3h    #77C853  oklch(0.755, 0.172, 137.3)
+   age 6h    #9DBD18  oklch(0.747, 0.174, 121.3)
+   age 12h   #CDA20B  oklch(0.731, 0.18, 89.2)
+   age 18h   #F18201  oklch(0.716, 0.185, 57.1)
+   age 23h   #FF6752  oklch(0.703, 0.189, 30.3)
+   age 24h+  #FF645F  oklch(0.7, 0.19, 25.0)
+   WCAG contrast ratios:
+     text-primary vs surface                      19.80:1 (min 4.5) PASS
+     text-primary vs bg                           21.00:1 (min 4.5) PASS
+     text-secondary vs surface                    12.84:1 (min 4.5) PASS
+     text-secondary vs row-hover                  11.73:1 (min 4.5) PASS
+     text-muted vs background                      8.83:1 (min 4.5) PASS
+     text-muted vs surface                         8.33:1 (min 4.5) PASS
+     placeholder(=muted) vs input surface          8.33:1 (min 4.5) PASS
+     focus ring vs bg (non-text)                  21.00:1 (min 3.0) PASS
+     focus ring vs surface (non-text)             19.80:1 (min 3.0) PASS
+     check-ring vs surface (non-text)              5.89:1 (min 3.0) PASS
+     check-ring vs row-hover (non-text)            5.38:1 (min 3.0) PASS
+     check-fill vs surface (non-text)             19.80:1 (min 3.0) PASS
+     check glyph (surface) on check-fill          19.80:1 (min 3.0) PASS
+     delete icon vs row-hover (non-text)           9.63:1 (min 3.0) PASS
+     divider vs surface (decorative, no min)       1.57:1
+     age now #57CE70 vs surface (non-text)         9.87:1 (min 3.0) PASS
+     age now #57CE70 vs row-hover (non-text)       9.02:1 (min 3.0) PASS
+     age 1h #57CE70 vs surface (non-text)          9.87:1 (min 3.0) PASS
+     age 1h #57CE70 vs row-hover (non-text)        9.02:1 (min 3.0) PASS
+     age 3h #77C853 vs surface (non-text)          9.59:1 (min 3.0) PASS
+     age 3h #77C853 vs row-hover (non-text)        8.76:1 (min 3.0) PASS
+     age 6h #9DBD18 vs surface (non-text)          9.17:1 (min 3.0) PASS
+     age 6h #9DBD18 vs row-hover (non-text)        8.38:1 (min 3.0) PASS
+     age 12h #CDA20B vs surface (non-text)         8.27:1 (min 3.0) PASS
+     age 12h #CDA20B vs row-hover (non-text)       7.56:1 (min 3.0) PASS
+     age 18h #F18201 vs surface (non-text)         7.48:1 (min 3.0) PASS
+     age 18h #F18201 vs row-hover (non-text)       6.84:1 (min 3.0) PASS
+     age 23h #FF6752 vs surface (non-text)         6.90:1 (min 3.0) PASS
+     age 23h #FF6752 vs row-hover (non-text)       6.30:1 (min 3.0) PASS
+     age 24h+ #FF645F vs surface (non-text)        6.83:1 (min 3.0) PASS
+     age 24h+ #FF645F vs row-hover (non-text)      6.24:1 (min 3.0) PASS
+*/
+.v-crisp .m-light{--bg:#FFFFFF;--surface:#FFFFFF;--hover:#F5F5F5;--text:#0A0A0A;--secondary:#333333;--muted:#575757;--divider:#D0D0D0;--accent:#0A0A0A;--ring:#767676;--fill:#0A0A0A;--delete:#4A4A4A;--border:#0A0A0A;--age-0:#078C38;--age-1:#078C38;--age-2:#3D8911;--age-3:#687F00;--age-4:#8D6F01;--age-5:#A95B00;--age-6:#CC2D0F;--age-7:#CC2827;font-family:'Helvetica Neue', Helvetica, 'Arial Nova', Arial, 'Nimbus Sans', 'Liberation Sans', system-ui, sans-serif}
+
+.v-crisp .m-dark{--bg:#000000;--surface:#0A0A0A;--hover:#161616;--text:#FFFFFF;--secondary:#D0D0D0;--muted:#A8A8A8;--divider:#333333;--accent:#FFFFFF;--ring:#8C8C8C;--fill:#FFFFFF;--delete:#BDBDBD;--border:#FFFFFF;--age-0:#57CE70;--age-1:#57CE70;--age-2:#77C853;--age-3:#9DBD18;--age-4:#CDA20B;--age-5:#F18201;--age-6:#FF6752;--age-7:#FF645F;font-family:'Helvetica Neue', Helvetica, 'Arial Nova', Arial, 'Nimbus Sans', 'Liberation Sans', system-ui, sans-serif}
+
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Todo app: colour themes, round 1 (Ledger layout)</h1>
+  <p>Four palettes for the chosen Ledger layout with the round check from C, each in light and dark. The neutrals change register; the interactive accent (focus ring, caret, check fill) stays near-ink in every variation, so the age bar is the only strong colour on screen.</p>
+  <p>Age gradient, same method everywhere: under 1h is the fresh green, 24h or more is the overdue red. Between 1h and 24h, t = (hours &minus; 1) / 23, interpolated in OKLCH (lightness and chroma linear, hue sweeping green &rarr; amber &rarr; orange &rarr; red). Every stop is at least 3:1 against the row surface. Completed text (text-muted) is at least 4.5:1 against both background and surface. All hex values and contrast ratios are listed in the &lt;style&gt; comments.</p>
+</div>
+<section class="var v-slate"><h2>1. Slate</h2><p class="reg">Cool and composed. Blue-grey neutrals, the closest to the original Ledger direction.</p><p class="acc">Accent = muted slate-blue (desaturated, near the text hue) for focus ring, caret and check fill.</p><div class="pair"><div class="panel m-light"><div class="ptitle">Light</div><div class="chips"><span class="chip"><b style="background:#F2F4F7"></b><span><em>background</em>#F2F4F7</span></span><span class="chip"><b style="background:#FFFFFF"></b><span><em>surface / row</em>#FFFFFF</span></span><span class="chip"><b style="background:#F4F6F9"></b><span><em>row hover</em>#F4F6F9</span></span><span class="chip"><b style="background:#18202C"></b><span><em>text-primary</em>#18202C &middot; 16.38:1</span></span><span class="chip"><b style="background:#475263"></b><span><em>text-secondary (age labels)</em>#475263 &middot; 7.91:1</span></span><span class="chip"><b style="background:#5B6676"></b><span><em>text-muted (completed)</em>#5B6676 &middot; 5.28:1 bg</span></span><span class="chip"><b style="background:#DEE3EA"></b><span><em>divider / hairline</em>#DEE3EA</span></span><span class="chip"><b style="background:#4A5E7C"></b><span><em>focus ring / caret / accent</em>#4A5E7C &middot; 5.99:1</span></span><span class="chip"><b style="background:#7D8A9C"></b><span><em>check-ring (empty)</em>#7D8A9C &middot; 3.51:1</span></span><span class="chip"><b style="background:#4A5E7C"></b><span><em>check-fill (done)</em>#4A5E7C</span></span><span class="chip"><b style="background:#5B6676"></b><span><em>delete icon</em>#5B6676</span></span><span class="chip"><b style="background:#249057"></b><span><em>age-fresh (&lt;1h)</em>#249057</span></span><span class="chip"><b style="background:#638718"></b><span><em>age stop 6h</em>#638718</span></span><span class="chip"><b style="background:#8F7506"></b><span><em>age stop 12h</em>#8F7506</span></span><span class="chip"><b style="background:#AE5F01"></b><span><em>age stop 18h</em>#AE5F01</span></span><span class="chip"><b style="background:#C43F3E"></b><span><em>age-overdue (&ge;24h)</em>#C43F3E</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #FFFFFF</div><div class="strip"><div class="sw"><i style="background:#249057"></i><span class="sn">now</span><span class="sh">#249057</span><span class="sr">4.0:1</span></div><div class="sw"><i style="background:#249057"></i><span class="sn">1h</span><span class="sh">#249057</span><span class="sr">4.0:1</span></div><div class="sw"><i style="background:#428D42"></i><span class="sn">3h</span><span class="sh">#428D42</span><span class="sr">4.1:1</span></div><div class="sw"><i style="background:#638718"></i><span class="sn">6h</span><span class="sh">#638718</span><span class="sr">4.2:1</span></div><div class="sw"><i style="background:#8F7506"></i><span class="sn">12h</span><span class="sh">#8F7506</span><span class="sr">4.5:1</span></div><div class="sw"><i style="background:#AE5F01"></i><span class="sn">18h</span><span class="sh">#AE5F01</span><span class="sr">4.7:1</span></div><div class="sw"><i style="background:#C44231"></i><span class="sn">23h</span><span class="sh">#C44231</span><span class="sr">5.0:1</span></div><div class="sw"><i style="background:#C43F3E"></i><span class="sn">24h+</span><span class="sh">#C43F3E</span><span class="sr">5.1:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg on" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#C43F3E"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#C43F3E"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#996F03"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#598929"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#249057"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#249057"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div><div class="panel m-dark"><div class="ptitle">Dark</div><div class="chips"><span class="chip"><b style="background:#0E131A"></b><span><em>background</em>#0E131A</span></span><span class="chip"><b style="background:#151B24"></b><span><em>surface / row</em>#151B24</span></span><span class="chip"><b style="background:#1B222D"></b><span><em>row hover</em>#1B222D</span></span><span class="chip"><b style="background:#E4E9EF"></b><span><em>text-primary</em>#E4E9EF &middot; 14.17:1</span></span><span class="chip"><b style="background:#AAB4C2"></b><span><em>text-secondary (age labels)</em>#AAB4C2 &middot; 8.25:1</span></span><span class="chip"><b style="background:#8E99A8"></b><span><em>text-muted (completed)</em>#8E99A8 &middot; 6.45:1 bg</span></span><span class="chip"><b style="background:#242C37"></b><span><em>divider / hairline</em>#242C37</span></span><span class="chip"><b style="background:#98ACC8"></b><span><em>focus ring / caret / accent</em>#98ACC8 &middot; 8.05:1</span></span><span class="chip"><b style="background:#667385"></b><span><em>check-ring (empty)</em>#667385 &middot; 3.59:1</span></span><span class="chip"><b style="background:#98ACC8"></b><span><em>check-fill (done)</em>#98ACC8</span></span><span class="chip"><b style="background:#8E99A8"></b><span><em>delete icon</em>#8E99A8</span></span><span class="chip"><b style="background:#55C483"></b><span><em>age-fresh (&lt;1h)</em>#55C483</span></span><span class="chip"><b style="background:#8FB74A"></b><span><em>age stop 6h</em>#8FB74A</span></span><span class="chip"><b style="background:#C19E00"></b><span><em>age stop 12h</em>#C19E00</span></span><span class="chip"><b style="background:#E28120"></b><span><em>age stop 18h</em>#E28120</span></span><span class="chip"><b style="background:#EA6A64"></b><span><em>age-overdue (&ge;24h)</em>#EA6A64</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #151B24</div><div class="strip"><div class="sw"><i style="background:#55C483"></i><span class="sn">now</span><span class="sh">#55C483</span><span class="sr">7.9:1</span></div><div class="sw"><i style="background:#55C483"></i><span class="sn">1h</span><span class="sh">#55C483</span><span class="sr">7.9:1</span></div><div class="sw"><i style="background:#6EC06D"></i><span class="sn">3h</span><span class="sh">#6EC06D</span><span class="sr">7.8:1</span></div><div class="sw"><i style="background:#8FB74A"></i><span class="sn">6h</span><span class="sh">#8FB74A</span><span class="sr">7.4:1</span></div><div class="sw"><i style="background:#C19E00"></i><span class="sn">12h</span><span class="sh">#C19E00</span><span class="sr">6.7:1</span></div><div class="sw"><i style="background:#E28120"></i><span class="sn">18h</span><span class="sh">#E28120</span><span class="sr">6.1:1</span></div><div class="sw"><i style="background:#EB6D5A"></i><span class="sn">23h</span><span class="sh">#EB6D5A</span><span class="sr">5.7:1</span></div><div class="sw"><i style="background:#EA6A64"></i><span class="sn">24h+</span><span class="sh">#EA6A64</span><span class="sr">5.6:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg on" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#EA6A64"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#EA6A64"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#CD9502"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#84BA56"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#55C483"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#55C483"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div></div></section><section class="var v-mono"><h2>2. Graphite</h2><p class="reg">True monochrome. Zero-chroma greys, so the age bars are the only hue on the page.</p><p class="acc">Accent = ink itself (#262626 / #E5E5E5): the focus ring, caret and check fill carry no hue at all.</p><div class="pair"><div class="panel m-light"><div class="ptitle">Light</div><div class="chips"><span class="chip"><b style="background:#F4F4F4"></b><span><em>background</em>#F4F4F4</span></span><span class="chip"><b style="background:#FFFFFF"></b><span><em>surface / row</em>#FFFFFF</span></span><span class="chip"><b style="background:#F6F6F6"></b><span><em>row hover</em>#F6F6F6</span></span><span class="chip"><b style="background:#1A1A1A"></b><span><em>text-primary</em>#1A1A1A &middot; 17.40:1</span></span><span class="chip"><b style="background:#4D4D4D"></b><span><em>text-secondary (age labels)</em>#4D4D4D &middot; 8.45:1</span></span><span class="chip"><b style="background:#636363"></b><span><em>text-muted (completed)</em>#636363 &middot; 5.46:1 bg</span></span><span class="chip"><b style="background:#E2E2E2"></b><span><em>divider / hairline</em>#E2E2E2</span></span><span class="chip"><b style="background:#262626"></b><span><em>focus ring / caret / accent</em>#262626 &middot; 13.76:1</span></span><span class="chip"><b style="background:#8A8A8A"></b><span><em>check-ring (empty)</em>#8A8A8A &middot; 3.45:1</span></span><span class="chip"><b style="background:#3A3A3A"></b><span><em>check-fill (done)</em>#3A3A3A</span></span><span class="chip"><b style="background:#636363"></b><span><em>delete icon</em>#636363</span></span><span class="chip"><b style="background:#2A904B"></b><span><em>age-fresh (&lt;1h)</em>#2A904B</span></span><span class="chip"><b style="background:#698603"></b><span><em>age stop 6h</em>#698603</span></span><span class="chip"><b style="background:#917406"></b><span><em>age stop 12h</em>#917406</span></span><span class="chip"><b style="background:#AE5F01"></b><span><em>age stop 18h</em>#AE5F01</span></span><span class="chip"><b style="background:#C83A35"></b><span><em>age-overdue (&ge;24h)</em>#C83A35</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #FFFFFF</div><div class="strip"><div class="sw"><i style="background:#2A904B"></i><span class="sn">now</span><span class="sh">#2A904B</span><span class="sr">4.0:1</span></div><div class="sw"><i style="background:#2A904B"></i><span class="sn">1h</span><span class="sh">#2A904B</span><span class="sr">4.0:1</span></div><div class="sw"><i style="background:#478D33"></i><span class="sn">3h</span><span class="sh">#478D33</span><span class="sr">4.1:1</span></div><div class="sw"><i style="background:#698603"></i><span class="sn">6h</span><span class="sh">#698603</span><span class="sr">4.2:1</span></div><div class="sw"><i style="background:#917406"></i><span class="sn">12h</span><span class="sh">#917406</span><span class="sr">4.5:1</span></div><div class="sw"><i style="background:#AE5F01"></i><span class="sn">18h</span><span class="sh">#AE5F01</span><span class="sr">4.7:1</span></div><div class="sw"><i style="background:#C83E26"></i><span class="sn">23h</span><span class="sh">#C83E26</span><span class="sr">5.0:1</span></div><div class="sw"><i style="background:#C83A35"></i><span class="sn">24h+</span><span class="sh">#C83A35</span><span class="sr">5.1:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg on" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#C83A35"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#C83A35"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#9A6E04"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#5E890F"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#2A904B"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#2A904B"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div><div class="panel m-dark"><div class="ptitle">Dark</div><div class="chips"><span class="chip"><b style="background:#0D0D0D"></b><span><em>background</em>#0D0D0D</span></span><span class="chip"><b style="background:#161616"></b><span><em>surface / row</em>#161616</span></span><span class="chip"><b style="background:#1D1D1D"></b><span><em>row hover</em>#1D1D1D</span></span><span class="chip"><b style="background:#EBEBEB"></b><span><em>text-primary</em>#EBEBEB &middot; 15.18:1</span></span><span class="chip"><b style="background:#B0B0B0"></b><span><em>text-secondary (age labels)</em>#B0B0B0 &middot; 8.34:1</span></span><span class="chip"><b style="background:#929292"></b><span><em>text-muted (completed)</em>#929292 &middot; 6.25:1 bg</span></span><span class="chip"><b style="background:#282828"></b><span><em>divider / hairline</em>#282828</span></span><span class="chip"><b style="background:#E5E5E5"></b><span><em>focus ring / caret / accent</em>#E5E5E5 &middot; 15.43:1</span></span><span class="chip"><b style="background:#6E6E6E"></b><span><em>check-ring (empty)</em>#6E6E6E &middot; 3.55:1</span></span><span class="chip"><b style="background:#C8C8C8"></b><span><em>check-fill (done)</em>#C8C8C8</span></span><span class="chip"><b style="background:#929292"></b><span><em>delete icon</em>#929292</span></span><span class="chip"><b style="background:#5AC576"></b><span><em>age-fresh (&lt;1h)</em>#5AC576</span></span><span class="chip"><b style="background:#94B638"></b><span><em>age stop 6h</em>#94B638</span></span><span class="chip"><b style="background:#C39D0B"></b><span><em>age stop 12h</em>#C39D0B</span></span><span class="chip"><b style="background:#E57F09"></b><span><em>age stop 18h</em>#E57F09</span></span><span class="chip"><b style="background:#EF675C"></b><span><em>age-overdue (&ge;24h)</em>#EF675C</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #161616</div><div class="strip"><div class="sw"><i style="background:#5AC576"></i><span class="sn">now</span><span class="sh">#5AC576</span><span class="sr">8.3:1</span></div><div class="sw"><i style="background:#5AC576"></i><span class="sn">1h</span><span class="sh">#5AC576</span><span class="sr">8.3:1</span></div><div class="sw"><i style="background:#74C05F"></i><span class="sn">3h</span><span class="sh">#74C05F</span><span class="sr">8.1:1</span></div><div class="sw"><i style="background:#94B638"></i><span class="sn">6h</span><span class="sh">#94B638</span><span class="sr">7.8:1</span></div><div class="sw"><i style="background:#C39D0B"></i><span class="sn">12h</span><span class="sh">#C39D0B</span><span class="sr">7.0:1</span></div><div class="sw"><i style="background:#E57F09"></i><span class="sn">18h</span><span class="sh">#E57F09</span><span class="sr">6.4:1</span></div><div class="sw"><i style="background:#EF6A51"></i><span class="sn">23h</span><span class="sh">#EF6A51</span><span class="sr">5.9:1</span></div><div class="sw"><i style="background:#EF675C"></i><span class="sn">24h+</span><span class="sh">#EF675C</span><span class="sr">5.8:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg on" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#EF675C"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#EF675C"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#CF9504"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#8AB946"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#5AC576"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#5AC576"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div></div></section><section class="var v-greige"><h2>3. Linen</h2><p class="reg">Quietly warm. Greige neutrals soften the ledger without turning it into paper.</p><p class="acc">Accent = dark taupe (warm near-ink) for focus ring, caret and check fill; age hues slightly softened in chroma.</p><div class="pair"><div class="panel m-light"><div class="ptitle">Light</div><div class="chips"><span class="chip"><b style="background:#F5F3EF"></b><span><em>background</em>#F5F3EF</span></span><span class="chip"><b style="background:#FFFEFB"></b><span><em>surface / row</em>#FFFEFB</span></span><span class="chip"><b style="background:#F8F6F2"></b><span><em>row hover</em>#F8F6F2</span></span><span class="chip"><b style="background:#27241F"></b><span><em>text-primary</em>#27241F &middot; 15.33:1</span></span><span class="chip"><b style="background:#554F47"></b><span><em>text-secondary (age labels)</em>#554F47 &middot; 8.02:1</span></span><span class="chip"><b style="background:#68625A"></b><span><em>text-muted (completed)</em>#68625A &middot; 5.44:1 bg</span></span><span class="chip"><b style="background:#E5E0D7"></b><span><em>divider / hairline</em>#E5E0D7</span></span><span class="chip"><b style="background:#6B6055"></b><span><em>focus ring / caret / accent</em>#6B6055 &middot; 5.53:1</span></span><span class="chip"><b style="background:#8E867B"></b><span><em>check-ring (empty)</em>#8E867B &middot; 3.56:1</span></span><span class="chip"><b style="background:#6B6055"></b><span><em>check-fill (done)</em>#6B6055</span></span><span class="chip"><b style="background:#68625A"></b><span><em>delete icon</em>#68625A</span></span><span class="chip"><b style="background:#4D8B50"></b><span><em>age-fresh (&lt;1h)</em>#4D8B50</span></span><span class="chip"><b style="background:#708326"></b><span><em>age stop 6h</em>#708326</span></span><span class="chip"><b style="background:#927305"></b><span><em>age stop 12h</em>#927305</span></span><span class="chip"><b style="background:#AC6003"></b><span><em>age stop 18h</em>#AC6003</span></span><span class="chip"><b style="background:#BC4A3C"></b><span><em>age-overdue (&ge;24h)</em>#BC4A3C</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #FFFEFB</div><div class="strip"><div class="sw"><i style="background:#4D8B50"></i><span class="sn">now</span><span class="sh">#4D8B50</span><span class="sr">4.1:1</span></div><div class="sw"><i style="background:#4D8B50"></i><span class="sn">1h</span><span class="sh">#4D8B50</span><span class="sr">4.1:1</span></div><div class="sw"><i style="background:#5B8840"></i><span class="sn">3h</span><span class="sh">#5B8840</span><span class="sr">4.1:1</span></div><div class="sw"><i style="background:#708326"></i><span class="sn">6h</span><span class="sh">#708326</span><span class="sr">4.2:1</span></div><div class="sw"><i style="background:#927305"></i><span class="sn">12h</span><span class="sh">#927305</span><span class="sr">4.5:1</span></div><div class="sw"><i style="background:#AC6003"></i><span class="sn">18h</span><span class="sh">#AC6003</span><span class="sr">4.7:1</span></div><div class="sw"><i style="background:#BB4D32"></i><span class="sn">23h</span><span class="sh">#BB4D32</span><span class="sr">4.9:1</span></div><div class="sw"><i style="background:#BC4A3C"></i><span class="sn">24h+</span><span class="sh">#BC4A3C</span><span class="sr">5.0:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg on" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#BC4A3C"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#BC4A3C"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#9B6E04"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#6A852F"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#4D8B50"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#4D8B50"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div><div class="panel m-dark"><div class="ptitle">Dark</div><div class="chips"><span class="chip"><b style="background:#14120F"></b><span><em>background</em>#14120F</span></span><span class="chip"><b style="background:#1C1A16"></b><span><em>surface / row</em>#1C1A16</span></span><span class="chip"><b style="background:#23201C"></b><span><em>row hover</em>#23201C</span></span><span class="chip"><b style="background:#EBE7E0"></b><span><em>text-primary</em>#EBE7E0 &middot; 14.10:1</span></span><span class="chip"><b style="background:#B6AFA4"></b><span><em>text-secondary (age labels)</em>#B6AFA4 &middot; 7.99:1</span></span><span class="chip"><b style="background:#999185"></b><span><em>text-muted (completed)</em>#999185 &middot; 6.00:1 bg</span></span><span class="chip"><b style="background:#2D2A25"></b><span><em>divider / hairline</em>#2D2A25</span></span><span class="chip"><b style="background:#C2B6A6"></b><span><em>focus ring / caret / accent</em>#C2B6A6 &middot; 9.38:1</span></span><span class="chip"><b style="background:#716A5F"></b><span><em>check-ring (empty)</em>#716A5F &middot; 3.25:1</span></span><span class="chip"><b style="background:#C2B6A6"></b><span><em>check-fill (done)</em>#C2B6A6</span></span><span class="chip"><b style="background:#999185"></b><span><em>delete icon</em>#999185</span></span><span class="chip"><b style="background:#78BF7B"></b><span><em>age-fresh (&lt;1h)</em>#78BF7B</span></span><span class="chip"><b style="background:#9DB353"></b><span><em>age stop 6h</em>#9DB353</span></span><span class="chip"><b style="background:#C39F31"></b><span><em>age stop 12h</em>#C39F31</span></span><span class="chip"><b style="background:#DC893D"></b><span><em>age stop 18h</em>#DC893D</span></span><span class="chip"><b style="background:#E57766"></b><span><em>age-overdue (&ge;24h)</em>#E57766</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #1C1A16</div><div class="strip"><div class="sw"><i style="background:#78BF7B"></i><span class="sn">now</span><span class="sh">#78BF7B</span><span class="sr">7.9:1</span></div><div class="sw"><i style="background:#78BF7B"></i><span class="sn">1h</span><span class="sh">#78BF7B</span><span class="sr">7.9:1</span></div><div class="sw"><i style="background:#88BB6B"></i><span class="sn">3h</span><span class="sh">#88BB6B</span><span class="sr">7.7:1</span></div><div class="sw"><i style="background:#9DB353"></i><span class="sn">6h</span><span class="sh">#9DB353</span><span class="sr">7.5:1</span></div><div class="sw"><i style="background:#C39F31"></i><span class="sn">12h</span><span class="sh">#C39F31</span><span class="sr">6.9:1</span></div><div class="sw"><i style="background:#DC893D"></i><span class="sn">18h</span><span class="sh">#DC893D</span><span class="sr">6.4:1</span></div><div class="sw"><i style="background:#E4795E"></i><span class="sn">23h</span><span class="sh">#E4795E</span><span class="sr">6.0:1</span></div><div class="sw"><i style="background:#E57766"></i><span class="sn">24h+</span><span class="sh">#E57766</span><span class="sr">5.9:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg on" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#E57766"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#E57766"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#CD982F"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#96B65B"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#78BF7B"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#78BF7B"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div></div></section><section class="var v-crisp"><h2>4. Ink</h2><p class="reg">High contrast, crisp. Pure white page, near-black ink, stronger hairlines; reads like print.</p><p class="acc">Accent = pure ink (#0A0A0A / #FFFFFF) with a 2px ring; age hues at full chroma for maximum separation.</p><div class="pair"><div class="panel m-light"><div class="ptitle">Light</div><div class="chips"><span class="chip"><b style="background:#FFFFFF"></b><span><em>background</em>#FFFFFF</span></span><span class="chip"><b style="background:#FFFFFF"></b><span><em>surface / row</em>#FFFFFF</span></span><span class="chip"><b style="background:#F5F5F5"></b><span><em>row hover</em>#F5F5F5</span></span><span class="chip"><b style="background:#0A0A0A"></b><span><em>text-primary</em>#0A0A0A &middot; 19.80:1</span></span><span class="chip"><b style="background:#333333"></b><span><em>text-secondary (age labels)</em>#333333 &middot; 12.63:1</span></span><span class="chip"><b style="background:#575757"></b><span><em>text-muted (completed)</em>#575757 &middot; 7.23:1 bg</span></span><span class="chip"><b style="background:#D0D0D0"></b><span><em>divider / hairline</em>#D0D0D0</span></span><span class="chip"><b style="background:#0A0A0A"></b><span><em>focus ring / caret / accent</em>#0A0A0A &middot; 19.80:1</span></span><span class="chip"><b style="background:#767676"></b><span><em>check-ring (empty)</em>#767676 &middot; 4.54:1</span></span><span class="chip"><b style="background:#0A0A0A"></b><span><em>check-fill (done)</em>#0A0A0A</span></span><span class="chip"><b style="background:#4A4A4A"></b><span><em>delete icon</em>#4A4A4A</span></span><span class="chip"><b style="background:#078C38"></b><span><em>age-fresh (&lt;1h)</em>#078C38</span></span><span class="chip"><b style="background:#687F00"></b><span><em>age stop 6h</em>#687F00</span></span><span class="chip"><b style="background:#8D6F01"></b><span><em>age stop 12h</em>#8D6F01</span></span><span class="chip"><b style="background:#A95B00"></b><span><em>age stop 18h</em>#A95B00</span></span><span class="chip"><b style="background:#CC2827"></b><span><em>age-overdue (&ge;24h)</em>#CC2827</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #FFFFFF</div><div class="strip"><div class="sw"><i style="background:#078C38"></i><span class="sn">now</span><span class="sh">#078C38</span><span class="sr">4.4:1</span></div><div class="sw"><i style="background:#078C38"></i><span class="sn">1h</span><span class="sh">#078C38</span><span class="sr">4.4:1</span></div><div class="sw"><i style="background:#3D8911"></i><span class="sn">3h</span><span class="sh">#3D8911</span><span class="sr">4.4:1</span></div><div class="sw"><i style="background:#687F00"></i><span class="sn">6h</span><span class="sh">#687F00</span><span class="sr">4.5:1</span></div><div class="sw"><i style="background:#8D6F01"></i><span class="sn">12h</span><span class="sh">#8D6F01</span><span class="sr">4.8:1</span></div><div class="sw"><i style="background:#A95B00"></i><span class="sn">18h</span><span class="sh">#A95B00</span><span class="sr">5.0:1</span></div><div class="sw"><i style="background:#CC2D0F"></i><span class="sn">23h</span><span class="sh">#CC2D0F</span><span class="sr">5.3:1</span></div><div class="sw"><i style="background:#CC2827"></i><span class="sn">24h+</span><span class="sh">#CC2827</span><span class="sr">5.4:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg on" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#CC2827"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#CC2827"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#966A01"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#5D8203"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#078C38"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#078C38"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div><div class="panel m-dark"><div class="ptitle">Dark</div><div class="chips"><span class="chip"><b style="background:#000000"></b><span><em>background</em>#000000</span></span><span class="chip"><b style="background:#0A0A0A"></b><span><em>surface / row</em>#0A0A0A</span></span><span class="chip"><b style="background:#161616"></b><span><em>row hover</em>#161616</span></span><span class="chip"><b style="background:#FFFFFF"></b><span><em>text-primary</em>#FFFFFF &middot; 19.80:1</span></span><span class="chip"><b style="background:#D0D0D0"></b><span><em>text-secondary (age labels)</em>#D0D0D0 &middot; 12.84:1</span></span><span class="chip"><b style="background:#A8A8A8"></b><span><em>text-muted (completed)</em>#A8A8A8 &middot; 8.83:1 bg</span></span><span class="chip"><b style="background:#333333"></b><span><em>divider / hairline</em>#333333</span></span><span class="chip"><b style="background:#FFFFFF"></b><span><em>focus ring / caret / accent</em>#FFFFFF &middot; 21.00:1</span></span><span class="chip"><b style="background:#8C8C8C"></b><span><em>check-ring (empty)</em>#8C8C8C &middot; 5.89:1</span></span><span class="chip"><b style="background:#FFFFFF"></b><span><em>check-fill (done)</em>#FFFFFF</span></span><span class="chip"><b style="background:#BDBDBD"></b><span><em>delete icon</em>#BDBDBD</span></span><span class="chip"><b style="background:#57CE70"></b><span><em>age-fresh (&lt;1h)</em>#57CE70</span></span><span class="chip"><b style="background:#9DBD18"></b><span><em>age stop 6h</em>#9DBD18</span></span><span class="chip"><b style="background:#CDA20B"></b><span><em>age stop 12h</em>#CDA20B</span></span><span class="chip"><b style="background:#F18201"></b><span><em>age stop 18h</em>#F18201</span></span><span class="chip"><b style="background:#FF645F"></b><span><em>age-overdue (&ge;24h)</em>#FF645F</span></span></div><div class="striplabel">Age strip &middot; ratio vs row surface #0A0A0A</div><div class="strip"><div class="sw"><i style="background:#57CE70"></i><span class="sn">now</span><span class="sh">#57CE70</span><span class="sr">9.9:1</span></div><div class="sw"><i style="background:#57CE70"></i><span class="sn">1h</span><span class="sh">#57CE70</span><span class="sr">9.9:1</span></div><div class="sw"><i style="background:#77C853"></i><span class="sn">3h</span><span class="sh">#77C853</span><span class="sr">9.6:1</span></div><div class="sw"><i style="background:#9DBD18"></i><span class="sn">6h</span><span class="sh">#9DBD18</span><span class="sr">9.2:1</span></div><div class="sw"><i style="background:#CDA20B"></i><span class="sn">12h</span><span class="sh">#CDA20B</span><span class="sr">8.3:1</span></div><div class="sw"><i style="background:#F18201"></i><span class="sn">18h</span><span class="sh">#F18201</span><span class="sr">7.5:1</span></div><div class="sw"><i style="background:#FF6752"></i><span class="sn">23h</span><span class="sh">#FF6752</span><span class="sr">6.9:1</span></div><div class="sw"><i style="background:#FF645F"></i><span class="sn">24h+</span><span class="sh">#FF645F</span><span class="sr">6.8:1</span></div></div><div class="app"><div class="apphead"><span class="appname">Todo</span><span class="toggle" role="group" aria-label="Colour mode"><span class="seg" title="Light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span class="seg on" title="Dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.3 5.3 0 0 1 6.4 3a5.3 5.3 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></span></div><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row" style="--bar:#FF645F"><span class="tick"></span><span class="title">Reply to Anna about the sprint demo slot</span><span class="age">3d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#FF645F"><span class="tick"></span><span class="title">Renew the staging SSL certificate</span><span class="age">1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#D9990B"><span class="tick"></span><span class="title">Check why the nightly build took 40 minutes</span><span class="age">14h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row hover" style="--bar:#91C131"><span class="tick"></span><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age">5h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class=hovernote>hover</span></li><li class="row" style="--bar:#57CE70"><span class="tick"></span><span class="title">Send Marek the link to the API docs</span><span class="age">12m</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row" style="--bar:#57CE70"><span class="tick"></span><span class="title">Buy milk</span><span class="age">now</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Update the README setup steps</span><span class="age">done 2h</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li><li class="row done"><span class="tick on"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8.3l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age">done 1d</span><span class="del"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></li></ul></div></div></div></section>
+</body>
+</html>

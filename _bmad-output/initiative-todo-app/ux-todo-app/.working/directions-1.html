@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todo Design Directions</title>
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--page:#E9E9EC;--pageink:#222;--pagemuted:#666;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#1a1b1e;--pageink:#e6e6e6;--pagemuted:#9a9a9a;}}
+:root[data-theme="dark"]{--page:#1a1b1e;--pageink:#e6e6e6;--pagemuted:#9a9a9a;}
+body{background:var(--page);color:var(--pageink);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:32px 16px 80px;}
+.intro{max-width:1160px;margin:0 auto 32px;}
+.intro h1{font-size:22px;font-weight:600;margin-bottom:6px}
+.intro p{color:var(--pagemuted);font-size:14px;line-height:1.5;max-width:760px}
+.dir{max-width:1160px;margin:0 auto 56px;padding-top:24px;border-top:1px solid color-mix(in srgb,var(--pageink) 18%,transparent)}
+.dirhead{display:grid;gap:10px;margin-bottom:22px}
+.dirhead h2{font-size:20px;font-weight:650;letter-spacing:-.01em}
+.dirhead h2 small{font-weight:500;color:var(--pagemuted);font-size:14px;margin-left:8px}
+.dirhead .rat{font-size:14px;line-height:1.55;max-width:820px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font:11px/1 ui-monospace,Menlo,Consolas,monospace;padding:4px 7px 4px 4px;border-radius:5px;background:color-mix(in srgb,var(--pageink) 6%,transparent);color:var(--pageink)}
+.chip b{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.15)}
+.chiplabel{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--pagemuted);margin-top:4px}
+.frames{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.col{display:grid;gap:10px}
+.cap{font-size:12px;color:var(--pagemuted)}
+.frame{max-width:100%;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.08),0 8px 30px rgba(0,0,0,.10)}
+.browser{border-radius:10px;background:#fff}
+.chrome{height:32px;display:flex;align-items:center;gap:6px;padding:0 12px;background:#E4E4E7;border-bottom:1px solid #d4d4d8}
+.chrome i{width:10px;height:10px;border-radius:50%;background:#c4c4c8}
+.chrome .url{margin-left:14px;font:11px/1 system-ui,sans-serif;color:#555;background:#f4f4f5;border-radius:5px;padding:5px 10px;flex:1;max-width:260px}
+.phone{width:360px;border-radius:30px;border:8px solid #1d1d1f;background:#1d1d1f;position:relative}
+.phone .viewport{border-radius:22px;overflow:hidden;min-height:640px}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:110px;height:20px;background:#1d1d1f;border-radius:0 0 12px 12px;z-index:2}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg{width:100%;height:100%;display:block}
+.list{list-style:none}
+.hovernote{position:absolute;right:-2px;top:-8px;font:9px/1 ui-monospace,monospace;letter-spacing:.05em;text-transform:uppercase;padding:2px 4px;border-radius:3px;background:#5B5BD6;color:#fff}
+.row{position:relative}
+.caret{display:inline-block;width:1.5px;height:1.15em;background:currentColor;vertical-align:middle;margin-right:2px;animation:none}
+/* ===== Direction A: Paper ===== */
+/* Tokens:
+   bg       #FAF7F2
+   surface  #FFFDF9
+   ink      #2B2926
+   muted    #8C877F
+   line     #ECE6DC
+   focus    #2B2926
+   Age mark colours (dot / bar / pill fill):
+   3d    #D64533
+   1d    #D64533
+   14h   #E07B2C
+   5h    #C9A21C
+   12m   #4FA35C
+   now   #3E9A52
+   Age label text colours + WCAG contrast estimate:
+   3d    #A8321F on surface #FFFDF9: 6.6:1
+   1d    #A8321F on surface #FFFDF9: 6.6:1
+   14h   #9E4E12 on surface #FFFDF9: 5.8:1
+   5h    #7A6200 on surface #FFFDF9: 5.8:1
+   12m   #2F7338 on surface #FFFDF9: 5.7:1
+   now   #2A6E35 on surface #FFFDF9: 6.1:1
+   dot vs surface: red 4.3:1, green 3.5:1 (non-text, 3:1 target)
+   ink on surface 14.3:1, muted on surface 3.5:1
+   Gradient: 1-24h interpolates green->amber->orange->red in OKLCH; <1h = green, >=24h = red. */
+.dA .viewport{background:#FAF7F2;color:#2B2926;font-family:'Seravek', 'Gill Sans Nova', 'Segoe UI', Ubuntu, Calibri, 'Source Sans Pro', ui-sans-serif, sans-serif;}
+.dA .a3d{--m:#D64533;--t:#A8321F;}
+.dA .a1d{--m:#D64533;--t:#A8321F;}
+.dA .a14h{--m:#E07B2C;--t:#9E4E12;}
+.dA .a5h{--m:#C9A21C;--t:#7A6200;}
+.dA .a12m{--m:#4FA35C;--t:#2F7338;}
+.dA .anow{--m:#3E9A52;--t:#2A6E35;}
+.dA .chrome .url{}
+
+.dA .app{max-width:600px;margin:0 auto;padding:64px 40px 72px}
+.dA .phone .app{padding:44px 20px 40px}
+.dA .input{font-size:20px;padding:6px 0 14px;border-bottom:1.5px solid #2B2926;margin-bottom:28px;color:#2B2926}
+.dA .ph{color:#A39D93}
+.dA .row{display:flex;align-items:center;gap:14px;padding:13px 0;font-size:16px;line-height:1.4}
+.dA .tick{flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid #BDB6AA;color:transparent;padding:2px}
+.dA .tick.on{border-color:#BDB6AA;background:#E8E2D8;color:#8C877F}
+.dA .title{flex:1;min-width:0}
+.dA .age{flex:none;display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--t);font-variant-numeric:tabular-nums}
+.dA .dot{width:7px;height:7px;border-radius:50%;background:var(--m)}
+.dA .done .dot{display:none}
+.dA .done .age{color:#8C877F}
+.dA .done .title{color:#8C877F;text-decoration:line-through;text-decoration-color:#C9C2B6;text-decoration-thickness:1px}
+.dA .done .title,.dA .done .age{opacity:.85}
+.dA .del{flex:none;width:22px;height:22px;padding:4px;color:#8C877F;border-radius:6px;visibility:hidden}
+.dA .hover{background:#F2EDE4;margin:0 -12px;padding:13px 12px;border-radius:8px}
+.dA .hover .del{visibility:visible}
+.dA .phone .del{visibility:visible;opacity:.55}
+.dA .row.done:first-of-type{}
+.dA .list .done:nth-child(7){margin-top:18px;border-top:1px solid #ECE6DC;padding-top:22px}
+.dA .empty{color:#8C877F;font-size:15px;line-height:1.5;padding:8px 0}
+
+/* ===== Direction B: Ledger ===== */
+/* Tokens:
+   bg       #F4F6F8
+   surface  #FFFFFF
+   ink      #1B2330
+   muted    #6B7685
+   line     #E3E7EC
+   focus    #3B5BDB
+   Age mark colours (dot / bar / pill fill):
+   3d    #D1343B
+   1d    #D1343B
+   14h   #E8762A
+   5h    #CFA415
+   12m   #3FA56B
+   now   #2E9E5B
+   Age label text colours + WCAG contrast estimate:
+   3d    #1B2330 on surface #FFFFFF: 15.8:1
+   1d    #1B2330 on surface #FFFFFF: 15.8:1
+   14h   #1B2330 on surface #FFFFFF: 15.8:1
+   5h    #1B2330 on surface #FFFFFF: 15.8:1
+   12m   #1B2330 on surface #FFFFFF: 15.8:1
+   now   #1B2330 on surface #FFFFFF: 15.8:1
+   (Ledger labels are ink; bar is non-text UI, bar vs surface red 4.9:1, green 3.4:1 - 3:1 target for non-text)
+   ink on surface 15.8:1, muted on surface 4.6:1
+   Gradient: 1-24h interpolates green->amber->orange->red in OKLCH; <1h = green, >=24h = red. */
+.dB .viewport{background:#F4F6F8;color:#1B2330;font-family:Inter, 'SF Pro Text', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;}
+.dB .a3d{--m:#D1343B;--t:#1B2330;}
+.dB .a1d{--m:#D1343B;--t:#1B2330;}
+.dB .a14h{--m:#E8762A;--t:#1B2330;}
+.dB .a5h{--m:#CFA415;--t:#1B2330;}
+.dB .a12m{--m:#3FA56B;--t:#1B2330;}
+.dB .anow{--m:#2E9E5B;--t:#1B2330;}
+.dB .chrome .url{}
+
+.dB .app{max-width:640px;margin:0 auto;padding:36px 32px 48px}
+.dB .phone .app{padding:36px 0 24px}
+.dB .input{font-size:15px;padding:10px 12px;background:#fff;border:1px solid #CBD2DA;border-radius:6px;box-shadow:0 0 0 3px rgba(59,91,219,.18);border-color:#3B5BDB;margin-bottom:18px;color:#1B2330}
+.dB .phone .input{margin:0 12px 14px}
+.dB .ph{color:#8A94A3}
+.dB .list{background:#fff;border:1px solid #E3E7EC;border-radius:6px;overflow:hidden}
+.dB .phone .list{border-radius:0;border-left:0;border-right:0}
+.dB .row{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 15px;font-size:14px;line-height:1.35;border-top:1px solid #E3E7EC}
+.dB .row:first-child{border-top:0}
+.dB .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--m,transparent)}
+.dB .tick{flex:none;width:16px;height:16px;border-radius:3px;border:1.5px solid #AEB7C2;color:transparent;padding:1px}
+.dB .tick.on{border-color:transparent;background:transparent;color:#6B7685}
+.dB .title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dB .phone .title{white-space:normal}
+.dB .age{flex:none;font-family:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;font-size:12px;color:#1B2330;text-align:right;min-width:62px;font-variant-numeric:tabular-nums}
+.dB .dot{display:none}
+.dB .done{color:#6B7685;background:#FAFBFC}
+.dB .done .age{color:#6B7685}
+.dB .del{flex:none;width:20px;height:20px;padding:4px;color:#6B7685;border-radius:4px;opacity:0}
+.dB .hover{background:#F0F3F7}
+.dB .hover .del{opacity:1;background:#E3E7EC}
+.dB .phone .del{opacity:.6}
+.dB .empty{font-size:14px;color:#6B7685;padding:14px 12px;background:#fff;border:1px dashed #CBD2DA;border-radius:6px}
+.dB .phone .empty{margin:0 12px}
+
+/* ===== Direction C: Soft ===== */
+/* Tokens:
+   bg       #F6F5F3
+   surface  #FFFFFF
+   ink      #2A2A33
+   muted    #8A8A94
+   line     #E8E6E1
+   focus    #5B5BD6
+   Age mark colours (dot / bar / pill fill):
+   3d    #F28B7D
+   1d    #F28B7D
+   14h   #F5A864
+   5h    #E6CF5C
+   12m   #8FD19E
+   now   #7FCB93
+   Age wash (card background):
+   3d    #FDEEEC
+   1d    #FDEEEC
+   14h   #FEF3E8
+   5h    #FCF8E3
+   12m   #EEF8F0
+   now   #EDF8F0
+   Age label text colours + WCAG contrast estimate:
+   3d    #5C1A12 on pill #F28B7D: 5.4:1
+   1d    #5C1A12 on pill #F28B7D: 5.4:1
+   14h   #5A2E08 on pill #F5A864: 5.8:1
+   5h    #4A3E00 on pill #E6CF5C: 6.8:1
+   12m   #14451F on pill #8FD19E: 6.2:1
+   now   #12431D on pill #7FCB93: 5.9:1
+   ink on surface 14.2:1, muted on surface 3.4:1
+   Gradient: 1-24h interpolates green->amber->orange->red in OKLCH; <1h = green, >=24h = red. */
+.dC .viewport{background:#F6F5F3;color:#2A2A33;font-family:ui-rounded, 'SF Pro Rounded', 'Nunito', 'Varela Round', 'Quicksand', 'Segoe UI', system-ui, sans-serif;}
+.dC .a3d{--m:#F28B7D;--t:#5C1A12;--w:#FDEEEC;}
+.dC .a1d{--m:#F28B7D;--t:#5C1A12;--w:#FDEEEC;}
+.dC .a14h{--m:#F5A864;--t:#5A2E08;--w:#FEF3E8;}
+.dC .a5h{--m:#E6CF5C;--t:#4A3E00;--w:#FCF8E3;}
+.dC .a12m{--m:#8FD19E;--t:#14451F;--w:#EEF8F0;}
+.dC .anow{--m:#7FCB93;--t:#12431D;--w:#EDF8F0;}
+.dC .chrome .url{}
+
+.dC .app{max-width:600px;margin:0 auto;padding:48px 32px 56px}
+.dC .phone .app{padding:40px 14px 28px}
+.dC .input{font-size:17px;padding:16px 20px;background:#fff;border-radius:18px;box-shadow:0 0 0 2px #5B5BD6,0 4px 14px rgba(91,91,214,.10);margin-bottom:22px;color:#2A2A33}
+.dC .ph{color:#9A9AA5}
+.dC .list{display:grid;gap:8px}
+.dC .row{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 16px;border-radius:16px;background:var(--w,#fff);font-size:15.5px;line-height:1.35;box-shadow:0 1px 2px rgba(40,40,60,.05)}
+.dC .tick{flex:none;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid rgba(42,42,51,.18);color:transparent;padding:3px}
+.dC .tick.on{background:#B7B7C0;border-color:#B7B7C0;color:#fff}
+.dC .title{flex:1;min-width:0}
+.dC .age{flex:none;display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--m);color:var(--t);font-variant-numeric:tabular-nums}
+.dC .dot{display:none}
+.dC .done{background:#EFEEEB;box-shadow:none}
+.dC .done .title{color:#8A8A94}
+.dC .done .age{background:transparent;color:#8A8A94;font-weight:500;padding:3px 4px}
+.dC .del{flex:none;width:28px;height:28px;padding:7px;border-radius:50%;color:#6A6A74;display:none}
+.dC .hover{box-shadow:0 0 0 1.5px rgba(42,42,51,.10),0 6px 16px rgba(40,40,60,.08)}
+.dC .hover .del{display:block;background:rgba(255,255,255,.8)}
+.dC .phone .del{display:block;opacity:.6}
+.dC .empty{background:#fff;border-radius:16px;padding:22px 20px;color:#8A8A94;font-size:15px;text-align:center}
+
+/* ===== Direction D: Night ===== */
+/* Tokens:
+   bg       #0E0F11
+   surface  #16181B
+   ink      #ECEDEE
+   muted    #6E737A
+   line     #23262A
+   focus    #ECEDEE
+   Age mark colours (dot / bar / pill fill):
+   3d    #F87171
+   1d    #F87171
+   14h   #FB923C
+   5h    #FACC15
+   12m   #4ADE80
+   now   #4ADE80
+   Age label text colours + WCAG contrast estimate:
+   3d    #F87171 on surface #16181B: 6.4:1
+   1d    #F87171 on surface #16181B: 6.4:1
+   14h   #FB923C on surface #16181B: 7.9:1
+   5h    #FACC15 on surface #16181B: 11.6:1
+   12m   #4ADE80 on surface #16181B: 10.2:1
+   now   #4ADE80 on surface #16181B: 10.2:1
+   ink on surface 15.2:1, muted on surface 3.7:1
+   Gradient: 1-24h interpolates green->amber->orange->red in OKLCH; <1h = green, >=24h = red. */
+.dD .viewport{background:#0E0F11;color:#ECEDEE;font-family:'Helvetica Neue', Helvetica, 'Arial Nova', Arial, 'Nimbus Sans', 'Liberation Sans', system-ui, sans-serif;}
+.dD .a3d{--m:#F87171;--t:#F87171;}
+.dD .a1d{--m:#F87171;--t:#F87171;}
+.dD .a14h{--m:#FB923C;--t:#FB923C;}
+.dD .a5h{--m:#FACC15;--t:#FACC15;}
+.dD .a12m{--m:#4ADE80;--t:#4ADE80;}
+.dD .anow{--m:#4ADE80;--t:#4ADE80;}
+.dD .chrome .url{}
+
+.dD .app{max-width:600px;margin:0 auto;padding:60px 36px 64px}
+.dD .phone .app{padding:44px 18px 32px}
+.dD .input{font-size:19px;letter-spacing:-.01em;padding:4px 0 16px;border-bottom:1px solid #3A3E44;margin-bottom:20px;color:#ECEDEE}
+.dD .ph{color:#5E636A}
+.dD .row{display:flex;align-items:center;gap:14px;padding:12px 0;font-size:15.5px;line-height:1.4;letter-spacing:-.005em;border-bottom:1px solid #1C1F22}
+.dD .tick{flex:none;width:18px;height:18px;border-radius:5px;border:1.5px solid #4A4F56;color:transparent;padding:1px}
+.dD .tick.on{border-color:#34383D;color:#5A5F66}
+.dD .title{flex:1;min-width:0}
+.dD .age{flex:none;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--t);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.dD .dot{width:6px;height:6px;border-radius:50%;background:var(--m);box-shadow:0 0 0 2px color-mix(in srgb,var(--m) 18%,transparent),0 0 10px color-mix(in srgb,var(--m) 55%,transparent)}
+.dD .done .dot{display:none}
+.dD .done .title,.dD .done .age{color:#5A5F66;font-weight:400}
+.dD .del{flex:none;width:22px;height:22px;padding:5px;color:#8A9098;border-radius:5px;visibility:hidden}
+.dD .hover{background:#16181B;margin:0 -12px;padding:12px;border-radius:8px;border-bottom-color:transparent}
+.dD .hover .del{visibility:visible;background:#23262A}
+.dD .phone .del{visibility:visible;opacity:.5}
+.dD .empty{color:#6E737A;font-size:15px;padding:6px 0}
+.dD .browser{background:#0E0F11}
+.dD .chrome{background:#1E2023;border-bottom-color:#2A2D31}
+.dD .chrome i{background:#3A3D42}
+.dD .chrome .url{background:#2A2D31;color:#9A9FA6}
+
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Todo app: design directions, round 1</h1>
+  <p>Four calm, minimal directions for the single screen: input at top, one list below. Open tasks oldest first with an age colour and label; completed tasks after, most recent first. Same content in every direction. Each shows laptop (with one row in hover state), phone at 360px, and the empty state.</p>
+</div>
+
+<section class="dir dA" id="dir-A">
+  <div class="dirhead">
+    <h2>A. Paper<small>Warm, airy, humanist. Age colour lives in a small dot beside the age label.</small></h2>
+    <p class="rat">A warm off-white page with generous line spacing and a humanist sans, so the list reads like a tidy note rather than software. The only colour is a small dot next to each age label; the label itself stays a quiet, darkened tint of the same hue so it passes AA. Completed tasks are struck through and faded, so they recede without disappearing.</p>
+    <div class="chiplabel">Tokens</div><div class="chips"><span class="chip"><b style="background:#FAF7F2"></b>bg #FAF7F2</span><span class="chip"><b style="background:#FFFDF9"></b>surface #FFFDF9</span><span class="chip"><b style="background:#2B2926"></b>ink #2B2926</span><span class="chip"><b style="background:#8C877F"></b>muted #8C877F</span><span class="chip"><b style="background:#ECE6DC"></b>line #ECE6DC</span><span class="chip"><b style="background:#2B2926"></b>focus #2B2926</span></div><div class="chiplabel">Age scale (mark / label text)</div><div class="chips"><span class="chip"><b style="background:#D64533"></b>&ge;24h #D64533 / #A8321F</span><span class="chip"><b style="background:#E07B2C"></b>14h #E07B2C / #9E4E12</span><span class="chip"><b style="background:#C9A21C"></b>5h #C9A21C / #7A6200</span><span class="chip"><b style="background:#4FA35C"></b>12m #4FA35C / #2F7338</span><span class="chip"><b style="background:#3E9A52"></b>now #3E9A52 / #2A6E35</span></div>
+  </div>
+  <div class="frames">
+    <div class="col"><div class="cap">Laptop, 720px. Row 4 shown in hover state: soft highlight, delete appears.</div><div class="frame browser" style="width:720px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h hover"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><span class="hovernote">hover</span></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Phone, 360px (delete always visible at low emphasis, no hover on touch)</div><div class="frame phone"><div class="notch"></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Empty state</div><div class="frame browser" style="width:440px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><p class="empty">Nothing waiting. Type a task above and press Enter.</p></div></div></div></div>
+  </div>
+</section>
+<section class="dir dB" id="dir-B">
+  <div class="dirhead">
+    <h2>B. Ledger<small>Cool, compact, tabular. Age colour lives in a thin left bar on each row; monospace labels right-aligned.</small></h2>
+    <p class="rat">A cool neutral ledger: tight rows, hairline dividers and a monospace age column right-aligned so ages scan like numbers in a table. Colour is a 3px bar on the left edge of each open row, so the eye can sweep the column of bars to see what is going stale. Completed rows keep plain muted text with a check mark and no strikethrough.</p>
+    <div class="chiplabel">Tokens</div><div class="chips"><span class="chip"><b style="background:#F4F6F8"></b>bg #F4F6F8</span><span class="chip"><b style="background:#FFFFFF"></b>surface #FFFFFF</span><span class="chip"><b style="background:#1B2330"></b>ink #1B2330</span><span class="chip"><b style="background:#6B7685"></b>muted #6B7685</span><span class="chip"><b style="background:#E3E7EC"></b>line #E3E7EC</span><span class="chip"><b style="background:#3B5BDB"></b>focus #3B5BDB</span></div><div class="chiplabel">Age scale (mark / label text)</div><div class="chips"><span class="chip"><b style="background:#D1343B"></b>&ge;24h #D1343B / #1B2330</span><span class="chip"><b style="background:#E8762A"></b>14h #E8762A / #1B2330</span><span class="chip"><b style="background:#CFA415"></b>5h #CFA415 / #1B2330</span><span class="chip"><b style="background:#3FA56B"></b>12m #3FA56B / #1B2330</span><span class="chip"><b style="background:#2E9E5B"></b>now #2E9E5B / #1B2330</span></div>
+  </div>
+  <div class="frames">
+    <div class="col"><div class="cap">Laptop, 720px. Row 4 shown in hover state: row tint, delete appears in the gutter.</div><div class="frame browser" style="width:720px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h hover"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><span class="hovernote">hover</span></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Phone, 360px (delete always visible at low emphasis, no hover on touch)</div><div class="frame phone"><div class="notch"></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Empty state</div><div class="frame browser" style="width:440px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><p class="empty">Nothing waiting. Type a task above and press Enter.</p></div></div></div></div>
+  </div>
+</section>
+<section class="dir dC" id="dir-C">
+  <div class="dirhead">
+    <h2>C. Soft<small>Friendly, rounded, card-based. Age colour is a very light wash on the card plus a coloured label pill.</small></h2>
+    <p class="rat">Each task sits on its own rounded card with a whisper of its age colour washed across the background, so staleness is felt as a gentle warming of the list. Age labels are small pills in the full hue with dark text inside, and the rounded type keeps everything approachable. Completed tasks become plain grey cards with a filled check.</p>
+    <div class="chiplabel">Tokens</div><div class="chips"><span class="chip"><b style="background:#F6F5F3"></b>bg #F6F5F3</span><span class="chip"><b style="background:#FFFFFF"></b>surface #FFFFFF</span><span class="chip"><b style="background:#2A2A33"></b>ink #2A2A33</span><span class="chip"><b style="background:#8A8A94"></b>muted #8A8A94</span><span class="chip"><b style="background:#E8E6E1"></b>line #E8E6E1</span><span class="chip"><b style="background:#5B5BD6"></b>focus #5B5BD6</span></div><div class="chiplabel">Age scale (mark / label text)</div><div class="chips"><span class="chip"><b style="background:#F28B7D"></b>&ge;24h #F28B7D / #5C1A12</span><span class="chip"><b style="background:#F5A864"></b>14h #F5A864 / #5A2E08</span><span class="chip"><b style="background:#E6CF5C"></b>5h #E6CF5C / #4A3E00</span><span class="chip"><b style="background:#8FD19E"></b>12m #8FD19E / #14451F</span><span class="chip"><b style="background:#7FCB93"></b>now #7FCB93 / #12431D</span></div>
+  </div>
+  <div class="frames">
+    <div class="col"><div class="cap">Laptop, 720px. Row 4 shown in hover state: card lifts, round delete appears.</div><div class="frame browser" style="width:720px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h hover"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><span class="hovernote">hover</span></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Phone, 360px (delete always visible at low emphasis, no hover on touch)</div><div class="frame phone"><div class="notch"></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Empty state</div><div class="frame browser" style="width:440px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><p class="empty">Nothing waiting. Type a task above and press Enter.</p></div></div></div></div>
+  </div>
+</section>
+<section class="dir dD" id="dir-D">
+  <div class="dirhead">
+    <h2>D. Night<small>Dark, crisp, grotesk. Age colour lives on the label text itself plus a soft glowing dot.</small></h2>
+    <p class="rat">A near-black canvas with crisp grotesk type, for people who keep a tab open all evening. The age label is set in the age colour and paired with a small dot that glows faintly, so the colour reads as light rather than paint. Completed tasks drop to low-contrast grey and stay out of the way.</p>
+    <div class="chiplabel">Tokens</div><div class="chips"><span class="chip"><b style="background:#0E0F11"></b>bg #0E0F11</span><span class="chip"><b style="background:#16181B"></b>surface #16181B</span><span class="chip"><b style="background:#ECEDEE"></b>ink #ECEDEE</span><span class="chip"><b style="background:#6E737A"></b>muted #6E737A</span><span class="chip"><b style="background:#23262A"></b>line #23262A</span><span class="chip"><b style="background:#ECEDEE"></b>focus #ECEDEE</span></div><div class="chiplabel">Age scale (mark / label text)</div><div class="chips"><span class="chip"><b style="background:#F87171"></b>&ge;24h #F87171</span><span class="chip"><b style="background:#FB923C"></b>14h #FB923C</span><span class="chip"><b style="background:#FACC15"></b>5h #FACC15</span><span class="chip"><b style="background:#4ADE80"></b>12m #4ADE80</span><span class="chip"><b style="background:#4ADE80"></b>now #4ADE80</span></div>
+  </div>
+  <div class="frames">
+    <div class="col"><div class="cap">Laptop, 720px. Row 4 shown in hover state: row surface lightens, delete appears.</div><div class="frame browser" style="width:720px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h hover"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><span class="hovernote">hover</span></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Phone, 360px (delete always visible at low emphasis, no hover on touch)</div><div class="frame phone"><div class="notch"></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><ul class="list"><li class="row a3d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Reply to Anna about the sprint demo slot</span><span class="age"><i class="dot"></i><span class="lbl">3d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a1d"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Renew the staging SSL certificate</span><span class="age"><i class="dot"></i><span class="lbl">1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a14h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Check why the nightly build took 40 minutes</span><span class="age"><i class="dot"></i><span class="lbl">14h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a5h"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Book a room for Thursday&#x27;s retro</span><span class="age"><i class="dot"></i><span class="lbl">5h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row a12m"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Send Marek the link to the API docs</span><span class="age"><i class="dot"></i><span class="lbl">12m</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row anow"><button class="tick" aria-label="Mark as done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Buy milk</span><span class="age"><i class="dot"></i><span class="lbl">now</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Update the README setup steps</span><span class="age"><i class="dot"></i><span class="lbl">done 2h</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li><li class="row done"><button class="tick on" aria-label="Mark as not done"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="title">Review Tom&#x27;s pull request on the auth refactor</span><span class="age"><i class="dot"></i><span class="lbl">done 1d</span></span><button class="del" aria-label="Delete"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></li></ul></div></div></div></div>
+    <div class="col"><div class="cap">Empty state</div><div class="frame browser" style="width:440px"><div class="chrome"><i></i><i></i><i></i><span class="url">todo.local</span></div><div class="viewport"><div class="app"><div class="input"><span class="caret"></span><span class="ph">What needs doing?</span></div><p class="empty">Nothing waiting. Type a task above and press Enter.</p></div></div></div></div>
+  </div>
+</section>
+</body>
+</html>
