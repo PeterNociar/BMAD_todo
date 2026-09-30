@@ -47,3 +47,14 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Human expertise.** The user overrode the recommended "env vars only" default and chose to also read `backend/.env`. The spine then bound that choice safely: env vars win, the path is anchored, and the file is ignored by git and Docker. The user also chose to stop committing `.env`, which made `cp .env.example .env` a required setup step.
 
 **Debugging with AI.** Switching branches outside the session deleted the local `.env`: the branch's "stop tracking .env" commit removes the file on checkout. The agent noticed and restored it from `main`.
+
+## Ticket 2 — Task model, ordering and the shared ordering fixtures
+
+**Agents.** The dev persona (bmad-build) planned the ticket, and the user settled one scope question: `TaskCreate` waits for entry 1.3's validation. A subagent implemented the plan and checked its own tests with two deliberate breaks, which it then reverted. It flipped the id tie-break, and the tie cases failed. It added a model column with no migration, and the migration guard failed. Four review lenses read the diff, and the main session checked each finding against the code.
+
+**Test generation.** The AI wrote `contracts/ordering-cases.json`, with inputs listed out of order so an unordered query can't pass by luck, plus a parametrized HTTP test, unit tests for the `.sssZ` serializer and the clock, and an AD-15 migration guard on a scratch `*_pytest` database. The guard also covers the Alembic passed-connection path that the AD-21 build had deferred.
+
+**What AI missed.**
+- The migration test loads `alembic.ini`, and Alembic's `fileConfig` then silently disabled the app's loggers for the rest of the pytest session. An edge-case reviewer caught it, and the main session reproduced it before fixing it.
+- The fixtures lacked a case where an open task and a completed task share a timestamp. Without it, a merged sort key would pass every case, and that is the likely mistake when the frontend mirrors the order in entry 1.6.
+- The implementer edited an existing `deferred-work.md` entry. That file is append-only, so the edit was reverted and a new entry appended instead.

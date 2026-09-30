@@ -15,7 +15,10 @@ def test_list_tasks_empty(client: TestClient) -> None:
 
 
 def test_list_tasks_returns_one_row(client: TestClient, db_session: Session) -> None:
-    task = Task(text="check SSO timeout setting", added_at=datetime(2026, 9, 30, 8, 0, tzinfo=UTC))
+    task = Task(
+        text="check SSO timeout setting",
+        added_at=datetime(2026, 9, 30, 8, 0, tzinfo=UTC),
+    )
     db_session.add(task)
     db_session.commit()
 
@@ -28,5 +31,5 @@ def test_list_tasks_returns_one_row(client: TestClient, db_session: Session) -> 
     assert set(row) == {"id", "text", "added_at", "completed_at"}
     assert UUID(row["id"]) == task.id
     assert row["text"] == "check SSO timeout setting"
-    assert datetime.fromisoformat(row["added_at"]) == task.added_at
+    assert row["added_at"] == "2026-09-30T08:00:00.000Z"
     assert row["completed_at"] is None
