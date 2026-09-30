@@ -29,7 +29,7 @@ The spec is the requirement source: CAP-1, CAP-3, CAP-5, CAP-6, CAP-7, CAP-8 and
 
 ## Done when
 
-1. On a clean checkout, `docker-compose up` (app profile) serves the app on `127.0.0.1:8080`. All three services report healthy, and logs show in `docker-compose logs`.
+1. On a clean checkout, `docker-compose up` (app profile) serves the app on `127.0.0.1:8081`. All three services report healthy, and logs show in `docker-compose logs`.
 2. On the laptop, typing and pressing Enter adds a task. Tick, untick and delete work. The order matches FR-6, and the empty and loading states show.
 3. The tasks and their times survive a refresh and `docker-compose down`/`up` with the volume kept.
 4. With the API stopped, add, tick, untick and delete roll back with the EXPERIENCE toasts, and failed text returns to an empty input.

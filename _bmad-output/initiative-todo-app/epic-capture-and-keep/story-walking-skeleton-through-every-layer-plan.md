@@ -51,9 +51,9 @@ Greenfield: only `.gitignore` (already ignores `.idea/`, `_bmad/render/`) and `d
 
 - `backend/app/{main,db,deps}.py`, `models/task.py`, `services/task_service.py`, `routers/{tasks,health}.py` -- factory `create_app()`; `get_session()` yields a sync SQLModel `Session` on `DATABASE_URL` (`postgresql+psycopg://`) with `TimeZone=UTC`; `get_task_service()`; `TaskService.list()` → `Task.list_all()` (a plain select, which entry 2 replaces)
 - `backend/alembic/` -- baseline migration for `tasks` (`id uuid pk`, `text TEXT NOT NULL`, `added_at timestamptz NOT NULL`, `completed_at timestamptz NULL`, no DB defaults); file template `YYYY_MM_DD_HHMM-rev_slug`
-- `backend/tests/conftest.py` -- `TEST_DATABASE_URL` (default `…@127.0.0.1:5433/todo_pytest`), `create_all` once per session, one rolled-back outer transaction per test (`join_transaction_mode="create_savepoint"`), one app per session, `app.dependency_overrides[get_session]`
+- `backend/tests/conftest.py` -- `TEST_DATABASE_URL` (default `…@127.0.0.1:5436/todo_pytest`), `create_all` once per session, one rolled-back outer transaction per test (`join_transaction_mode="create_savepoint"`), one app per session, `app.dependency_overrides[get_session]`
 - `frontend/` -- Vite `svelte-ts`; `src/lib/api.ts` (`Task` type, `listTasks()`); `src/App.svelte`; `nginx/default.conf.template`; `vite.config.ts`
-- `e2e/` -- Playwright package, `baseURL` from `E2E_BASE_URL`, default `http://127.0.0.1:8080`
+- `e2e/` -- Playwright package, `baseURL` from `E2E_BASE_URL`, default `http://127.0.0.1:8081`
 
 ## Tasks & Acceptance
 
@@ -65,13 +65,13 @@ Greenfield: only `.gitignore` (already ignores `.idea/`, `_bmad/render/`) and `d
 - [x] Spike -- install Vitest 5 + `@testing-library/svelte` 5.4 and render `App.svelte` in a test; if it fails, pin Vitest and coverage-v8 to 4.1, update the spine's Stack row and note it -- resolves the ticket's unknown
 - [x] `frontend/src/lib/api.ts`, `src/App.svelte`, tests -- `listTasks()` GETs `/api/tasks`; App renders the header, input and list/empty state per the matrix; tests for api.ts and App -- the UI slice
 - [x] `frontend/nginx/default.conf.template`, `Dockerfile` -- node:24 build → `nginxinc/nginx-unprivileged:1.30-alpine`; `listen 8080`; `client_max_body_size 64k`; `location /api/ { proxy_pass http://${API_UPSTREAM}; }`; SPA `try_files`; `X-Content-Type-Options nosniff` + `Referrer-Policy` on every response (`always`); CSP `default-src 'self'` on `location /` only; busybox `wget` health check -- AD-16
-- [x] `docker-compose.yml`, `.env`, `.env.example` -- `db` (postgres:18, volume at `/var/lib/postgresql`, `pg_isready`), `backend`, `frontend` in profile `app` with `restart: unless-stopped` and `${APP_BIND:-127.0.0.1}:8080`; `db-test` in profile `test` with its own volume on `127.0.0.1:5433` and the `todo_pytest` DB; `.env` = `COMPOSE_PROFILES=app`; `.env.example` lists every variable with its default -- AD-16
+- [x] `docker-compose.yml`, `.env`, `.env.example` -- `db` (postgres:18, volume at `/var/lib/postgresql`, `pg_isready`), `backend`, `frontend` in profile `app` with `restart: unless-stopped` and `${APP_BIND:-127.0.0.1}:8081`; `db-test` in profile `test` with its own volume on `127.0.0.1:5436` and the `todo_pytest` DB; `.env` = `COMPOSE_PROFILES=app`; `.env.example` lists every variable with its default -- AD-16
 - [x] `e2e/package.json`, `playwright.config.ts`, `tests/smoke.spec.ts` -- `npm test` runs one worker; the smoke test loads `/`, sees the input by its label and the empty-state text, and records no `securitypolicyviolation`
 - [x] `README.md`, `docs/ai-log.md` -- README: prerequisites, setup, `docker compose up`, starting `db-test` + `uv run pytest`, frontend and e2e test and lint commands, phone access via `tailscale serve`/`APP_BIND`. ai-log: header plus an append-only `## Ticket 1 — Walking skeleton` section (agents, prompts, what AI missed)
 
 **Acceptance Criteria:**
-- Given a clean checkout with `.env`, when `docker compose up -d` runs, then `db`, `backend` and `frontend` all reach `healthy` and `http://127.0.0.1:8080` shows the input and the empty-state text.
-- Given the stack is up, when `curl -I http://127.0.0.1:8080/` runs, then the CSP, `X-Content-Type-Options` and `Referrer-Policy` headers are present, and `/api/health` has no CSP.
+- Given a clean checkout with `.env`, when `docker compose up -d` runs, then `db`, `backend` and `frontend` all reach `healthy` and `http://127.0.0.1:8081` shows the input and the empty-state text.
+- Given the stack is up, when `curl -I http://127.0.0.1:8081/` runs, then the CSP, `X-Content-Type-Options` and `Referrer-Policy` headers are present, and `/api/health` has no CSP.
 - Given `db-test` is running, when `uv run pytest` runs in `backend/`, then all tests pass with coverage ≥ 70%.
 - Given `frontend/`, when `npm test`, `npm run test:coverage`, `npm run check` and `npm run lint` run, then all pass; a `{@html}` added to a component fails lint.
 - Given the app stack is up, when `npm test` runs in `e2e/`, then the smoke test passes.
@@ -89,6 +89,8 @@ Greenfield: only `.gitignore` (already ignores `.idea/`, `_bmad/render/`) and `d
 - **Also verified:** `alembic check` inside the backend container reports no drift. With `db` stopped, `/api/health` through nginx returns 503 `service_unavailable`, and it recovers once `db` is back. A `{@html}` added to `App.svelte` fails `npm run lint`. The root `.gitignore` gained Python and Node build and cache entries.
 
 - **Review pass 1 patches (2026-09-30):** `test_health.py` overrides `exec`; `App.test.ts` waits a macrotask before its absence check, and the `tasks = []` mutant now fails; `e2e/tests/headers.spec.ts` checks the headers on `/` and `/api/health` through nginx; `conftest.py` exits unless the test DB name ends in `_pytest`; the README mentions `--build`; `.env.example` gains `E2E_BASE_URL`. The main session re-ran the checks on alternate ports (frontend 18080, pytest DB 55439): ruff, pytest 4/4 at 97%, svelte-check, ESLint, Prettier, Vitest coverage, build, 3 services healthy, e2e 3/3 on system Chrome. The bundled Chromium download still fails on this machine.
+
+- **Host ports changed after build (2026-09-30, user request):** the app is now published on `127.0.0.1:8081` (was 8080) and `db-test` on `127.0.0.1:5436` (was 5433), so the stack runs beside the user's local Postgres (5432–5435) and llama-server (8080). The planned test-profile frontend moves from 8081 to 8082 (AD-16, entries 4 and 5). Ports inside the containers are unchanged.
 
 ## Plan Change Log
 
@@ -136,4 +138,4 @@ The health router is the one route that reaches `db.py` directly (spine's allowe
 - `cd e2e && npm test` -- expected: 1 passed
 
 **Manual checks:**
-- The user opens `http://127.0.0.1:8080` on a clean checkout (HITL ticket).
+- The user opens `http://127.0.0.1:8081` on a clean checkout (HITL ticket).

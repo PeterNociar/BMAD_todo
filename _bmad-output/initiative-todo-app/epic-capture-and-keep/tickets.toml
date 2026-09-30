@@ -4,8 +4,8 @@
 id = 1
 type = "story"
 title = "Walking skeleton through every layer"
-description = "Scaffolds backend/ (uv, FastAPI app factory, db.py, deps.py, a minimal Task model with its Alembic baseline migration, GET /api/tasks and /api/health), frontend/ (Vite svelte-ts, vite.config.ts /api proxy via API_UPSTREAM with server.host, lib/api.ts GET only, App.svelte showing the input and empty state), the nginx template with client_max_body_size 64k, the baseline security headers and the CSP on location /, both multi-stage Dockerfiles, docker-compose app profile with health checks, db-test with its own volume on 127.0.0.1:5433 for pytest, .env/.env.example, test tooling in all three packages with the 70% coverage thresholds (pytest-cov --cov-fail-under=70, Vitest v8 thresholds, Vitest + Testing Library with the Vitest 5 compatibility spike, a Playwright smoke in e2e/ targeting :8080 until entry 5 moves it to :8081), lint tooling (ruff, svelte-check, ESLint with svelte/no-at-html-tags, Prettier), the README setup section, and docs/ai-log.md with one append-only section per ticket."
-verify = "On a clean checkout, docker-compose up serves http://127.0.0.1:8080 with the input and the empty-state text, all services report healthy, and uv run pytest, npm test (frontend), the linters and one Playwright smoke test each pass."
+description = "Scaffolds backend/ (uv, FastAPI app factory, db.py, deps.py, a minimal Task model with its Alembic baseline migration, GET /api/tasks and /api/health), frontend/ (Vite svelte-ts, vite.config.ts /api proxy via API_UPSTREAM with server.host, lib/api.ts GET only, App.svelte showing the input and empty state), the nginx template with client_max_body_size 64k, the baseline security headers and the CSP on location /, both multi-stage Dockerfiles, docker-compose app profile with health checks, db-test with its own volume on 127.0.0.1:5436 for pytest, .env/.env.example, test tooling in all three packages with the 70% coverage thresholds (pytest-cov --cov-fail-under=70, Vitest v8 thresholds, Vitest + Testing Library with the Vitest 5 compatibility spike, a Playwright smoke in e2e/ targeting :8081 until entry 5 moves it to :8082), lint tooling (ruff, svelte-check, ESLint with svelte/no-at-html-tags, Prettier), the README setup section, and docs/ai-log.md with one append-only section per ticket."
+verify = "On a clean checkout, docker-compose up serves http://127.0.0.1:8081 with the input and the empty-state text, all services report healthy, and uv run pytest, npm test (frontend), the linters and one Playwright smoke test each pass."
 covers = ["CAP-12", "CAP-3"]
 after = []
 hitl = true
@@ -42,7 +42,7 @@ id = 4
 type = "story"
 title = "Test and dev compose profiles with the gated testing router"
 description = "Adds routers/testing.py (seed with *_ago_ms, reset, clock offset) mounted only when APP_ENV=test, the Clock offset hook, the dev profile (backend-dev with reload, frontend-dev running Vite with entry 1's API_UPSTREAM proxy) and the rest of the test profile (backend-test and frontend-test on 8081, using entry 1's db-test)."
-verify = "A backend test shows /api/test/* is 404 under the default config; with COMPOSE_PROFILES=test the seed endpoint creates a 25-hour-old task visible via GET on :8081, and the dev profile serves Vite on :5173 proxying /api."
+verify = "A backend test shows /api/test/* is 404 under the default config; with COMPOSE_PROFILES=test the seed endpoint creates a 25-hour-old task visible via GET on :8082, and the dev profile serves Vite on :5173 proxying /api."
 covers = ["CAP-12"]
 after = [3]
 hitl = false
@@ -53,7 +53,7 @@ references = ["#ad-14", "#ad-16"]
 id = 5
 type = "story"
 title = "E2E harness against the test profile"
-description = "Moves entry 1's Playwright smoke to the test profile on :8081 and adds e2e/ helpers seed(), reset() and advance(ms) that move page.clock and the server offset together, page.clock.install() in a shared fixture, one worker, API failure injection through page.route, a CSP-violation listener, and @axe-core/playwright wired as a helper."
+description = "Moves entry 1's Playwright smoke to the test profile on :8082 and adds e2e/ helpers seed(), reset() and advance(ms) that move page.clock and the server offset together, page.clock.install() in a shared fixture, one worker, API failure injection through page.route, a CSP-violation listener, and @axe-core/playwright wired as a helper."
 verify = "A sample spec seeds a task, advances time by 1 hour through advance(), injects a 503 via page.route, and fails when a CSP violation is raised, all green against the test profile."
 covers = ["CAP-12"]
 after = [4]

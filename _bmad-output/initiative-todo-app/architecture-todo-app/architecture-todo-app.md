@@ -197,11 +197,11 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 
 | Profile | Services | Published |
 |---|---|---|
-| `app` | `db`, `backend`, `frontend` (all `restart: unless-stopped`) | `${APP_BIND:-127.0.0.1}:8080` → `frontend` |
+| `app` | `db`, `backend`, `frontend` (all `restart: unless-stopped`) | `${APP_BIND:-127.0.0.1}:8081` → `frontend` |
 | `dev` | `db`, `backend-dev` (`--reload`, source bind-mounted), `frontend-dev` (Vite dev server) | `8000`, `5173` on `127.0.0.1` |
-| `test` | `db-test` (own volume), `backend-test` (`APP_ENV=test`), `frontend-test` | `127.0.0.1:8081` → `frontend-test`, `127.0.0.1:5433` → `db-test` (for pytest) |
+| `test` | `db-test` (own volume), `backend-test` (`APP_ENV=test`), `frontend-test` | `127.0.0.1:8082` → `frontend-test`, `127.0.0.1:5436` → `db-test` (for pytest) |
 
-  - Inside containers, uvicorn listens on `8000` and nginx on `8080`.
+  - Inside containers, uvicorn listens on `8000` and nginx on `8080`. Host ports are moved off 8080 and 5433 (app `8081`, test `8082`, `db-test` `5436`) so the stack runs beside a local Postgres and other dev servers (2026-09-30).
   - **nginx upstream:** `API_UPSTREAM` is `host:port` with no scheme. The config is `frontend/nginx/default.conf.template`, copied to `/etc/nginx/templates/`, with `proxy_pass http://${API_UPSTREAM};` and no URI part. `vite.config.ts` proxies `/api` to `http://${API_UPSTREAM ?? 'localhost:8000'}` with `server.host: true`. Compose sets `API_UPSTREAM` for `frontend`, `frontend-dev` and `frontend-test`.
   - **Postgres volumes:** Postgres 18 volumes mount at `/var/lib/postgresql`, not `/var/lib/postgresql/data`.
   - **Images:** multi-stage Dockerfiles. The frontend runtime is `nginxinc/nginx-unprivileged:1.30-alpine`, and the backend runtime is Python slim with a non-root `app` user. 
@@ -266,9 +266,9 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 | Config | Environment variables only (`DATABASE_URL`, `TEST_DATABASE_URL`, `APP_ENV`, `APP_BIND`, `API_UPSTREAM`, `COMPOSE_PROFILES`), with defaults inline in compose. The frontend has no runtime config. The theme choice lives only in the browser's `localStorage`. |
 | Errors | `{detail, code}` (AD-5). No stack traces in responses. Unhandled exceptions → `500 internal_error`. |
 | Logging | stdout/stderr, default uvicorn/nginx formats. |
-| Backend tests | `uv run pytest` against its own `TEST_DATABASE_URL` (default `postgresql+psycopg://…@127.0.0.1:5433/todo_pytest` on `db-test`), with one rolled-back transaction per test and one app per session. Integration tests cover every endpoint. The migration test (AD-15) creates and drops its own scratch database. Coverage uses `--cov-branch --cov-fail-under=70`. |
+| Backend tests | `uv run pytest` against its own `TEST_DATABASE_URL` (default `postgresql+psycopg://…@127.0.0.1:5436/todo_pytest` on `db-test`), with one rolled-back transaction per test and one app per session. Integration tests cover every endpoint. The migration test (AD-15) creates and drops its own scratch database. Coverage uses `--cov-branch --cov-fail-under=70`. |
 | Frontend tests | `npm test` / `npm run test:coverage` in `frontend/`: Vitest + `@testing-library/svelte` for `lib/*` and components. The clock is faked through `lib/clock.svelte.ts`. `coverage-v8` thresholds are 70 over `src/lib` and `src/components`. |
-| E2E | `npm test` in `e2e/`: Playwright against the compose `test` stack (`:8081`), with one worker. Seeding and server time go through AD-14, browser time through `page.clock`, and API failures are injected with `page.route`. Accessibility checks use `@axe-core/playwright`. |
+| E2E | `npm test` in `e2e/`: Playwright against the compose `test` stack (`:8082`), with one worker. Seeding and server time go through AD-14, browser time through `page.clock`, and API failures are injected with `page.route`. Accessibility checks use `@axe-core/playwright`. |
 | Python deps | `uv` with `pyproject.toml` + `uv.lock` in `backend/`. |
 | Lint / format | `ruff check` + `ruff format` for the backend. `svelte-check`, ESLint and Prettier for the frontend. |
 | Docs | `README.md` at the root. QA reports and the AI integration log go in `docs/`. |
@@ -309,7 +309,7 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 
 ```mermaid
 flowchart LR
-  B[Browser: laptop / phone via Tailscale] -->|"APP_BIND:8080"| N[frontend: nginx<br/>static SPA + /api proxy]
+  B[Browser: laptop / phone via Tailscale] -->|"APP_BIND:8081"| N[frontend: nginx<br/>static SPA + /api proxy]
   N -->|"/api/*"| A[backend: FastAPI<br/>entrypoint: alembic upgrade head]
   A --> P[(db: PostgreSQL<br/>named volume)]
 ```

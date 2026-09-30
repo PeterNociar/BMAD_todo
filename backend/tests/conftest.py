@@ -14,7 +14,7 @@ from app.main import create_app
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+psycopg://todo:todo@127.0.0.1:5433/todo_pytest",
+    "postgresql+psycopg://todo:todo@127.0.0.1:5436/todo_pytest",
 )
 
 
