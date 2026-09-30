@@ -100,7 +100,7 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 
 - **Binds:** FR-3, FR-16, FR-17, FR-18; every backend error path and the frontend error handling
 - **Prevents:** the client parsing messages or guessing from status codes; FastAPI's default 422 list shape leaking through
-- **Rule:** Every non-2xx response the app produces has the body `{"detail": str, "code": str}`. Exception handlers turn request-validation errors and domain errors into this shape. Backend codes are `snake_case`: `text_too_long`, `validation_error`, `task_not_found`, `service_unavailable`, `internal_error`. `lib/api.ts` maps in this order: fetch failure or a 10 s timeout → `network_error`; status 413 → `text_too_long`; status 502/503/504 → `unavailable`; otherwise the JSON `code`; a non-JSON body → `unavailable`. nginx sets `client_max_body_size 64k`. The frontend branches on `code` only, and a toast never shows `detail` or `code`.
+- **Rule:** Every non-2xx response the app produces has the body `{"detail": str, "code": str}`. Exception handlers turn request-validation errors and domain errors into this shape. Backend codes are `snake_case`: `text_too_long`, `validation_error`, `task_not_found`, `not_found` (unknown route), `method_not_allowed` (wrong method, `405`), `service_unavailable`, `internal_error`. Every app error is a subclass of `AppError` (`app/exceptions.py`), which carries its own `status_code`, `code` and default `detail` (plus optional `headers`, and a `log` flag set for server-side faults). Code raises these; one handler in `app/errors.py` catches `AppError` and formats the response. Framework and library errors (request validation, Starlette HTTP errors, SQLAlchemy `OperationalError`/`StaleDataError`, anything unhandled) are translated into an `AppError` subclass and go through that same handler. OpenAPI documents this shape in place of FastAPI's `HTTPValidationError`. `lib/api.ts` maps in this order: fetch failure or a 10 s timeout → `network_error`; status 413 → `text_too_long`; status 502/503/504 → `unavailable`; otherwise the JSON `code`; a non-JSON body → `unavailable`. nginx sets `client_max_body_size 64k`. The frontend branches on `code` only, and a toast never shows `detail` or `code`.
 
 ### AD-6 — The backend owns ordering; the frontend mirror is fixture-locked [ADOPTED]
 
@@ -160,7 +160,7 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 
 - **Binds:** FR-13, FR-16; `TaskService`, `lib/tasks.svelte.ts`
 - **Prevents:** a false "It's back as it was" toast; a delete retried forever
-- **Rule:** The backend returns `404` + `task_not_found` for a missing `id`. On the client, `DELETE` → 404 counts as success. `tick`/`untick` → 404 removes the task locally with no rollback toast.
+- **Rule:** The backend returns `404` + `task_not_found` for a missing `id`, and also for a malformed one (not a UUID). On the client, `DELETE` → 404 counts as success. `tick`/`untick` → 404 removes the task locally with no rollback toast.
 
 ### AD-12 — Task text validation lives in the request schema
 

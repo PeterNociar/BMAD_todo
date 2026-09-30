@@ -29,3 +29,8 @@ class Task(SQLModel, table=True):
             col(cls.id).asc(),
         )
         return list(session.exec(statement).all())
+
+    @classmethod
+    def get_by_id(cls, session: Session, task_id: UUID) -> Task | None:
+        statement = select(cls).where(col(cls.id) == task_id)
+        return session.exec(statement).first()

@@ -4,6 +4,7 @@ from fastapi import APIRouter, FastAPI
 
 from app.config import Settings, get_settings
 from app.db import make_engine
+from app.errors import install_error_handlers
 from app.routers import health, tasks
 
 
@@ -21,4 +22,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(tasks.router)
     api.include_router(health.router)
     app.include_router(api)
+    install_error_handlers(app)
     return app
