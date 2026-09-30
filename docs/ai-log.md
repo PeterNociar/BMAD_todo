@@ -58,3 +58,17 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - The migration test loads `alembic.ini`, and Alembic's `fileConfig` then silently disabled the app's loggers for the rest of the pytest session. An edge-case reviewer caught it, and the main session reproduced it before fixing it.
 - The fixtures lacked a case where an open task and a completed task share a timestamp. Without it, a merged sort key would pass every case, and that is the likely mistake when the frontend mirrors the order in entry 1.6.
 - The implementer edited an existing `deferred-work.md` entry. That file is append-only, so the edit was reverted and a new entry appended instead.
+
+## Ticket 3 — Mutation endpoints and the error contract
+
+**Agents.** The dev persona (bmad-build) planned the ticket and raised two gaps in AD-5 and AD-11 as questions for the user: which codes framework 404 and 405 errors get, and what a malformed id returns. The user chose the new codes `not_found` and `method_not_allowed`, and chose `404 task_not_found` for a malformed id rather than FastAPI's default 422. The spine and the memlog were updated in the same change. A subagent implemented the plan, then four review lenses read the diff.
+
+**Test generation.** The AI wrote one integration test per matrix row: add, the 2000- and 2001-character limits, invalid bodies, idempotent tick and untick, delete, and missing or malformed ids. It stamped times from a fixed clock injected through `dependency_overrides`, the first real use of the AD-7 clock. It also wrote error-contract tests: DB down gives 503 on every route, framework 404 and 405, an unhandled 500 with no traceback, and an OpenAPI check.
+
+**What AI missed, and what review caught.**
+- **NUL character.** Text containing NUL passed validation, then Postgres rejected it, and the API returned a 500. The main session reproduced it before routing it to a fix.
+- **Tick racing a delete.** A tick committed after a concurrent delete raised `StaleDataError`, also a 500. The main session reproduced it with two sessions.
+- **OpenAPI rewrite.** The rewrite silently dropped FastAPI's generator arguments.
+- **Missing assertion.** Nothing asserted that tick, untick and delete advertise no 422.
+
+**Human decisions.** The error-code vocabulary and the malformed-id behaviour were the user's calls. A narrower race window, a delete landing between commit and refresh, was accepted as a known low risk.
