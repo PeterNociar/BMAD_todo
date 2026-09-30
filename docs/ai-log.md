@@ -31,3 +31,19 @@ This log records how AI agents were used to build the Todo app: which agents and
   - The nginx headers were checked only by a manual curl; `e2e/tests/headers.spec.ts` now checks them.
 - About two thirds of the findings were rejected on evidence: they were false, deliberate spine decisions, or owned by later tickets. One unverified finding (nginx caching the backend IP) went to `deferred-work.md`.
 - Follow-up: after the build, the user moved the host ports so the stack runs beside a local Postgres and llama-server: the app to `8081`, `db-test` to `5436`, and the planned test frontend to `8082`. The agent flagged that the architecture had already reserved 8081 for the test frontend, and the user chose how to split the ports.
+
+## AD-21 — Backend settings through Pydantic Settings
+
+**Agents.** The architect persona (bmad-architecture, update mode) added AD-21 after the user asked for Pydantic Settings. It put three choices to the user: a separate test settings class, whether to also read `backend/.env`, and a strict `APP_ENV`. Three reviewer subagents (rubric, currency, adversarial) then attacked the draft. All three found the same critical flaw: config read at import time can't be reached by `dependency_overrides`. That led to `create_app(settings)` with `uvicorn --factory`. The dev persona (bmad-build) then planned the refactor, and a subagent implemented it from the plan alone.
+
+**Test generation and what AI missed.** The implementer wrote one test per matrix row. Four review lenses then showed that several of those tests could pass without proving anything:
+- The import check passed on any machine that has a `backend/.env`.
+- The any-working-directory test returned early.
+- The `TEST_DATABASE_URL` override was never exercised.
+- An empty `DATABASE_URL` passed validation.
+
+All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-passed connection" path has no test yet.
+
+**Human expertise.** The user overrode the recommended "env vars only" default and chose to also read `backend/.env`. The spine then bound that choice safely: env vars win, the path is anchored, and the file is ignored by git and Docker. The user also chose to stop committing `.env`, which made `cp .env.example .env` a required setup step.
+
+**Debugging with AI.** Switching branches outside the session deleted the local `.env`: the branch's "stop tracking .env" commit removes the file on checkout. The agent noticed and restored it from `main`.

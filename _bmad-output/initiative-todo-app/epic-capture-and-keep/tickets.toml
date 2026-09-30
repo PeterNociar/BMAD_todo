@@ -41,7 +41,7 @@ references = ["#ad-3", "#ad-5", "#ad-11", "#ad-12", "#ad-13"]
 id = 4
 type = "story"
 title = "Test and dev compose profiles with the gated testing router"
-description = "Adds routers/testing.py (seed with *_ago_ms, reset, clock offset) mounted only when APP_ENV=test, the Clock offset hook, the dev profile (backend-dev with reload, frontend-dev running Vite with entry 1's API_UPSTREAM proxy) and the rest of the test profile (backend-test and frontend-test on 8081, using entry 1's db-test)."
+description = "Adds routers/testing.py (seed with *_ago_ms, reset, clock offset) mounted only when APP_ENV=test, the Clock offset hook, the dev profile (backend-dev with reload, frontend-dev running Vite with entry 1's API_UPSTREAM proxy) and the rest of the test profile (backend-test and frontend-test on 8082, using entry 1's db-test)."
 verify = "A backend test shows /api/test/* is 404 under the default config; with COMPOSE_PROFILES=test the seed endpoint creates a 25-hour-old task visible via GET on :8082, and the dev profile serves Vite on :5173 proxying /api."
 covers = ["CAP-12"]
 after = [3]
