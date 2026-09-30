@@ -1,0 +1,145 @@
+# Stories of epic-capture-and-keep, in build order. Reference strings starting with # point at architecture-todo-app/architecture-todo-app.md sections.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Walking skeleton through every layer"
+description = "Scaffolds backend/ (uv, FastAPI app factory, db.py, deps.py, a minimal Task model with its Alembic baseline migration, GET /api/tasks and /api/health), frontend/ (Vite svelte-ts, vite.config.ts /api proxy via API_UPSTREAM with server.host, lib/api.ts GET only, App.svelte showing the input and empty state), the nginx template with client_max_body_size 64k, the baseline security headers and the CSP on location /, both multi-stage Dockerfiles, docker-compose app profile with health checks, db-test with its own volume on 127.0.0.1:5433 for pytest, .env/.env.example, test tooling in all three packages with the 70% coverage thresholds (pytest-cov --cov-fail-under=70, Vitest v8 thresholds, Vitest + Testing Library with the Vitest 5 compatibility spike, a Playwright smoke in e2e/ targeting :8080 until entry 5 moves it to :8081), lint tooling (ruff, svelte-check, ESLint with svelte/no-at-html-tags, Prettier), the README setup section, and docs/ai-log.md with one append-only section per ticket."
+verify = "On a clean checkout, docker-compose up serves http://127.0.0.1:8080 with the input and the empty-state text, all services report healthy, and uv run pytest, npm test (frontend), the linters and one Playwright smoke test each pass."
+covers = ["CAP-12", "CAP-3"]
+after = []
+hitl = true
+risk = "medium"
+unknown = "Whether Vitest 5 works with @testing-library/svelte 5.4; fall back to Vitest 4.1 and record it in the stack."
+references = ["architecture-todo-app/architecture-todo-app.md#ad-1", "#ad-2", "#ad-15", "#ad-16", "#ad-20"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Task model, ordering and the shared ordering fixtures"
+description = "Extends entry 1's minimal Task model with the schemas, the injectable Clock (ms-truncated), the fixed-width .sssZ serializer, Task.list_ordered() as the canonical FR-6 order, contracts/ordering-cases.json with a same-millisecond tie, and the migration guard test (single head, upgrade on scratch DB, alembic check)."
+verify = "Integration tests prove GET /api/tasks returns seeded tasks in the fixture order with timestamps matching the .sssZ regex, and the migration guard test passes."
+covers = ["CAP-3", "CAP-7"]
+after = [1]
+hitl = false
+risk = "low"
+references = ["#ad-6", "#ad-7", "#ad-15"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Mutation endpoints and the error contract"
+description = "Adds POST /api/tasks, PUT tick and untick, DELETE, the AD-12 text validation, and the exception handlers that give every error {detail, code} (text_too_long, validation_error, task_not_found, service_unavailable, internal_error), with an integration test per endpoint and OpenAPI at /api/docs."
+verify = "Integration tests cover every endpoint's success and error cases, including 2,001 characters -> 422 text_too_long, tick twice returns the same task, and a missing id -> 404 task_not_found."
+covers = ["CAP-1", "CAP-5", "CAP-6", "CAP-7"]
+after = [2]
+hitl = false
+risk = "low"
+references = ["#ad-3", "#ad-5", "#ad-11", "#ad-12", "#ad-13"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Test and dev compose profiles with the gated testing router"
+description = "Adds routers/testing.py (seed with *_ago_ms, reset, clock offset) mounted only when APP_ENV=test, the Clock offset hook, the dev profile (backend-dev with reload, frontend-dev running Vite with entry 1's API_UPSTREAM proxy) and the rest of the test profile (backend-test and frontend-test on 8081, using entry 1's db-test)."
+verify = "A backend test shows /api/test/* is 404 under the default config; with COMPOSE_PROFILES=test the seed endpoint creates a 25-hour-old task visible via GET on :8081, and the dev profile serves Vite on :5173 proxying /api."
+covers = ["CAP-12"]
+after = [3]
+hitl = false
+risk = "medium"
+references = ["#ad-14", "#ad-16"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "E2E harness against the test profile"
+description = "Moves entry 1's Playwright smoke to the test profile on :8081 and adds e2e/ helpers seed(), reset() and advance(ms) that move page.clock and the server offset together, page.clock.install() in a shared fixture, one worker, API failure injection through page.route, a CSP-violation listener, and @axe-core/playwright wired as a helper."
+verify = "A sample spec seeds a task, advances time by 1 hour through advance(), injects a 503 via page.route, and fails when a CSP violation is raised, all green against the test profile."
+covers = ["CAP-12"]
+after = [4]
+hitl = false
+risk = "medium"
+references = ["#ad-8", "#ad-14", "#ad-19"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "Frontend pure core: api client, sort mirror and clock"
+description = "Adds lib/api.ts for all five calls with the AD-5 status-first error mapping and 10 s timeout, lib/sort.ts driven by contracts/ordering-cases.json, and lib/clock.svelte.ts with now and sample() and its refresh triggers."
+verify = "Vitest runs the shared ordering fixtures through sort.ts, maps fetch failure, timeout, 413, 503 and JSON codes to the right client codes, and shows clock.now refreshing on a faked 30 s tick and on visibilitychange."
+covers = ["CAP-3", "CAP-8"]
+after = [1, 2]
+hitl = false
+risk = "low"
+references = ["#ad-4", "#ad-5", "#ad-6", "#ad-8"]
+
+[[entry]]
+id = 7
+type = "story"
+title = "Toasts, live regions and focus modules"
+description = "Adds lib/toasts.svelte.ts with the AD-17 API and verbatim EXPERIENCE copy, LiveRegions.svelte as the only aria-live owner, the ToastLayer component (max 2, ~5 s auto-dismiss paused on hover/focus), and lib/focus.ts with registerInput, returnToInput under (hover: hover), the safety net, type-to-focus, and the row navigation helpers (Up/Down between rows, Esc and Up-from-first-row back to the input) that entry 10 wires."
+verify = "Component tests show an error toast rendering the exact copy, auto-dismissing after 5 s under fake timers, being announced once through the polite region, returnToInput doing nothing when (hover: hover) does not match, focus moving to the input when a focused element is removed, and a printable key typed with nothing focused landing in the input."
+covers = ["CAP-8", "CAP-1"]
+after = [1]
+hitl = false
+risk = "low"
+references = ["#ad-17", "#ad-18", "ux-todo-app/EXPERIENCE.md#voice-and-tone"]
+
+[[entry]]
+id = 8
+type = "story"
+title = "The task store: confirmed state and op queues"
+description = "Adds lib/tasks.svelte.ts with the AD-9 interface (rows, add, tick, untick, remove by key), temp keys and id swap, per-task FIFO queues with rollback to confirmed state, error toasts and success announcements (including the empty-state suffix after the last delete) via lib/toasts, the initial load with loadState loading/ready, and the heldKey slot (no timer yet); entry 12 replaces the initial load's plain replace with the seq merge."
+verify = "Vitest with a faked api covers rapid tick/untick/tick with a late failure rolling back to confirmed state, a tick queued on an unconfirmed add being sent with the server id, a failed add rejecting with {text} or {text: null} when ops were queued, and each success announcement firing once."
+covers = ["CAP-8", "CAP-1", "CAP-5", "CAP-6"]
+after = [6, 7]
+hitl = false
+risk = "high"
+references = ["#ad-4", "#ad-9", "#ad-17"]
+
+[[entry]]
+id = 12
+type = "story"
+title = "Store sync: sequence merge, tombstones and recovery GET"
+description = "Replaces entry 8's plain initial-load replace with the AD-10 merge: the confirmation seq counter, per-task seq stamps, never removing unconfirmed adds, tombstones for confirmed deletes and tick/untick 404s (AD-11), merging a GET-seen task into its optimistic entry, and the immediate GET after network_error or unavailable; epic-everywhere-and-handed-in adds polling on top."
+verify = "Vitest with a faked api covers an add confirmed while the initial GET is in flight (one row, no loss), a stale GET not reviving a deleted task, a GET-seen task merging into its optimistic row with the key kept, a tick 404 removing the task with no toast, and a network_error triggering one immediate GET."
+covers = ["CAP-8", "CAP-7"]
+after = [8]
+hitl = false
+risk = "high"
+references = ["#ad-10", "#ad-11"]
+
+[[entry]]
+id = 9
+type = "story"
+title = "Capture UI: header, input and adding tasks"
+description = "Builds the sticky header (wordmark) and input per DESIGN.md with self-hosted Inter and JetBrains Mono, mounts ToastLayer and LiveRegions from entry 7 in App.svelte, wires Enter to store.add with trim/empty rules, input focus on load and after actions via lib/focus, failed-text restore, the loading skeleton and empty state, and a plain text-only list of rows that entry 10 replaces with the full rows."
+verify = "E2E on the test profile: typing right after load and Enter adds a task and clears the input; whitespace-only Enter does nothing; the empty state shows with zero tasks and the skeleton shows while GET is delayed via page.route; an added task survives a reload; with POST failing via page.route the task disappears, the add-failure toast shows and the text returns; axe reports no critical violations at 320 px and 1280 px."
+covers = ["CAP-1", "CAP-3", "CAP-8"]
+after = [5, 8]
+hitl = false
+risk = "medium"
+references = ["ux-todo-app/DESIGN.md", "ux-todo-app/EXPERIENCE.md#component-patterns", "#ad-19"]
+
+[[entry]]
+id = 10
+type = "story"
+title = "List rows: tick, untick and delete"
+description = "Replaces entry 9's text-only list with the Ledger rows keyed by client key with the tick ring and filled check, delete x (hover-revealed on laptop, always visible on touch), animate:flip slides honouring reduced motion, arrow/Esc keyboard navigation wired through entry 7's lib/focus helpers, and focus return after each action; announcements and rollback toasts come from the store (entry 8)."
+verify = "E2E: ticking a task moves it to the top of the completed tasks, unticking returns it to its place, delete removes it with no dialog and it stays gone after reload, tick, untick and delete each roll back with the action toast when the request fails via page.route, keyboard-only tick/delete works, tasks and their times survive docker-compose down/up with the volume kept (manual check on the app profile), and axe reports no critical violations at 320 px and 1280 px with long task text and completed rows."
+covers = ["CAP-5", "CAP-6", "CAP-8", "CAP-3"]
+after = [9, 7]
+hitl = false
+risk = "medium"
+references = ["ux-todo-app/DESIGN.md", "ux-todo-app/EXPERIENCE.md#interaction-primitives"]
+
+[[entry]]
+id = 11
+type = "story"
+title = "Refactor sweep"
+description = "Cleans up what the build records and deferred review findings of this epic call for; scope set when it starts."
+verify = "All suites pass with coverage at 70% or more and docker-compose up still passes the epic's Done when checks."
+covers = []
+after = [1, 2, 3, 4, 5, 6, 7, 8, 12, 9, 10]
+hitl = false
+risk = "low"

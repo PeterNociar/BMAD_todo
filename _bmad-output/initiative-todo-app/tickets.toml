@@ -1,0 +1,21 @@
+# Epics of initiative-todo-app, in build order.
+
+[[epic]]
+id = 1
+slug = "epic-capture-and-keep"
+title = "Capture and keep tasks"
+covers = ["CAP-1", "CAP-3", "CAP-5", "CAP-6", "CAP-7", "CAP-8", "CAP-12"]
+
+[[epic]]
+id = 2
+slug = "epic-age-nudge"
+title = "The age nudge"
+covers = ["CAP-4", "CAP-2"]
+after = [{ epic = 1, needs = "the task store, list rendering, clock module and E2E harness with the test router" }]
+
+[[epic]]
+id = 3
+slug = "epic-everywhere-and-handed-in"
+title = "Everywhere, and handed in"
+covers = ["CAP-9", "CAP-10", "CAP-11"]
+after = [{ epic = 1, needs = "the task store with confirmed state, seq merge and tombstones, the toasts module, compose profiles" }, { epic = 2, needs = "the finished UI, so the accessibility, performance and coverage reports audit the whole app" }]
