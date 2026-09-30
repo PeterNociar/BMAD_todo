@@ -16,10 +16,10 @@ browser ──> frontend (nginx, host :8081, static SPA + /api proxy) ──> ba
 
 ```sh
 git clone <this repo> && cd BMAD_todo
-cp .env.example .env   # optional: the committed .env already sets COMPOSE_PROFILES=app
+cp .env.example .env   # required: .env is not committed
 ```
 
-`.env.example` lists every variable with its default. The committed `.env` only sets `COMPOSE_PROFILES=app`, so a plain `docker compose up` starts the app.
+`.env.example` lists every variable with its default. Copying it to `.env` is required: `.env` sets `COMPOSE_PROFILES=app`, and every compose service belongs to a profile, so without it `docker compose up` starts nothing. `.env` is gitignored, so keep local values such as `APP_BIND` there.
 
 ## Run the app
 
