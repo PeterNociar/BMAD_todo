@@ -1,11 +1,12 @@
 """Task use cases."""
 
+from datetime import timedelta
 from uuid import UUID
 
 from sqlmodel import Session
 
 from app.clock import Clock
-from app.exceptions import TaskNotFound
+from app.exceptions import TaskNotFound, ValidationFailed
 from app.models.task import Task
 
 
@@ -40,6 +41,21 @@ class TaskService:
     def remove(self, task_id: UUID) -> None:
         task = self._get(task_id)
         self._session.delete(task)
+        self._session.commit()
+
+    def seed(self, text: str, added_ago_ms: int, completed_ago_ms: int | None) -> Task:
+        """Test-only (AD-14): a task whose times are the clock's now minus each `*_ago_ms`."""
+        if completed_ago_ms is not None and completed_ago_ms > added_ago_ms:
+            raise ValidationFailed("completed_ago_ms must not be greater than added_ago_ms")
+        now = self._clock()
+        task = Task(text=text, added_at=now - timedelta(milliseconds=added_ago_ms))
+        if completed_ago_ms is not None:
+            task.completed_at = now - timedelta(milliseconds=completed_ago_ms)
+        return self._save(task)
+
+    def remove_all(self) -> None:
+        """Test-only (AD-14): delete every task."""
+        Task.delete_all(self._session)
         self._session.commit()
 
     def _get(self, task_id: UUID) -> Task:

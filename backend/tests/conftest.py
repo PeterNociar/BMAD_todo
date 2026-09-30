@@ -73,3 +73,31 @@ def client(application: FastAPI, session_factory: sessionmaker[Session]) -> Iter
             yield test_client
     finally:
         application.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="session")
+def testing_application() -> FastAPI:
+    """The one extra session app, in test mode, for testing-router tests (AD-21)."""
+    return create_app(Settings(_env_file=None, database_url=TEST_DATABASE_URL, app_env="test"))
+
+
+@pytest.fixture()
+def testing_client(
+    testing_application: FastAPI, session_factory: sessionmaker[Session]
+) -> Iterator[TestClient]:
+    """Client for the test-mode app. The app is session-scoped, so its shared clock is
+    restored after each test: no offset leaks into the next one."""
+
+    def override_get_session() -> Iterator[Session]:
+        with session_factory() as session:
+            yield session
+
+    clock = testing_application.state.clock
+    testing_application.dependency_overrides[get_session] = override_get_session
+    try:
+        with TestClient(testing_application) as test_client:
+            yield test_client
+    finally:
+        testing_application.dependency_overrides.clear()
+        testing_application.state.clock = clock
+        clock.offset_ms = 0

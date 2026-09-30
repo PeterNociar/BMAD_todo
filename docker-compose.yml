@@ -1,9 +1,11 @@
 name: todo
 
 services:
+  # --- app (everyday) and dev share db and its db-data volume --------------------------
+
   db:
     image: postgres:18
-    profiles: [app]
+    profiles: [app, dev]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-todo}
@@ -41,6 +43,52 @@ services:
       backend:
         condition: service_healthy
 
+  # --- dev: hot reload against the shared db ------------------------------------------
+
+  backend-dev:
+    build: ./backend
+    profiles: [dev]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://todo:todo@db:5432/todo}
+      APP_ENV: app
+      PYTHONDONTWRITEBYTECODE: "1"
+    # Appended to the image's uvicorn command by entrypoint.sh.
+    command: ["--reload", "--reload-dir", "app"]
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/alembic:/app/alembic:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend-dev:
+    image: node:24-alpine
+    profiles: [dev]
+    working_dir: /app
+    environment:
+      API_UPSTREAM: backend-dev:8000
+    # node_modules lives in an anonymous volume, installed inside the (musl) container.
+    command: ["sh", "-c", "npm ci && exec npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"]
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    # No Dockerfile to hold it, so this one app health check lives in compose.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5173/"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+    depends_on:
+      backend-dev:
+        condition: service_healthy
+
+  # --- test: pytest (todo_pytest) and the E2E stack (todo_e2e) --------------------------
+
   db-test:
     image: postgres:18
     profiles: [test]
@@ -50,14 +98,39 @@ services:
       POSTGRES_DB: todo_pytest
     volumes:
       - db-test-data:/var/lib/postgresql
+      # Creates todo_e2e; runs only when the data directory is empty (see README).
+      - ./db-test/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "127.0.0.1:5436:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U todo -d todo_pytest"]
+      # A real query on todo_e2e over TCP: fails if the init script never created it (old
+      # volume), and the init-time server (socket only) never counts as healthy.
+      test: ["CMD-SHELL", "psql -h 127.0.0.1 -U todo -d todo_e2e -c 'select 1'"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  backend-test:
+    build: ./backend
+    profiles: [test]
+    environment:
+      DATABASE_URL: postgresql+psycopg://todo:todo@db-test:5432/todo_e2e
+      APP_ENV: test
+    depends_on:
+      db-test:
+        condition: service_healthy
+
+  frontend-test:
+    build: ./frontend
+    profiles: [test]
+    environment:
+      API_UPSTREAM: backend-test:8000
+    ports:
+      - "127.0.0.1:8082:8080"
+    depends_on:
+      backend-test:
+        condition: service_healthy
 
 volumes:
   db-data:
