@@ -52,3 +52,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-age-nudge/story-refactor-sweep-plan.md`
   summary: Resolved by entry 2.6: toasts over the held row (the list-rows entry), closed by entry 2.5.
   evidence: The toast stack sits at `top: calc(100% + var(--held-height, 0px))`, and `--held-height` is the held row plus the 8 px gap. `e2e/tests/hold.spec.ts` "toast below held" checks the toast lands 8 px (±1) below the held row and never over the input, and "no held row" checks it stays at the list top otherwise.
+- source_plan: `_bmad-output/initiative-todo-app/epic-age-nudge/story-refactor-sweep-plan.md`
+  summary: `rows.spec.ts` "motion: tick slides the rows for about 200 ms" (from 1.10) failed once in a full E2E run under load, then passed 10 of 10 in isolation and 75 of 75 in a second full run.
+  evidence: Likely timing: it samples `getAnimations()` 40 ms after a click, so a busy runner can miss the flip. Raise the sample window, or poll until an animation appears. Low; seen during 2.6 verification.
