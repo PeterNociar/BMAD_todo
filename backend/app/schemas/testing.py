@@ -26,7 +26,7 @@ class TaskSeed(TaskCreate):
     """A task with times relative to the server clock (offset included).
 
     `text` follows the normal `TaskCreate` rules (AD-12). The rule that `completed_ago_ms`
-    is not greater than `added_ago_ms` is checked by `TaskService.seed`. Unknown keys are
+    is not greater than `added_ago_ms` is checked by `TestingTaskService.seed`. Unknown keys are
     rejected, so a misspelt field can't silently seed an open task.
     """
 

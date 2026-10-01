@@ -1,5 +1,7 @@
 """AD-14 testing router against the story's I/O matrix (backend rows)."""
 
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -8,9 +10,11 @@ from fastapi.testclient import TestClient
 
 from app.clock import Clock
 from app.schemas.task import format_timestamp
+from tests.conftest import TEST_DATABASE_URL
 
 T = datetime(2026, 9, 30, 12, 0, 0, 500000, tzinfo=UTC)
 HOUR_MS = 3_600_000
+TEST_ONLY_MODULES = ["app.routers.testing", "app.services.testing_task_service"]
 
 
 def wire(value: datetime) -> str:
@@ -72,6 +76,23 @@ def test_default_app_documents_no_testing_routes(
     paths = client.get("/api/openapi.json").json()["paths"]
 
     assert not [path for path in paths if path.startswith("/api/test")]
+
+
+def test_default_app_does_not_import_test_only_code() -> None:
+    """Run in a fresh interpreter: the session's test-mode app already imported them here."""
+    script = (
+        "import sys\n"
+        "from app.config import Settings\n"
+        "from app.main import create_app\n"
+        f"create_app(Settings(_env_file=None, database_url={TEST_DATABASE_URL!r}, app_env='app'))\n"
+        "print([m for m in TEST_ONLY_MODULES if m in sys.modules])\n"
+    ).replace("TEST_ONLY_MODULES", repr(TEST_ONLY_MODULES))
+
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, check=True
+    )
+
+    assert result.stdout.strip() == "[]"
 
 
 def test_testing_routes_are_documented_in_test_mode(api: TestClient) -> None:
