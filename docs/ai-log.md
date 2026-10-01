@@ -725,3 +725,35 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 - The `getQueued` guard in `poll()` could never fire, so it was dropped.
 - The skipped-refetch tests now also check that the cadence restarts from the visible event.
 - After the fixes, 388 Vitest tests pass with 99.26% statement coverage, and all 78 E2E tests pass.
+
+## Ticket 3.3 — Phone access over Tailscale
+
+**Agents.** The dev persona (bmad-build) took the oneshot route, because the change is docs only. It checked the README against Tailscale 1.98.4 on the laptop and edited it directly. A quick-review subagent checked the diff.
+
+**MCP servers.** None. The checks used the `tailscale` CLI (`version`, `status`, `serve status`) and `docker compose ps`.
+
+**What was built.**
+- `README.md` › Phone access is split into three subsections:
+  - **Tailscale Serve:**
+    - rebuild the app profile first;
+    - turn on MagicDNS and HTTPS Certificates;
+    - fix an "Access denied" from `tailscale serve` with `tailscale set --operator`;
+    - find the URL with `tailscale serve status`;
+    - stop with `--https=443 off` or `reset`.
+  - **`APP_BIND`:**
+    - `127.0.0.1:8081` and Serve both stop working on the laptop;
+    - the page is plain HTTP;
+    - the app can fail to bind at boot if Docker starts before Tailscale;
+    - avoid `0.0.0.0`.
+  - **Sync between devices:** usually within 30 s, and up to a minute while the tab is saving a task of its own.
+
+**Device run (author, 2026-10-02).** The author followed the README's Tailscale Serve steps on the laptop and their phone. They report that every check passed:
+- the phone loaded the app over the tailnet;
+- a task added on the phone appeared in the idle laptop tab within the expected window, without a reload;
+- the stop step worked.
+
+The author didn't record exact timings.
+
+**What AI decided beyond the plan.** The author ran the commands that expose the app or rebuild the real stack (`docker compose up -d --build`, `tailscale serve`), not the agent.
+
+**Review.** The quick lens made 5 findings. Four were patched: an ambiguous laptop URL under `APP_BIND`, the boot-time bind caveat, the softened sync timing, and the real tailnet names removed from the plan. The fifth (this section was missing) was pending until the device run.

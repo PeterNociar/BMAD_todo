@@ -155,10 +155,34 @@ Every spec imports `test` and `expect` from `e2e/fixtures.ts`, not from `@playwr
 
 ## Phone access
 
-The app has no login, so it only listens on `127.0.0.1` by default. There are two ways to reach it from a phone:
+The app has no login, so by default it listens only on `127.0.0.1`. To use it from your phone, put the laptop and the phone on the same [Tailscale](https://tailscale.com) tailnet. Then use one of the two options below.
 
-- **Tailscale Serve (recommended).** Run `tailscale serve --bg 8081` on the laptop, then open the `https://<machine>.<tailnet>.ts.net` URL on the phone. Only devices on your tailnet can reach it, and you get HTTPS.
-- **`APP_BIND`.** Set `APP_BIND` in `.env` to an address of the laptop, such as its Tailscale IP, then run `docker compose up -d` again. Open `http://<that address>:8081` on the phone. Avoid `0.0.0.0` on untrusted networks, because anyone who can reach the laptop can then use the app.
+Before either option, make sure the app profile is running the current code: `docker compose up -d --build`.
+
+### Tailscale Serve (recommended)
+
+Tailscale Serve gives you HTTPS, and only devices on your tailnet can reach the app. Keep `APP_BIND` at its default: Serve forwards to `127.0.0.1:8081` on the laptop.
+
+1. In the Tailscale admin console, under **DNS**, turn on **MagicDNS** and **HTTPS Certificates**. You only need to do this once per tailnet. If you skip it, `tailscale serve` prints a link to enable them.
+2. On the laptop, run `tailscale serve --bg 8081`. If it refuses with "Access denied", either run it with `sudo`, or once run `sudo tailscale set --operator=$USER`.
+3. Run `tailscale serve status` to see the URL, `https://<machine>.<tailnet>.ts.net`, and open it on the phone. The first load can take a few seconds while the certificate is issued.
+4. To stop, run `tailscale serve --https=443 off` (or `tailscale serve reset` to clear every Serve setting). Serve settings survive a reboot until you remove them.
+
+### `APP_BIND`
+
+1. In `.env`, set `APP_BIND` to the laptop's Tailscale IP, which `tailscale ip -4` shows.
+2. Run `docker compose up -d`.
+3. On the phone, open `http://<that IP>:8081`.
+
+Be aware of three side effects:
+- The port then listens only on that IP, so <http://127.0.0.1:8081> stops working on the laptop too. Use `http://<that IP>:8081` there as well. Tailscale Serve also stops working, because it forwards to `127.0.0.1:8081`.
+- After a reboot, if Docker starts the containers before Tailscale has its IP, the frontend fails to bind and the app is down. Run `docker compose up -d` again once Tailscale is up.
+- The connection is plain HTTP. The tailnet encrypts the traffic, but the browser doesn't treat the page as a secure context.
+- Avoid `0.0.0.0` on untrusted networks: anyone who can reach the laptop could then use the app.
+
+### Sync between devices
+
+Each open tab re-reads the list every 30 s while it is visible, and straight away when you switch back to it. So a task added on the phone usually shows up in an idle laptop tab within 30 s, without a reload. A poll is skipped while that tab is saving a task of its own, so it can take up to a minute.
 
 ## Repository layout
 
