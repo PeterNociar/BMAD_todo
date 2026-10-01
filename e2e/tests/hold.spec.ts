@@ -1,9 +1,10 @@
 /**
  * The held row under the input (story 2.5): one test per row of its E2E matrix, on a long,
  * scrolled list. The fixture's page clock runs the store's 3 s hold timer, so
- * `page.clock.runFor(3_000)` ends a hold. That clock also flows in real time, so each test
- * checks the hold is still on (`li.held`) when it measures. CSP-clean is checked by the fixture
- * at teardown for every test (AD-19).
+ * `page.clock.runFor(3_000)` ends a hold. That clock also flows in real time, so every
+ * hold-time measurement is checked with `stillHeld`, and a slow run fails loudly instead of
+ * passing on a settled row. CSP-clean is checked by the fixture at teardown for every test
+ * (AD-19).
  */
 import { expect, expectNoA11yViolations, failApi, test, type Seed, type Task } from '../fixtures.ts'
 import type { Page } from '@playwright/test'
@@ -23,6 +24,18 @@ const tick = (page: Page, text: string) =>
 const del = (page: Page, text: string) =>
   page.getByRole('button', { name: `Delete "${text}"`, exact: true })
 const row = (page: Page, text: string) => rows(page).filter({ has: del(page, text) })
+
+const HOLD_ENDED =
+  'hold ended before the measurement: the run is too slow for the 3 s wall-clock hold (AD-8 forbids pausing the page clock)'
+
+/**
+ * Asserts the `li.held` row with `text` is present. The page clock also flows in real time, so
+ * the 3 s hold can end mid-test on a slow run; call this before and after every hold-time
+ * measurement, so a measurement never silently reads a settled row.
+ */
+async function stillHeld(page: Page, text: string): Promise<void> {
+  await expect(held(page).filter({ has: del(page, text) }), HOLD_ENDED).toHaveCount(1)
+}
 
 /** `count` open tasks, oldest first: "task 0" … */
 async function seedOpen(seed: Seed, count = 30): Promise<Task[]> {
@@ -89,6 +102,7 @@ test('visible on add: on a list scrolled to the bottom, the new row sits directl
 
   await add(page, 'fresh')
 
+  await stillHeld(page, 'fresh')
   await expect(rows(page).first()).toHaveClass(/\bheld\b/)
   const header = await banner(page)
   const box = (await held(page).boundingBox())!
@@ -96,7 +110,7 @@ test('visible on add: on a list scrolled to the bottom, the new row sits directl
   expect(box.y + box.height).toBeLessThanOrEqual(600)
   await expect(held(page)).toBeInViewport({ ratio: 1 })
   expect(await scrollY(page)).toBe(before)
-  await expect(held(page)).toHaveCount(1)
+  await stillHeld(page, 'fresh')
 })
 
 test('settles: after 3 s the row is the last open task, and the page has not scrolled', async ({
@@ -156,7 +170,7 @@ test('focused held control: the tick keeps focus and is scrolled fully into view
   await expect(tick(page, 'fresh')).toBeFocused()
   // Tabbing to the sticky held row never scrolls the page.
   expect(await scrollY(page)).toBe(before)
-  await expect(held(page)).toHaveCount(1)
+  await stillHeld(page, 'fresh')
 
   await page.clock.runFor(HOLD_MS)
 
@@ -210,11 +224,12 @@ test('toast below held: an action-error toast sits 8 px below the held row, neve
 
   await tick(page, 'task 29').click()
   await expect(toast(page)).toHaveText(ACTION_FAILED)
-  await expect(held(page)).toHaveCount(1)
+  await stillHeld(page, 'fresh')
 
   const heldBox = (await held(page).boundingBox())!
   const toastBox = (await toast(page).boundingBox())!
   const inputBox = (await input(page).boundingBox())!
+  await stillHeld(page, 'fresh')
   expect(toastBox.y).toBeGreaterThanOrEqual(heldBox.y + heldBox.height + 8 - 1)
   expect(toastBox.y).toBeLessThanOrEqual(heldBox.y + heldBox.height + 8 + 1)
   expect(toastBox.y).toBeGreaterThanOrEqual(inputBox.y + inputBox.height)
@@ -260,13 +275,14 @@ test('clearance: a control focused below the fold clears the header, the held ro
   // margin alone must land it just below the header, the held row, the gap and the toast.
   await tick(page, 'task 15').focus()
   await tick(page, 'task 15').evaluate((el) => el.scrollIntoView({ block: 'start' }))
-  await expect(held(page)).toHaveCount(1)
+  await stillHeld(page, 'fresh')
   await expect(toast(page)).toHaveCount(1)
 
   const header = await banner(page)
   const heldBox = (await held(page).boundingBox())!
   const toastBox = (await toast(page).boundingBox())!
   const box = (await tick(page, 'task 15').boundingBox())!
+  await stillHeld(page, 'fresh')
   const expected = header.y + header.height + heldBox.height + 8 + toastBox.height
   expect(Math.abs(box.y - expected)).toBeLessThanOrEqual(2)
   expect(box.y).toBeGreaterThanOrEqual(toastBox.y + toastBox.height - 1)
@@ -286,8 +302,9 @@ for (const width of [320, 1280]) {
     await add(page, 'fresh')
     await tick(page, 'task 1').click()
     await expect(toast(page)).toHaveText(ACTION_FAILED)
-    await expect(held(page)).toHaveCount(1)
+    await stillHeld(page, 'fresh')
 
     await expectNoA11yViolations(page)
+    await stillHeld(page, 'fresh')
   })
 }

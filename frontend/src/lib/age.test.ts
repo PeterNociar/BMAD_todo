@@ -1,16 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ageColour,
-  ageLabel,
-  contrastRatio,
-  fitGamut,
-  hexToOklch,
-  hexToRgb,
-  nudgeContrast,
-  THEME_SURFACES,
-  toHex,
-  type Theme,
-} from './age'
+import { ageColour, ageLabel, nudgeContrast, THEME_SURFACES, type Theme } from './age'
+import { contrastRatio, fitGamut, hexToOklch, hexToRgb, toHex } from './oklch'
 
 const NOW = Date.parse('2026-10-01T12:00:00.000Z')
 const S = 1_000
@@ -225,15 +215,5 @@ describe('nudgeContrast', () => {
     const nudged = nudgeContrast(freshDark, ['#AAAAAA'], 'dark')
     expect(nudged).toMatch(/^#[0-9A-F]{6}$/)
     expect(hexToOklch(nudged).l).toBeGreaterThan(0.99)
-  })
-})
-
-describe('colour helpers', () => {
-  it.each(['#FFF', 'FFFFFF', '#GGGGGG', '#NANNANNAN', ''])('hexToRgb rejects %j', (hex) => {
-    expect(() => hexToRgb(hex)).toThrow(/#RRGGBB/)
-  })
-
-  it('fitGamut clamps a negative chroma to 0 rather than flipping the hue', () => {
-    expect(fitGamut({ l: 0.6, c: -0.1, h: 155 })).toEqual({ l: 0.6, c: 0, h: 155 })
   })
 })

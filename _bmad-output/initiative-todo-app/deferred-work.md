@@ -49,3 +49,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-age-nudge/story-hold-timer-in-the-store-plan.md`
   summary: `load()` on a list that is already ready sets `loadState` back to `loading` but doesn't pause a running 3 s hold countdown, so a reload during a hold could end it while the list shows loading.
   evidence: Unreachable today: `load()` runs only on mount and from the load-failure Retry, both before the list is ready. Epic 3's `retry()` or polling should cancel or restart the countdown when it re-enters loading (low).
+- source_plan: `_bmad-output/initiative-todo-app/epic-age-nudge/story-refactor-sweep-plan.md`
+  summary: Resolved by entry 2.6: toasts over the held row (the list-rows entry), closed by entry 2.5.
+  evidence: The toast stack sits at `top: calc(100% + var(--held-height, 0px))`, and `--held-height` is the held row plus the 8 px gap. `e2e/tests/hold.spec.ts` "toast below held" checks the toast lands 8 px (±1) below the held row and never over the input, and "no held row" checks it stays at the list top otherwise.

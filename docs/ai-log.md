@@ -627,3 +627,24 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
   - Cross-browser runs of `overflow: clip` and `overflow-anchor`: E2E is Chrome-only by design.
   - Capping the held row on short viewports.
   - Querying the held `li` some other way than by its class.
+
+## Ticket 2.6 — Refactor sweep
+
+**Agents.** The dev persona (bmad-build) planned the sweep from the epic's build records, and the user picked the scope: an e2e Prettier config, ignoring `.vitest/`, the `age.ts`/`oklch.ts` split and a shared hold guard in E2E. A Claude Code subagent (Claude Opus) implemented it from the plan alone; the plan's `context:` was empty.
+
+**Prompt that worked.** The same prompt as earlier tickets. The Code Map named the 2.2 blocker (`tsconfig.node.json` demands explicit extensions on relative imports, and `tests/theme-surfaces.test.ts` pulls `age.ts` in) and offered two ways out, so the split needed no exploration.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check` with `tsc -p tsconfig.node.json`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e Prettier check and typecheck, the rebuilt test stack with Playwright on the system Chrome, and the rebuilt app profile.
+
+**What was built.**
+- `e2e/` gets `prettier` (`^3.9.9`, the frontend's), an `.prettierrc` with the frontend's options and no Svelte plugin, and `format` / `format:check`. One mechanical pass, in its own commit, reformatted `fixtures.ts` (one signature) and `tests/hold.spec.ts` (double quotes and semicolons left by an earlier default-options reformat); every other file was already clean.
+- `frontend/.gitignore` ignores `.vitest/`, the JSON report the rtk test wrapper writes.
+- `lib/oklch.ts` now holds the OKLab/OKLCH conversion, `fitGamut`, `toHex`, `hexToRgb`, `hexToOklch`, `relativeLuminance` and `contrastRatio`, moved verbatim. `lib/age.ts` keeps the labels, `ageColour`, `nudgeContrast`, `THEME_SURFACES` and the endpoints, and imports `./oklch`. The two maths tests (`hexToRgb` rejects, `fitGamut` clamps a negative chroma) moved to `oklch.test.ts`; every other test stayed in `age.test.ts`, with only its imports changed.
+- `tsconfig.node.json` uses `module: "esnext"` with `moduleResolution: "bundler"`, so the extensionless `./oklch` that `tests/theme-surfaces.test.ts` pulls in typechecks. Vite resolves the imports at run time either way, and `src/`'s import style is unchanged.
+- `hold.spec.ts` has `stillHeld(page, text)`: it asserts the `li.held` row with that text is present, failing with "hold ended before the measurement: the run is too slow for the 3 s wall-clock hold (AD-8 forbids pausing the page clock)". It replaces every inline `toHaveCount(1)` and also runs after each set of hold-time box reads and after the axe scan.
+- **Results:** 329 Vitest tests pass, with coverage at 98.88% statements, 95.32% branches, 100% functions and 99.59% lines against the 70% gate. Check, lint, Prettier and build are green. All 75 E2E tests pass, and `hold.spec.ts` passed three repeats in a row. The app profile rebuilt healthy, with `:8081` serving the app and `/api/health` at 200.
+
+**What AI decided beyond the plan.**
+- `stillHeld` runs before and after the hold-time reads, not only before: a check after a measurement is what proves the hold was still on while it was taken, and a check before turns a `boundingBox` timeout on a missing row into the clear message.
+- The "Exported for tests and story 2.3" notes went from the functions `age.ts` now imports; `hexToOklch` keeps "For tests and review".
+- A mutation run, a `runFor(3_000)` slipped in before a `stillHeld`, showed the test failing with the "too slow" message.
