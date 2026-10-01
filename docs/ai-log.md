@@ -204,3 +204,46 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - `maxlength`, because the input has none (AD-12).
   - Inline-edit keys, because editing is not in scope.
   - The Retry prop seam, because 1.9 wires `tasks.retry()`.
+
+## Ticket 8 — The task store
+
+**Agents.** The dev persona (bmad-build) planned the ticket. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine and EXPERIENCE.md as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets: "Read <plan> fully and implement it; the plan is the sole source of truth. Load every file listed in its frontmatter `context:` before you start." The plan's Design Notes fixed the model ahead of time: the view is the confirmed state with the pending ops folded over it, and because each task sends one op at a time, a failure always hits the head of the queue, so cutting the queue there leaves exactly the confirmed state.
+
+**MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, and the plan's grep for importers of `lib/api.ts`.
+
+**What was built.**
+- `lib/tasks.svelte.ts`: `createTasks()` and the `tasks` singleton. Each entry is `{key, confirmed, base, pending, inFlight}`. `rows` is derived: the held row first, then `sortTasks` of the rest.
+- A per-task pump. It sends the head op only when nothing is in flight and the entry has a server id, so ops on an unconfirmed add wait for its POST.
+- Rollback: a failed op clears that task's queue and raises one `action_failed` toast. A failed add removes the row, clears the hold if it was that row, picks `add_too_long` or `add_failed`, and rejects with `{text}`, or `{text: null}` when ops were queued behind it.
+- Success announcements go through `toasts.announce`, once per action, when the change is applied. A delete that leaves the list empty passes `listEmpty`.
+
+**Test generation.** The AI wrote one test per matrix row against a mocked `lib/api.ts`. Each api call returns its own deferred promise, so a test settles requests in any order. It also added tests for FIFO order within a task, independence across tasks, the held row's position, and a reactivity check inside `$effect.root`. The AI checked that the tests can fail with deliberate breaks, which it then reverted: removing the in-flight guard, the `{text: null}` rule, clearing the hold, or putting the held row first each failed a test. Shifting only the failed op instead of clearing the queue survived the first suite, so the AI added a test where the head fails with two ops behind it.
+
+**Debugging with AI.** Svelte's deep state proxy means an object pushed into the entries array is not the object that is tracked. The store therefore looks every entry up by key before mutating it, which also handles an entry that disappeared while its request was in flight.
+
+**What AI decided beyond the plan.**
+- `load()` returns a promise, so callers and tests can await it. A failure resolves it silently.
+- Unticking the held task leaves the hold in place; only tick and remove clear it, as the plan says.
+- A failed add keeps a newer add's hold.
+- The provisional base of an unconfirmed add uses an empty `id`. `Row.id` comes from `confirmed`, so it is `null` until the POST returns.
+
+**What AI missed.**
+- `crypto.randomUUID` exists only in a secure context. Phone access through `APP_BIND` on a Tailscale IP serves plain http, so `add()` threw a TypeError and nothing was added.
+- The GET/POST ordering that drops a confirmed add: if an add is confirmed while the first GET is in flight, the plain replace in `load()` drops it, or duplicates it under a new key.
+
+**Review.** Four lenses produced about 30 findings, each checked against the code. The plan's grep confirmed that only `App.svelte` and `tasks.svelte.ts` import the api.
+- **Patched:**
+  - The key falls back to a module counter (`local-N`) when `crypto.randomUUID` is unavailable.
+  - `listEmpty` is passed only once the list has loaded (`loadState === 'ready'`), so deleting the last unconfirmed add during loading doesn't announce the empty state.
+  - The announce test was misnamed: success is announced once when the change is applied, and nothing more follows a rollback. It now also covers a failed add.
+  - Three missing tests: a failed untick rolls back to done; a failed tick queued on a confirmed add rolls back to the server Task, with the server `added_at`; the held row stays first after its POST confirms with a later `added_at`.
+- **Deferred to 1.12:**
+  - `load()` dropping or duplicating an add that is confirmed while the first GET is in flight.
+  - `load()` re-entrancy.
+
+  1.12 replaces the plain replace with the AD-10 merge.
+- **Rejected:**
+  - 404 handling, because AD-11 belongs to 1.12.
+  - Wrapping `add`'s `{text}` rejection in an Error, because AD-9 specifies that shape.
