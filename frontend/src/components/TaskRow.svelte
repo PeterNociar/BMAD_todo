@@ -4,16 +4,31 @@
   // direct child; this component fills it. The store announces and toasts (AD-17); focus moves
   // only through lib/focus.ts (AD-18). The age is recomputed from `clock.now` (AD-8): the
   // visible label is aria-hidden, and a visually hidden span speaks it in words right after the
-  // task text, after a comma so the two never run together. Neither is a live region. The age bar's slot (left padding) stays empty for now.
-  import { ageLabel } from '../lib/age'
+  // task text, after a comma so the two never run together. Neither is a live region. Open
+  // rows also show the age bar (DESIGN age-bar), an aria-hidden 3px strip in the 15px left
+  // inset. Its colour reaches CSS as `--age-colour`, set through the CSSOM (`style.setProperty`):
+  // the CSP has no 'unsafe-inline' (AD-19). The label and the colour come from one read of
+  // `clock.now`, so they never disagree (EXPERIENCE › Age Nudge).
+  import { ageColour, ageLabel } from '../lib/age'
   import { clock } from '../lib/clock.svelte'
   import { returnToInput } from '../lib/focus'
   import { tasks, type Row } from '../lib/tasks.svelte'
 
   let { row }: { row: Row } = $props()
 
+  let bar: HTMLSpanElement | null = $state(null)
+
   const done = $derived(row.completed_at !== null)
-  const age = $derived(ageLabel(row.completed_at ?? row.added_at, clock.now, done))
+  /** The one `clock.now` snapshot both the label and the colour are derived from. */
+  const now = $derived(clock.now)
+  const age = $derived(ageLabel(row.completed_at ?? row.added_at, now, done))
+  // Light only: epic-everywhere-and-handed-in switches this argument to 'dark' under the dark
+  // theme (its Notes record the touch point).
+  const colour = $derived(ageColour(row.added_at, now, done, 'light'))
+
+  $effect(() => {
+    if (bar && colour) bar.style.setProperty('--age-colour', colour)
+  })
   const tickName = $derived(done ? `Mark "${row.text}" not done` : `Mark "${row.text}" done`)
 
   function toggle(): void {
@@ -29,6 +44,9 @@
 </script>
 
 <div class="task-row" class:done>
+  {#if !done}
+    <span class="age-bar" aria-hidden="true" data-age-bar bind:this={bar}></span>
+  {/if}
   <button type="button" class="tick" data-row-control="tick" aria-label={tickName} onclick={toggle}>
     <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16">
       {#if done}
@@ -73,11 +91,23 @@
   /* Padding 8 / 12 / 8 / 15 (the 3px age-bar slot plus 12px); contents 10px apart. */
   .task-row {
     --line: calc(0.875rem * var(--line-height-body));
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: var(--space-4);
     padding: var(--space-3) var(--space-5) var(--space-3) var(--space-row-inset-left);
     color: var(--color-text-primary);
+  }
+
+  /* DESIGN age-bar: full row height on the left edge, inside the 15px inset; open rows only. */
+  .age-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--space-age-bar);
+    /* Transparent until the effect sets the colour, so the first frame is deliberate. */
+    background: var(--age-colour, transparent);
   }
 
   .done .text {
