@@ -56,7 +56,7 @@ flowchart LR
   M --> DB[(PostgreSQL)]
 ```
 
-Arrows are the only dependencies allowed. Nothing points back up the chain. The composition roots (`app/main.py`, `App.svelte`) may import anything, and `routers/health.py` and `routers/testing.py` reach `db.py` and `models/` through `deps.py`.
+Arrows are the only dependencies allowed. Nothing points back up the chain. The composition roots (`app/main.py`, `App.svelte`) may import anything, and `routers/health.py` and `routers/testing.py` may import `db.py` (`get_session`) and `models/` directly. `routers/testing.py` also imports `clock.py` and `services/testing_task_service.py`, because it builds its own service (AD-14).
 
 ## Invariants & Rules
 
@@ -176,12 +176,13 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 
 ### AD-14 — Test-only seeding router, structurally gated [ADOPTED]
 
-- **Binds:** NFR-7; `routers/testing.py`, `app/main.py`, the E2E suite
-- **Prevents:** seeding that bypasses the models; test endpoints reachable in a real run
-- **Rule:** `POST /api/test/tasks` (accepts `text`, `added_at`, `completed_at`), `POST /api/test/reset` and `POST /api/test/clock` (sets or clears an offset on the backend `Clock`) live in `routers/testing.py`. 
+- **Binds:** NFR-7; `routers/testing.py`, `services/testing_task_service.py`, `app/main.py`, the E2E suite
+- **Prevents:** seeding that bypasses the models; test endpoints reachable in a real run; test-only methods shipped on production services or models
+- **Rule:** `POST /api/test/tasks` (accepts `text`, `added_ago_ms`, `completed_ago_ms`), `POST /api/test/reset` and `POST /api/test/clock` (sets or clears an offset on the backend `Clock`) live in `routers/testing.py`. 
   - **Bodies:** `POST /api/test/clock` takes `{"offset_ms": int}`, where 0 clears it. `POST /api/test/tasks` takes `{"text", "added_ago_ms", "completed_ago_ms" | null}`, relative to the server clock including the offset, and returns the Task. `POST /api/test/reset` deletes all tasks **and** resets the offset to 0.
   - **E2E helpers:** `seed(...)` runs before `page.goto` or is followed by a reload. `advance(ms)` calls `page.clock.fastForward(ms)` and adds `ms` to the server offset. E2E runs with one worker.
- The router is imported and mounted only when `APP_ENV=test`, and only the compose `test` profile sets that. Seeding goes through the model layer. A backend test asserts that `/api/test/*` returns `404` under the default config.
+  - **Test-only use cases:** `seed` and `remove_all` live on `TestingTaskService(TaskService)` in `services/testing_task_service.py`, never on `TaskService` or the `Task` model. Only `routers/testing.py` imports that module, and it builds the service with its own `get_testing_task_service()` provider, so `deps.py` never imports test code.
+  - **Gate:** The router is imported and mounted only when `APP_ENV=test`, and only the compose `test` profile sets that, so under the default config no test-only module is even imported. Seeding goes through the model layer. Backend tests assert that `/api/test/*` returns `404` under the default config, and that building the default app in a fresh interpreter loads neither `routers/testing.py` nor `services/testing_task_service.py`.
 
 ### AD-15 — Schema changes only through Alembic, with a migration guard test [ADOPTED]
 
@@ -252,7 +253,7 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 - **Prevents:** a mix of sync and async sessions; services built in different ways; tests patching module globals
 - **Rule:**
   - `app/db.py` owns `make_engine()` and `get_session()`, which yields a sync `Session` on the engine that `create_app` puts on `app.state` (AD-21), using the `postgresql+psycopg://` URL.
-  - `app/deps.py` owns `get_clock()` and `get_task_service()`. Routers receive `TaskService` only through `Depends(get_task_service)`.
+  - `app/deps.py` owns `get_clock()` and `get_task_service()`. Routers receive `TaskService` only through `Depends(get_task_service)`. The one exception is `routers/testing.py`, which owns `get_testing_task_service()` for `TestingTaskService` (AD-14).
   - Tests swap the session and the clock through `app.dependency_overrides`.
 
 ### AD-21 — Backend configuration is read only through Pydantic Settings
@@ -353,7 +354,7 @@ erDiagram
       db.py  deps.py               # engine/session, dependency providers (AD-20)
       clock.py                     # Clock dependency (AD-7)
       routers/tasks.py  routers/health.py  routers/testing.py
-      services/task_service.py
+      services/task_service.py  services/testing_task_service.py   # the latter test-only (AD-14)
       models/task.py
       schemas/task.py
     tests/
