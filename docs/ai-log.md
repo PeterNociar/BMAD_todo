@@ -307,3 +307,51 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - Keeping the second failed text, because EXPERIENCE accepts that it is dropped.
   - Deferring JetBrains Mono until its first consumer, because the age labels arrive in 1.10 and epic 2.
 - **Deferred:** typing during the first load stays with 1.12.
+
+## Ticket 12 — Store sync
+
+**Agents.** The dev persona (bmad-build) planned the ticket. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets: "Read <plan> fully and implement it; the plan is the sole source of truth. Load every file listed in its frontmatter `context:` before you start." The plan spelled out the six merge rules and the POST-meets-GET rule, so the merge became one function that follows them in order.
+
+**MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Vitest with coverage, `vite build`, and the E2E suite against the compose `test` stack.
+
+**What was built.**
+- `lib/tasks.svelte.ts`:
+  - A `seq` counter, bumped on every confirmed add, tick, untick and delete, and on every 404 removal. Each entry carries the `stamp` that confirmed it.
+  - Tombstones: a plain `Map<id, seq>`, left by confirmed deletes and 404 removals, pruned once a GET sent at S ≥ their seq has merged.
+  - `refresh()`: records S, keeps one GET in flight and at most one queued behind it. Any successful GET sets `ready`. `load()` sets `loading` and goes through `refresh()`.
+  - `merge(server, S)`: matches by `confirmed.id` only. Entries stamped ≤ S take the server Task (or go), newer entries and unconfirmed adds stay, and unseen ids become entries keyed by id unless tombstoned after S. Pending ops stay on top.
+  - POST meets GET: the add's entry absorbs a GET-created entry with the same id, keeping the optimistic key and the hold, and appending that entry's ops.
+  - AD-11: a 404 on any op removes the entry with a tombstone and no toast.
+  - Recovery: a `network_error` or `unavailable` failure, on an add or an op, also requests a GET.
+- The resolution of the 1.8 deferred item (`load()` dropping or duplicating an add confirmed while the first GET is in flight, and `load()` re-entrancy).
+- `capture.spec.ts`: "type right after load" types right after `goto`, then checks the row survives the first GET and a reload.
+
+**Test generation.** The AI wrote one unit test per store matrix row, plus tests for a pruned tombstone, an untick 404 that clears the hold, the twin's ops queuing behind the add's own ops, no GET for non-recoverable failures, and no announcement on a merge. It checked that the tests can fail by applying eight deliberate breaks one at a time and reverting each one: ignoring stamps, ignoring tombstones, skipping the twin fold, treating 404 as an ordinary failure, dropping the recovery GET, letting the queue grow past one, sending while the twin's op is in flight, and keeping entries the server no longer lists. Every break failed at least one test. The changed E2E spec passed 15 runs in a row.
+
+**What AI decided beyond the plan.**
+- An entry created by a GET has a server id, so an op on it is sent at once. When the add's POST then returns the same id, that op is still in flight. Each op therefore carries an `n`, and a response finds its entry by `n`, not by key. The merged entry stays in flight until that op settles, so it never sends two requests at once.
+- A 404 removal also clears the hold if the removed task was held.
+- Tombstones and the merge's lookup maps are plain `Map`/`Set` with a scoped `svelte/prefer-svelte-reactivity` disable, because nothing renders them.
+
+**What AI missed.**
+- The twin fold overwrote the twin's newer state with the POST's creation state, so a twin whose tick had already settled showed open again.
+- The first version of the E2E spec didn't force the race, so it would also have passed on the 1.8 store.
+
+**Review.** Four lenses produced about 30 findings, each checked against the code.
+- **Patched:**
+  - The twin fold keeps the twin's `confirmed` state (GET-seen or op-confirmed), which is never older than the POST's. It uses the POST Task only when there is no twin.
+  - If the twin was deleted (tombstoned) before the POST returned that id, the add drops its row, clears its hold and resolves, with no toast.
+  - A merge that drops the held entry clears `heldKey`, as `bury` does.
+  - A failed op cuts the queue at that op, not at the head, so after a fold the add's own earlier ops survive and are sent.
+  - The queued GET runs whether the GET in flight resolved or threw, so the queue can never get stuck.
+  - Op ids are per store, like `seq` and the tombstones.
+  - The E2E spec now forces the race. It holds the first `GET /api/tasks` until the POST has returned 201, then answers with the pre-POST body (`[]`) or lets it reach the server. Both variants check one row whose element is never remounted, and that the row survives a reload. Both fail on the 1.8 store.
+  - Tests for each patch, plus: a late response for an entry a merge dropped is ignored (no toast, no row coming back, no tombstone from a late 404), and two `load()` calls while a GET is in flight run one more GET and resolve both.
+- **Rejected:**
+  - Matching 404s on `task_not_found` as well as on status, because every task-path 404 from the backend carries that code and the plan fixes the check on status.
+  - Polling, and `load()` after `ready`, because they belong to epic 3.
+  - The duplicate risk after a timed-out POST, because AD-9 accepts that a change that landed shows up, and EXPERIENCE returns the text to the input.
+
+**Residual risk.** After a fold, the twin's in-flight op reaches the server before the add's own queued ops, while the view applies the add's ops first, so the row can flip once when that op settles. This needs an op on the duplicate row in the brief window before the POST returns.

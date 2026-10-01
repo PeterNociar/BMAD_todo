@@ -468,6 +468,384 @@ describe('tick, untick, remove', () => {
   })
 })
 
+const X = task('id-x', 'x', '09:00:00')
+const NOT_FOUND = () => new ApiError('task_not_found', 404)
+
+describe('sync merge (AD-10)', () => {
+  it('keeps an add confirmed during the initial GET when the response lacks it', async () => {
+    const done = store.load()
+    const result = store.add('x')
+    const { key } = store.rows[0]
+    adds[0].resolve(X)
+    await result
+    lists[0].resolve([])
+    await done
+    expect(store.rows).toEqual([{ key, ...X }])
+    expect(store.heldKey).toBe(key)
+  })
+
+  it('keeps one row, under the optimistic key, when the response has the confirmed add', async () => {
+    const done = store.load()
+    const result = store.add('x')
+    const { key } = store.rows[0]
+    adds[0].resolve(X)
+    await result
+    lists[0].resolve([X, OLDER])
+    await done
+    expect(store.rows).toEqual([
+      { key, ...X },
+      { key: OLDER.id, ...OLDER },
+    ])
+    expect(store.heldKey).toBe(key)
+  })
+
+  it('folds a GET-created entry into the add when its POST returns the same id', async () => {
+    await loaded()
+    const result = store.add('x')
+    const { key } = store.rows[0]
+    const done = store.load()
+    lists[1].resolve([X])
+    await done
+    expect(store.rows.map((r) => r.key)).toEqual([key, X.id])
+
+    // An op on the GET-created row is in flight when the POST returns.
+    store.tick(X.id)
+    expect(api.tickTask).toHaveBeenCalledTimes(1)
+    adds[0].resolve(X)
+    await result
+    expect(store.rows).toHaveLength(1)
+    expect(store.rows[0]).toMatchObject({ key, id: X.id, completed_at: '2026-10-01T09:00:00.000Z' })
+    expect(store.heldKey).toBe(key)
+
+    const DONE_X = { ...X, completed_at: '2026-10-01T09:00:01.000Z' }
+    ticks[0].resolve(DONE_X)
+    await settle()
+    expect(store.rows).toEqual([{ key, ...DONE_X }])
+    expect(api.tickTask).toHaveBeenCalledTimes(1)
+    expect(error).not.toHaveBeenCalled()
+  })
+
+  it("appends the GET-created entry's ops after the add's own ops", async () => {
+    await loaded()
+    const result = store.add('x')
+    const { key } = store.rows[0]
+    store.tick(key)
+    const done = store.load()
+    lists[1].resolve([X])
+    await done
+    store.remove(X.id)
+    adds[0].resolve(X)
+    await result
+
+    // The GET entry's delete is in flight; the add's tick waits behind it.
+    expect(store.rows).toEqual([])
+    expect(api.tickTask).not.toHaveBeenCalled()
+    deletes[0].resolve()
+    await settle()
+    expect(store.rows).toEqual([])
+  })
+
+  it('keeps a task deleted after S gone when a stale GET still lists it', async () => {
+    await loaded(OPEN)
+    const done = store.load()
+    store.remove(OPEN.id)
+    deletes[0].resolve()
+    await settle()
+    lists[1].resolve([OPEN])
+    await done
+    expect(store.rows).toEqual([])
+  })
+
+  it("brings a pruned tombstone's task back from a GET sent after the delete", async () => {
+    await loaded(OPEN)
+    store.remove(OPEN.id)
+    deletes[0].resolve()
+    await settle()
+    const done = store.load()
+    lists[1].resolve([OPEN])
+    await done
+    expect(store.rows).toEqual([{ key: OPEN.id, ...OPEN }])
+  })
+
+  it('removes a confirmed task stamped ≤ S that a fresh GET no longer lists', async () => {
+    await loaded(OPEN, OLDER)
+    const done = store.load()
+    lists[1].resolve([OLDER])
+    await done
+    expect(store.rows).toEqual([{ key: OLDER.id, ...OLDER }])
+  })
+
+  it('keeps a tick confirmed after S when the GET shows the task open', async () => {
+    await loaded(OPEN)
+    const done = store.load()
+    store.tick(OPEN.id)
+    ticks[0].resolve(DONE_OPEN)
+    await settle()
+    lists[1].resolve([OPEN])
+    await done
+    expect(store.rows).toEqual([{ key: OPEN.id, ...DONE_OPEN }])
+  })
+
+  it('keeps pending ops applied and queued across a merge', async () => {
+    await loaded(OPEN)
+    store.tick(OPEN.id)
+    store.untick(OPEN.id)
+    store.tick(OPEN.id)
+    const renamed = { ...OPEN, text: 'buy oat milk' }
+    const done = store.load()
+    lists[1].resolve([renamed])
+    await done
+    expect(store.rows[0]).toMatchObject({
+      key: OPEN.id,
+      text: 'buy oat milk',
+      completed_at: '2026-10-01T09:00:00.000Z',
+    })
+
+    ticks[0].resolve({ ...renamed, completed_at: DONE_OPEN.completed_at })
+    await settle()
+    expect(api.untickTask).toHaveBeenCalledWith(OPEN.id)
+    unticks[0].resolve(renamed)
+    await settle()
+    expect(api.tickTask).toHaveBeenCalledTimes(2)
+    expect(store.rows[0].completed_at).not.toBeNull()
+  })
+
+  it('never announces on a merge', async () => {
+    await loaded(OPEN)
+    const done = store.load()
+    lists[1].resolve([OLDER])
+    await done
+    expect(announce).not.toHaveBeenCalled()
+  })
+})
+
+describe('sync review fixes', () => {
+  const DONE_X = { ...X, completed_at: '2026-10-01T09:00:01.000Z' }
+
+  /** An add whose POST is in flight, with its GET twin (key = id) already on screen. */
+  async function addWithTwin(): Promise<{ key: string; result: Promise<void> }> {
+    await loaded()
+    const result = store.add('x')
+    const { key } = store.rows[0]
+    const done = store.load()
+    lists[1].resolve([X])
+    await done
+    return { key, result }
+  }
+
+  it("keeps the twin's newer state when its tick settled before the POST returned", async () => {
+    const { key, result } = await addWithTwin()
+    store.tick(X.id)
+    ticks[0].resolve(DONE_X)
+    await settle()
+    adds[0].resolve(X)
+    await result
+    expect(store.rows).toEqual([{ key, ...DONE_X }])
+    expect(store.heldKey).toBe(key)
+  })
+
+  it('drops the add, with no toast, when its twin was deleted before the POST returned', async () => {
+    const { result } = await addWithTwin()
+    store.remove(X.id)
+    deletes[0].resolve()
+    await settle()
+    adds[0].resolve(X)
+    await expect(result).resolves.toBeUndefined()
+    expect(store.rows).toEqual([])
+    expect(store.heldKey).toBeNull()
+    expect(error).not.toHaveBeenCalled()
+  })
+
+  it('clears the hold when a merge drops the held entry', async () => {
+    await loaded()
+    const result = store.add('x')
+    adds[0].resolve(X)
+    await result
+    expect(store.heldKey).not.toBeNull()
+    const done = store.load()
+    lists[1].resolve([])
+    await done
+    expect(store.rows).toEqual([])
+    expect(store.heldKey).toBeNull()
+  })
+
+  it("keeps the add's earlier op when the twin's in-flight op fails after the fold", async () => {
+    await loaded()
+    const result = store.add('x')
+    const { key } = store.rows[0]
+    store.tick(key)
+    const done = store.load()
+    lists[1].resolve([X])
+    await done
+    // The twin shows open (no pending ops), so a tick on it is sent at once.
+    store.tick(X.id)
+    adds[0].resolve(X)
+    await result
+    expect(api.tickTask).toHaveBeenCalledTimes(1)
+
+    ticks[0].reject(new ApiError('unavailable', 503))
+    await settle()
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(api.tickTask).toHaveBeenCalledTimes(2)
+    expect(store.rows[0]).toMatchObject({ key, completed_at: '2026-10-01T09:00:00.000Z' })
+  })
+
+  it('ignores a late response for an entry a merge dropped', async () => {
+    await loaded(OPEN, OLDER)
+    store.tick(OPEN.id)
+    store.tick(OLDER.id)
+    let done = store.load()
+    lists[1].resolve([])
+    await done
+    expect(store.rows).toEqual([])
+
+    done = store.load()
+    ticks[0].resolve(DONE_OPEN)
+    ticks[1].reject(NOT_FOUND())
+    await settle()
+    expect(store.rows).toEqual([])
+    expect(error).not.toHaveBeenCalled()
+
+    // No tombstone from the late 404: a GET sent before it still brings the task back.
+    lists[2].resolve([OLDER])
+    await done
+    expect(store.rows).toEqual([{ key: OLDER.id, ...OLDER }])
+  })
+
+  it('runs at most one more GET for two loads while one is in flight, resolving both', async () => {
+    const first = store.load()
+    const second = store.load()
+    const third = store.load()
+    expect(api.listTasks).toHaveBeenCalledTimes(1)
+    lists[0].resolve([OPEN])
+    await first
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+    lists[1].resolve([OPEN, OLDER])
+    await Promise.all([second, third])
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+    expect(texts()).toEqual(['call bank', 'buy milk'])
+  })
+})
+
+describe('404s (AD-11)', () => {
+  it('treats a delete 404 as confirmed: gone, no toast, tombstoned', async () => {
+    await loaded(OPEN)
+    const done = store.load()
+    store.remove(OPEN.id)
+    deletes[0].reject(NOT_FOUND())
+    await settle()
+    expect(store.rows).toEqual([])
+    expect(error).not.toHaveBeenCalled()
+
+    lists[1].resolve([OPEN])
+    await done
+    expect(store.rows).toEqual([])
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+  })
+
+  it('removes a task on a tick 404, drops its queue, with no toast', async () => {
+    await loaded(OPEN, OLDER)
+    const done = store.load()
+    store.tick(OPEN.id)
+    store.untick(OPEN.id)
+    ticks[0].reject(NOT_FOUND())
+    await settle()
+    expect(store.rows).toEqual([{ key: OLDER.id, ...OLDER }])
+    expect(api.untickTask).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
+
+    lists[1].resolve([OPEN, OLDER])
+    await done
+    expect(texts()).toEqual(['call bank'])
+  })
+
+  it('removes a task on an untick 404 and clears its hold', async () => {
+    await loaded()
+    const result = store.add('x')
+    const { key } = store.rows[0]
+    adds[0].resolve(X)
+    await result
+    store.tick(key)
+    ticks[0].resolve({ ...X, completed_at: '2026-10-01T09:00:01.000Z' })
+    await settle()
+    store.untick(key)
+    unticks[0].reject(NOT_FOUND())
+    await settle()
+    expect(store.rows).toEqual([])
+    expect(store.heldKey).toBeNull()
+    expect(error).not.toHaveBeenCalled()
+  })
+})
+
+describe('recovery GET', () => {
+  it('rolls back with one toast and sends exactly one GET after a network error', async () => {
+    await loaded(OPEN)
+    store.tick(OPEN.id)
+    ticks[0].reject(new ApiError('network_error', null))
+    await settle()
+    expect(store.rows).toEqual([{ key: OPEN.id, ...OPEN }])
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(error).toHaveBeenCalledWith('action_failed')
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+  })
+
+  it('sends no GET for other failures', async () => {
+    await loaded(OPEN)
+    store.tick(OPEN.id)
+    ticks[0].reject(new ApiError('internal_error', 500))
+    await settle()
+    const result = store.add('long')
+    adds[0].reject(new ApiError('text_too_long', 422))
+    await expect(result).rejects.toEqual({ text: 'long' })
+    expect(api.listTasks).toHaveBeenCalledTimes(1)
+  })
+
+  it('caps a burst at one GET in flight plus one queued', async () => {
+    const C = task('id-c', 'post card', '06:00:00')
+    await loaded(OPEN, OLDER, C)
+    void store.load()
+    store.tick(OPEN.id)
+    store.tick(OLDER.id)
+    store.tick(C.id)
+    ticks.forEach((t) => t.reject(new ApiError('unavailable', 503)))
+    await settle()
+    expect(error).toHaveBeenCalledTimes(3)
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+
+    lists[1].resolve([OPEN, OLDER, C])
+    await settle()
+    expect(api.listTasks).toHaveBeenCalledTimes(3)
+    lists[2].resolve([OPEN, OLDER, C])
+    await settle()
+    expect(api.listTasks).toHaveBeenCalledTimes(3)
+  })
+
+  it('shows an add that landed despite a timed-out POST, keyed by id', async () => {
+    const result = store.add('x')
+    adds[0].reject(new ApiError('network_error', null))
+    await expect(result).rejects.toEqual({ text: 'x' })
+    expect(store.rows).toEqual([])
+    expect(api.listTasks).toHaveBeenCalledTimes(1)
+    lists[0].resolve([X])
+    await settle()
+    expect(store.rows).toEqual([{ key: X.id, ...X }])
+  })
+
+  it('sets ready on any successful GET, after a failed first load', async () => {
+    const done = store.load()
+    lists[0].reject(new ApiError('network_error', null))
+    await done
+    expect(store.loadState).toBe('loading')
+    const result = store.add('x')
+    adds[0].reject(new ApiError('unavailable', 503))
+    await expect(result).rejects.toEqual({ text: 'x' })
+    lists[1].resolve([OLDER])
+    await settle()
+    expect(store.loadState).toBe('ready')
+    expect(texts()).toEqual(['call bank'])
+  })
+})
+
 describe('reactivity', () => {
   it('re-runs an effect reading rows after an add', () => {
     const seen: string[][] = []
