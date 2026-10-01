@@ -627,3 +627,41 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
   - Cross-browser runs of `overflow: clip` and `overflow-anchor`: E2E is Chrome-only by design.
   - Capping the held row on short viewports.
   - Querying the held `li` some other way than by its class.
+
+## Ticket 2.6 — Refactor sweep
+
+**Agents.** The dev persona (bmad-build) planned the sweep from the epic's build records, and the user picked the scope: an e2e Prettier config, ignoring `.vitest/`, the `age.ts`/`oklch.ts` split and a shared hold guard in E2E. A Claude Code subagent (Claude Opus) implemented it from the plan alone; the plan's `context:` was empty.
+
+**Prompt that worked.** The same prompt as earlier tickets. The Code Map named the 2.2 blocker (`tsconfig.node.json` demands explicit extensions on relative imports, and `tests/theme-surfaces.test.ts` pulls `age.ts` in) and offered two ways out, so the split needed no exploration.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check` with `tsc -p tsconfig.node.json`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e Prettier check and typecheck, the rebuilt test stack with Playwright on the system Chrome, and the rebuilt app profile.
+
+**What was built.**
+- `e2e/` gets `prettier` (`^3.9.9`, the frontend's), an `.prettierrc` with the frontend's options and no Svelte plugin, and `format` / `format:check`. One mechanical pass, in its own commit, reformatted `fixtures.ts` (one signature) and `tests/hold.spec.ts` (double quotes and semicolons left by an earlier default-options reformat); every other file was already clean.
+- `frontend/.gitignore` ignores `.vitest/`, where the rtk CLI wrapper writes its Vitest JSON report, so wrapper runs never show as untracked.
+- `lib/oklch.ts` now holds the OKLab/OKLCH conversion, `fitGamut`, `toHex`, `hexToRgb`, `hexToOklch`, `relativeLuminance` and `contrastRatio`; only comments changed in the moved code. After review, `fitGamut` and `toHex` throw a `RangeError` on a non-finite L, C or H (and `fitGamut` on a chroma too large to step down, which used to loop forever), and `relativeLuminance` is no longer exported. `lib/age.ts` keeps the labels, `ageColour`, `nudgeContrast`, `THEME_SURFACES` and the endpoints, and imports `./oklch`. The two maths tests (`hexToRgb` rejects, `fitGamut` clamps a negative chroma) moved to `oklch.test.ts`; every other test stayed in `age.test.ts`, with only its imports changed. After review, `oklch.test.ts` also pins known contrast values (21 for black on white, 1 for a colour on itself), a `hexToOklch` → `toHex` round trip on the 14 DESIGN stops, a hue in [0, 360) where atan2 is negative, and the non-finite throws.
+- `tests/**/*.ts` moves to its own `tsconfig.tests.json`, which extends `tsconfig.node.json` with `module: "esnext"` and `moduleResolution: "bundler"`, so the extensionless `./oklch` that `tests/theme-surfaces.test.ts` pulls in typechecks. `npm run check` runs it, and `tsconfig.json` references it. The Node-run files (`vite.config.ts`, `vitest-setup.ts`, `eslint.config.js`) stay on `nodenext` in `tsconfig.node.json`, and `src/`'s import style is unchanged.
+- `hold.spec.ts` has `stillHeld(page, text)`: within 500 ms it asserts exactly one `li.held` row and that it holds `text`, failing with "no single held row for "<text>" — the 3 s hold may have ended (slow run; AD-8 forbids pausing the page clock)", the duration built from `HOLD_MS`. It returns the held row, and the measurements read that locator. It replaces every inline `toHaveCount(1)`, runs before every `runFor(HOLD_MS)` (including inside `animationsAfterSettle`), and after each set of hold-time box reads and the axe scan.
+- **Results:** 329 Vitest tests before the sweep (2.5's verification) and 329 after the split, since tests only moved; after the review fixes the run prints 356, at 98.89% statements, 95.69% branches, 100% functions and 99.59% lines. Before review, coverage was 98.88% statements, 95.32% branches, 100% functions and 99.59% lines against the 70% gate; check, lint, Prettier and build were green, all 75 E2E tests passed, and `hold.spec.ts` passed three repeats in a row (and again after the review fixes). The app profile rebuilt healthy, with `:8081` serving the app and `/api/health` at 200.
+
+**What AI decided beyond the plan.**
+- `stillHeld` runs before and after the hold-time reads: a check after a measurement is what proves the hold was still on while it was taken, and a check before turns a `boundingBox` timeout on a missing row into the clear message.
+- The "Exported for tests and story 2.3" notes went from the functions `age.ts` now imports; `hexToOklch` keeps "For tests and review".
+- A mutation run, a `runFor(3_000)` slipped in before a `stillHeld`, showed the test failing with the guard's message.
+
+**What AI missed.**
+- Settle tests ("settles", both motion tests, "no follow") that could pass after the hold had already ended on its own, because nothing checked the row was still held before `runFor(HOLD_MS)`.
+- A tsconfig fix that loosened checks for the Node-run files: putting all of `tsconfig.node.json` on bundler resolution would have let an extensionless import there typecheck and then fail at run time.
+
+**Review.** Four lenses produced about 30 findings, each checked against the code.
+- **Patched:**
+  - Guards on the settle tests: `stillHeld` before every `runFor(HOLD_MS)`.
+  - A stricter and faster `stillHeld`: exactly one held row, the returned locator used by the measurements, a 500 ms timeout, a message built from `HOLD_MS` that no longer blames a slow run for every missing row, and no redundant guard straight after `add()`.
+  - The tsconfig split: `tests/` on bundler resolution in `tsconfig.tests.json`, the Node-run files kept on `nodenext`.
+  - The non-finite guards in `oklch.ts`.
+  - `oklch.test.ts` basics.
+  - Honest comments: `fitGamut` says the stop tests live in `age.test.ts`, and `.gitignore` says what writes `.vitest/`.
+- **Rejected:**
+  - Enforcing `format:check` in CI or a hook: there is no CI, and the gap predates this ticket.
+  - A shared root Prettier config.
+  - The review diff leaving out the lockfile and deferred-work.md: by design.

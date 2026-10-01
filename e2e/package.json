@@ -6,6 +6,8 @@
   "scripts": {
     "test": "playwright test",
     "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "install:browsers": "playwright install chromium"
   },
   "engines": {
@@ -15,6 +17,7 @@
     "@axe-core/playwright": "~4.13.0",
     "@playwright/test": "~1.63.0",
     "@types/node": "^24.19.0",
+    "prettier": "^3.9.9",
     "typescript": "~6.0.2"
   }
 }
