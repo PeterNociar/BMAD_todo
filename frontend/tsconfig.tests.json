@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tests.tsbuildinfo",
+    /* tests/ import src/ modules, whose extensionless relative imports Vite resolves; the
+       Node-run config files stay on nodenext in tsconfig.node.json */
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["tests/**/*.ts"]
+}

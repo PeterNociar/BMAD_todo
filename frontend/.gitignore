@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# rtk test wrapper output
+# The rtk CLI wrapper writes its Vitest JSON report to .vitest/; ignored so wrapper runs never
+# show as untracked.
 .vitest/

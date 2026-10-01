@@ -33,15 +33,23 @@ function inGamut(colour: Oklch): boolean {
 /** The chroma step DESIGN.md's rendered stops were produced with. */
 const CHROMA_STEP = 0.002
 
+/** Throws a RangeError unless L, C and H are all finite numbers. */
+function assertFinite({ l, c, h }: Oklch): void {
+  if (![l, c, h].every(Number.isFinite)) throw new RangeError(`Non-finite OKLCH: ${l} ${c} ${h}`)
+}
+
 /**
  * Brings `colour` inside sRGB by reducing its chroma, keeping L and H, in `CHROMA_STEP` steps.
- * A negative chroma is clamped to 0 first. The tests hold DESIGN.md's 14 stored stops within
- * ±2/255 per channel, and they currently match exactly. Bisection to the exact gamut edge
+ * A negative chroma is clamped to 0 first. Throws a RangeError on a non-finite L, C or H, or a
+ * chroma too large to step down. `age.test.ts` holds DESIGN.md's 14 stored stops within ±2/255
+ * per channel, and they currently match exactly. Bisection to the exact gamut edge
  * puts light 12h at `#8F7500`, 6/255 off the stored `#8F7506` on blue, and no bisection margin
  * lands every stop within ±2/255 in both themes.
  */
 export function fitGamut(colour: Oklch): Oklch {
+  assertFinite(colour)
   let c = Math.max(0, colour.c)
+  if (c - CHROMA_STEP === c) throw new RangeError(`Chroma too large to fit: ${c}`)
   while (c > 0 && !inGamut({ ...colour, c })) c = Math.max(0, c - CHROMA_STEP)
   return { ...colour, c }
 }
@@ -57,8 +65,12 @@ function decode(v: number): number {
   return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
 }
 
-/** An in-gamut OKLCH colour as `#RRGGBB`, upper case. */
+/**
+ * An in-gamut OKLCH colour as `#RRGGBB`, upper case. Throws a RangeError on a non-finite L, C
+ * or H.
+ */
 export function toHex(colour: Oklch): string {
+  assertFinite(colour)
   const hex = oklchToLinearSrgb(colour)
     .map((v) =>
       Math.round(encode(v) * 255)
@@ -77,7 +89,7 @@ export function hexToRgb(hex: string): Rgb {
 }
 
 /** WCAG 2.1 relative luminance of a `#RRGGBB` colour. */
-export function relativeLuminance(hex: string): number {
+function relativeLuminance(hex: string): number {
   const [r, g, b] = hexToRgb(hex).map((v) => decode(v / 255))
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }

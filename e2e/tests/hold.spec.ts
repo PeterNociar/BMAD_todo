@@ -25,16 +25,21 @@ const del = (page: Page, text: string) =>
   page.getByRole('button', { name: `Delete "${text}"`, exact: true })
 const row = (page: Page, text: string) => rows(page).filter({ has: del(page, text) })
 
-const HOLD_ENDED =
-  'hold ended before the measurement: the run is too slow for the 3 s wall-clock hold (AD-8 forbids pausing the page clock)'
+/** The `li.held` row holding `text`. */
+const heldRow = (page: Page, text: string) => held(page).filter({ has: del(page, text) })
 
 /**
- * Asserts the `li.held` row with `text` is present. The page clock also flows in real time, so
- * the 3 s hold can end mid-test on a slow run; call this before and after every hold-time
- * measurement, so a measurement never silently reads a settled row.
+ * Asserts there is exactly one held row and that it holds `text`, and returns it for the
+ * measurements to read. The page clock also flows in real time, so the hold can end mid-test on
+ * a slow run; call this before every `runFor(HOLD_MS)` and around every hold-time measurement,
+ * so neither silently reads a settled row. A short timeout: a held row never comes back.
  */
-async function stillHeld(page: Page, text: string): Promise<void> {
-  await expect(held(page).filter({ has: del(page, text) }), HOLD_ENDED).toHaveCount(1)
+async function stillHeld(page: Page, text: string) {
+  const message = `no single held row for "${text}" — the ${HOLD_MS / 1000} s hold may have ended (slow run; AD-8 forbids pausing the page clock)`
+  await expect(held(page), message).toHaveCount(1, { timeout: 500 })
+  const row = heldRow(page, text)
+  await expect(row, message).toHaveCount(1, { timeout: 500 })
+  return row
 }
 
 /** `count` open tasks, oldest first: "task 0" … */
@@ -73,10 +78,11 @@ async function add(page: Page, text: string): Promise<void> {
 const banner = async (page: Page) => (await page.getByRole('banner').boundingBox())!
 
 /**
- * Ends the hold and lists the durations of the row animations (targets inside
- * `[data-task-row]`) running just after.
+ * Checks `text` is still held, ends the hold and lists the durations of the row animations
+ * (targets inside `[data-task-row]`) running just after.
  */
-async function animationsAfterSettle(page: Page): Promise<number[]> {
+async function animationsAfterSettle(page: Page, text: string): Promise<number[]> {
+  await stillHeld(page, text)
   await page.clock.runFor(HOLD_MS)
   return page.evaluate(async () => {
     await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 40)))
@@ -102,13 +108,12 @@ test('visible on add: on a list scrolled to the bottom, the new row sits directl
 
   await add(page, 'fresh')
 
-  await stillHeld(page, 'fresh')
   await expect(rows(page).first()).toHaveClass(/\bheld\b/)
   const header = await banner(page)
-  const box = (await held(page).boundingBox())!
+  const box = (await heldRow(page, 'fresh').boundingBox())!
   expect(Math.abs(box.y - (header.y + header.height))).toBeLessThanOrEqual(1)
   expect(box.y + box.height).toBeLessThanOrEqual(600)
-  await expect(held(page)).toBeInViewport({ ratio: 1 })
+  await expect(heldRow(page, 'fresh')).toBeInViewport({ ratio: 1 })
   expect(await scrollY(page)).toBe(before)
   await stillHeld(page, 'fresh')
 })
@@ -122,6 +127,7 @@ test('settles: after 3 s the row is the last open task, and the page has not scr
   const before = await scrollTo(page, 'bottom')
   await add(page, 'fresh')
 
+  await stillHeld(page, 'fresh')
   await page.clock.runFor(HOLD_MS)
 
   await expect(held(page)).toHaveCount(0)
@@ -139,7 +145,7 @@ test.describe('reduced motion', () => {
     await open(page, 5)
     await add(page, 'fresh')
 
-    expect(await animationsAfterSettle(page)).toEqual([])
+    expect(await animationsAfterSettle(page, 'fresh')).toEqual([])
     await expect(rowTexts(page).last()).toHaveText('fresh')
   })
 })
@@ -149,7 +155,7 @@ test('normal motion: the settle animates the rows for about 200 ms', async ({ pa
   await open(page, 5)
   await add(page, 'fresh')
 
-  const durations = await animationsAfterSettle(page)
+  const durations = await animationsAfterSettle(page, 'fresh')
 
   expect(durations.length).toBeGreaterThan(0)
   for (const d of durations) expect(d).toBe(200)
@@ -196,6 +202,7 @@ test('no follow: settling to an off-screen place with focus in the input never s
   const before = await scrollTo(page, 0)
   await add(page, 'fresh')
 
+  await stillHeld(page, 'fresh')
   await page.clock.runFor(HOLD_MS)
 
   await expect(held(page)).toHaveCount(0)
@@ -224,9 +231,9 @@ test('toast below held: an action-error toast sits 8 px below the held row, neve
 
   await tick(page, 'task 29').click()
   await expect(toast(page)).toHaveText(ACTION_FAILED)
-  await stillHeld(page, 'fresh')
+  const fresh = await stillHeld(page, 'fresh')
 
-  const heldBox = (await held(page).boundingBox())!
+  const heldBox = (await fresh.boundingBox())!
   const toastBox = (await toast(page).boundingBox())!
   const inputBox = (await input(page).boundingBox())!
   await stillHeld(page, 'fresh')
@@ -275,11 +282,11 @@ test('clearance: a control focused below the fold clears the header, the held ro
   // margin alone must land it just below the header, the held row, the gap and the toast.
   await tick(page, 'task 15').focus()
   await tick(page, 'task 15').evaluate((el) => el.scrollIntoView({ block: 'start' }))
-  await stillHeld(page, 'fresh')
+  const fresh = await stillHeld(page, 'fresh')
   await expect(toast(page)).toHaveCount(1)
 
   const header = await banner(page)
-  const heldBox = (await held(page).boundingBox())!
+  const heldBox = (await fresh.boundingBox())!
   const toastBox = (await toast(page).boundingBox())!
   const box = (await tick(page, 'task 15').boundingBox())!
   await stillHeld(page, 'fresh')
