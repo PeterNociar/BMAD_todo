@@ -85,10 +85,15 @@ function send(op: Op, id: string): Promise<Task | null> {
   return deleteTask(id).then(() => null)
 }
 
+/** How long a new task stays held under the input before it settles (EXPERIENCE, FR-4). */
+export const HOLD_MS = 3_000
+
 export function createTasks() {
   let entries = $state<Entry[]>([])
   let loadState = $state<LoadState>('loading')
   let heldKey = $state<string | null>(null)
+  /** The new-task hold's countdown (FR-4): 3 s, started only once the list is ready. */
+  let holdTimer: ReturnType<typeof setTimeout> | null = null
 
   /** Increments on every confirmed mutation (AD-10). */
   let seq = 0
@@ -107,6 +112,34 @@ export function createTasks() {
     const rest = sortTasks(visible.filter((r) => r !== held))
     return held ? [held, ...rest] : rest
   })
+
+  /** Sets or clears the hold, cancelling any running countdown, then starts a new one if ready. */
+  function setHeld(key: string | null): void {
+    if (holdTimer !== null) clearTimeout(holdTimer)
+    holdTimer = null
+    heldKey = key
+    startHoldTimer()
+  }
+
+  /**
+   * Starts the 3 s countdown for the current hold unless one is running or the list hasn't
+   * loaded: a hold taken while loading counts down from the first successful GET. `setHeld`
+   * cancels the timer whenever the hold changes; the key check is a second guard so a stray
+   * timer can never end a newer hold.
+   */
+  function startHoldTimer(): void {
+    if (heldKey === null || holdTimer !== null || loadState !== 'ready') return
+    const key = heldKey
+    holdTimer = setTimeout(() => {
+      holdTimer = null
+      if (heldKey === key) heldKey = null
+    }, HOLD_MS)
+  }
+
+  /** Ends the hold early if `key` holds it (tick, delete, a failed add, bury, a merge drop). */
+  function releaseHold(key: string): void {
+    if (heldKey === key) setHeld(null)
+  }
 
   /** Always look entries up by key: the state proxy, not a raw object, must be mutated. */
   const find = (key: string) => entries.find((e) => e.key === key)
@@ -135,7 +168,7 @@ export function createTasks() {
     if (!entry?.confirmed) return
     tombstones.set(entry.confirmed.id, ++seq)
     drop(key)
-    if (heldKey === key) heldKey = null
+    releaseHold(key)
   }
 
   function settle(n: number, task: Task | null): void {
@@ -185,7 +218,7 @@ export function createTasks() {
     if (kind === 'untick' && row.completed_at === null) return
 
     entry.pending.push({ kind, at: clock.sample(), n: ++opCount })
-    if (kind !== 'untick' && heldKey === key) heldKey = null
+    if (kind !== 'untick') releaseHold(key)
 
     if (kind === 'tick') toasts.announce('done', row.text)
     else if (kind === 'untick') toasts.announce('undone', row.text)
@@ -221,7 +254,7 @@ export function createTasks() {
       }
       const task = byId.get(id)
       if (!task) {
-        if (heldKey === entry.key) heldKey = null
+        releaseHold(entry.key)
         continue
       }
       entry.confirmed = task
@@ -255,6 +288,7 @@ export function createTasks() {
     }
     merge(server, S)
     loadState = 'ready'
+    startHoldTimer()
   }
 
   /**
@@ -294,7 +328,7 @@ export function createTasks() {
       completed_at: null,
     }
     entries.push({ key, confirmed: null, base, pending: [], inFlight: true, stamp: 0 })
-    heldKey = key
+    setHeld(key)
     toasts.announce('added', trimmed)
 
     let task: Task
@@ -303,7 +337,7 @@ export function createTasks() {
     } catch (err) {
       const queued = (find(key)?.pending.length ?? 0) > 0
       drop(key)
-      if (heldKey === key) heldKey = null
+      releaseHold(key)
       const tooLong = err instanceof ApiError && err.code === 'text_too_long'
       toasts.error(tooLong ? 'add_too_long' : 'add_failed')
       if (isRecoverable(err)) void refresh()
@@ -316,7 +350,7 @@ export function createTasks() {
     if (tombstones.has(task.id)) {
       // Its GET twin was deleted before the POST returned: the task is gone, so is this row.
       drop(key)
-      if (heldKey === key) heldKey = null
+      releaseHold(key)
       return
     }
     // A GET may already have brought this task in under key = id: fold that entry into this one.

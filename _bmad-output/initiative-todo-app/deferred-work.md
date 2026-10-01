@@ -46,3 +46,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-refactor-sweep-plan.md`
   summary: No automated test recreates the backend onto a new IP and checks nginx follows it; entry 11 proved the fix by a manual repro, and `frontend/tests/nginx-template.test.ts` only pins the config statically.
   evidence: The repro needs container orchestration (stop `backend-test`, a squatter container on `todo_default`, `up --no-deps backend-test`, curl `:8082`), which sits outside pytest, Vitest and Playwright. A compose smoke script, ideally run by CI, could own it.
+- source_plan: `_bmad-output/initiative-todo-app/epic-age-nudge/story-hold-timer-in-the-store-plan.md`
+  summary: `load()` on a list that is already ready sets `loadState` back to `loading` but doesn't pause a running 3 s hold countdown, so a reload during a hold could end it while the list shows loading.
+  evidence: Unreachable today: `load()` runs only on mount and from the load-failure Retry, both before the list is ready. Epic 3's `retry()` or polling should cancel or restart the countdown when it re-enters loading (low).

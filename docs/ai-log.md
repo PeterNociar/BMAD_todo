@@ -565,3 +565,23 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - Forced-colours handling: the label carries the age; the bar is decorative.
   - The skew fixture in the live tests, and the visibility/wake triggers in E2E: the ticket scopes skew to the future case, and the triggers are unit-tested in 1.6.
   - Running E2E on the app profile: it has no test router.
+
+## Ticket 2.4 — Hold timer in the store
+
+**Agents.** Built by the main session on the oneshot route (about 40 lines in one module), then reviewed by one quick-lens reviewer subagent.
+
+**What was built.** The store's `heldKey` gets its 3 s countdown (FR-4). One `setHeld` helper now owns every change to the hold and cancels any running timer. The timer releases only the key it started for. It counts down only once the list is ready, so a hold taken while loading starts its 3 s when the first GET lands. Untick keeps the hold.
+
+**Test generation.** A fake-timer suite covers:
+- release at exactly 3 s;
+- a newer add restarting the countdown;
+- tick, delete and a failed add cancelling it;
+- untick keeping it;
+- a hold taken while loading surviving until 3 s after ready;
+- a list that never loads keeping it.
+
+Mutation checks on the ready gate and on `clearTimeout` each failed tests. Frontend: 319 tests; E2E: 64.
+
+**What AI missed or could not do.** A bulk text replacement also rewrote the new helper's own body into a self-call; I caught it on read-back before running anything. One test claimed to prove a guard that no code path could reach.
+
+**Review.** The quick lens raised four low findings. I patched three: an honest test name, an untick test and a failed-add cancel test. I deferred one: a `load()` re-entering loading doesn't pause the countdown, which only becomes reachable with epic 3's retry.
