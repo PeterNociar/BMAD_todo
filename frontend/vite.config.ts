@@ -5,6 +5,11 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [svelte(), svelteTesting()],
+  build: {
+    // The CSP is `default-src 'self'` (AD-19): small font subsets inlined as `data:` URIs
+    // would be blocked, so every asset ships as its own file.
+    assetsInlineLimit: 0,
+  },
   server: {
     host: true,
     proxy: {

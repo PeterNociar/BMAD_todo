@@ -247,3 +247,63 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - **Rejected:**
   - 404 handling, because AD-11 belongs to 1.12.
   - Wrapping `add`'s `{text}` rejection in an Error, because AD-9 specifies that shape.
+
+## Ticket 9 — Capture UI
+
+**Agents.** The dev persona (bmad-build) planned the ticket, and the user settled the font questions: metric-matched fallbacks now, `<link rel="preload">` deferred. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine, DESIGN.md and EXPERIENCE.md as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets: "Read <plan> fully and implement it; the plan is the sole source of truth. Load every file listed in its frontmatter `context:` before you start." The plan's Design Notes fixed the three awkward parts ahead of time: the 300 ms skeleton timer, the restore rule (capture the text, clear, put it back only into an empty input), and one sticky block holding the header, the input and the toast anchor.
+
+**MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the compose test stack and Playwright with the system Chrome. Screenshots of the built page at 1024 px and 320 px, taken with a throwaway Playwright script, served as the visual check against the DESIGN mockups.
+
+**What was built.**
+- `app.css`: the full light `--color-*` palette, the DESIGN spacing scale and radii as custom properties, base `html`/`body` styles, and the "Inter Fallback" and "JetBrains Mono Fallback" faces with `size-adjust` and the ascent, descent and line-gap overrides.
+- `main.ts` imports `@fontsource/inter` 400 and 600 and `@fontsource/jetbrains-mono` 400. Vite bundles them.
+- `App.svelte` as the composition root: a sticky top block (wordmark header, input, the toast layer positioned absolutely under it), a `main` list area with `aria-busy`, the delayed skeleton, the empty state and a plain-text `ul` keyed by `row.key`, and `LiveRegions`. On mount it registers the input, installs the safety net and type-to-focus, focuses the input and calls `tasks.load()`.
+- The input handles Enter (trim, empty, IME and key code 229), paste (line breaks become spaces) and Down (`onInputKeydown`).
+- `e2e/tests/capture.spec.ts`: one test per matrix row, with axe and a horizontal-overflow check at 320 px and 1280 px.
+
+**Test generation.** The component tests run the real store on top of a mocked `lib/api`. The `tasks` singleton is mocked as a getter over a fresh `createTasks()` for each test. The AI checked that the tests can fail by breaking the code on purpose, then reverting: dropping the empty-input check on restore, the skeleton delay, the `isComposing` guard or the `returnToInput()` call each failed at least one test.
+
+**Debugging with AI.**
+- The first test setup re-imported App after `vi.resetModules()`. That loaded a second copy of the Svelte runtime, and every test failed with `effect_orphan`. The fix was the getter mock above.
+- In the E2E suite, `getByText("Couldn't save new task.")` sometimes matched both the toast and the polite live region. Whether it did depended on timing, because the region merges announcements made in the same tick. The specs now target the toast card through `[data-toast-kind]`.
+- Playwright's installed clock runs at real speed and also fakes `performance`, so resource-timing entries come back empty. The skeleton spec instead records, on `document.timeline`, when the first `GET /api/tasks` starts (a wrapped `fetch`) and when the skeleton first appears (a `MutationObserver`). It asserts the gap between the two.
+
+**What AI decided beyond the plan.**
+- `build.assetsInlineLimit: 0`. Several fontsource subsets are smaller than Vite's 4 KB inlining limit, and a `data:` font would break the `default-src 'self'` CSP.
+- The skeleton bar widths are CSS classes, not `style:` directives, because a static inline style attribute would need `'unsafe-inline'`.
+- The 36 px top padding sits on the sticky block, not on the page, so the header keeps its gap from the top edge while the page scrolls.
+- On phones the empty-state box keeps the 12 px inset. Only the list goes full-bleed.
+- The E2E "type right after load" spec waits for `aria-busy="false"` before typing, because the store's deferred GET/POST race could otherwise make it flaky.
+
+**What AI missed.**
+- Forced-colors mode drops `box-shadow`. The input's focus ring used `outline: none` plus a shadow, so in Windows High Contrast it had no focus indicator at all.
+- The skeleton delay timer was tied to mount, not to the loading state. Any later load (Retry) would have shown the skeleton at once.
+
+**Review.** Four lenses read the diff, and each of about 40 findings was checked against the code.
+- **Patched:**
+  - A transparent 2 px outline on the focused input, which forced-colors mode paints. The box-shadow ring stays.
+  - The skeleton delay restarts on every transition into `loading`, through an `$effect` on the loading state.
+  - The `add()` rejection guard: the text is restored only when the rejection carries a string `text`.
+  - Paste: each run of `\r`, `\n`, U+2028 and U+2029 becomes one space.
+  - The input and the toast anchor now sit inside the `header` landmark. The sticky block is the `<header>`.
+  - Unit test gaps:
+    - a paste over a selection, then Enter;
+    - the safety net as App installs it, with its uninstall;
+    - type-to-focus uninstall, checked with a `removeEventListener` spy;
+    - a later load restarting the delay;
+    - the non-AddFailure rejection.
+  - E2E gaps:
+    - skeleton timing measured from the GET's start, with a 250–900 ms window;
+    - the provisional row gone after a failed add while typing on;
+    - no POST on an IME Enter;
+    - a pasted newline added as one row;
+    - no autofocus on a phone.
+  - A `headers.spec.ts` guard that the built stylesheet holds no `url(data:`.
+- **Rejected:**
+  - A `maxlength`, because the frontend never enforces the maximum (AD-12).
+  - Changing the skeleton that stays up after a failed first load, because the user decided it, and epic 3 adds Retry.
+  - Keeping the second failed text, because EXPERIENCE accepts that it is dropped.
+  - Deferring JetBrains Mono until its first consumer, because the age labels arrive in 1.10 and epic 2.
+- **Deferred:** typing during the first load stays with 1.12.
