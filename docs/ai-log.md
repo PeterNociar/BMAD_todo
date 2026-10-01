@@ -99,3 +99,58 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Test generation.** The AI added a test that builds the default app in a fresh interpreter and asserts that neither test-only module is in `sys.modules`. It runs in a subprocess because the session's test-mode app has already imported both modules in-process. The AI checked that the test can fail by temporarily importing the testing service from `deps.py`, which made it fail.
 
 **What the docs check found.** The spine said `routers/testing.py` reaches `db.py` through `deps.py`. `routers/health.py` has imported `get_session` from `app.db` directly since ticket 1, and the testing router now does too, so the rule was rewritten to match.
+
+## Ticket 5 — E2E harness against the test profile
+
+**Agents.** The dev persona (bmad-build) planned the ticket. A subagent implemented the plan, then four review lenses (blind, edge-case, verification-gap, intent-alignment) read the diff. The main session checked each finding against the code before acting on it.
+
+**What was built.** One `e2e/fixtures.ts` that every spec imports. It resets the test data before each test, installs `page.clock` before the first `goto`, fails a test at teardown on any CSP violation, and provides `seed()`, `advance(ms)` (browser and server clocks together), `failApi()` and an axe helper. The suite now targets the test profile on `:8082` with one worker, and `E2E_BROWSER_CHANNEL=chrome` works around the Playwright Chromium download that times out on this machine.
+
+**Debugging with AI.**
+- Under `module: nodenext`, relative ESM imports need an extension, so specs import `'../fixtures.ts'` and `tsconfig.json` sets `allowImportingTsExtensions`.
+- `AxeBuilder` has to be a named import: the default import resolves to the CJS module object, and TypeScript rejects `new` on it.
+- The reset asserts `204`. Against the app stack on `:8081` it gets a `404`, so the suite fails before it touches real data (checked by hand).
+
+**What AI missed, and what review caught.** Review found 28 items (3 medium, 25 low or false): 11 were patched, 1 deferred, 16 rejected on evidence.
+- **A test that passed for the wrong reason.** The CSP row ran under `test.fail()`, which also accepts a failure in the test body. With the listener removed, the poll timed out and the row still reported green. A normal test now asserts that the listener recorded the violation.
+- **Lost violations.** Violations from an earlier document were lost after a `goto` or `reload`, because the init script replaced the page's array. They are now collected Node-side through `exposeBinding`, with a reload test.
+- **Unpinned failure path.** The axe failure path was proved only by a throwaway spec. It is now pinned by a test that injects an `<img>` with no alt.
+- Smaller fixes: `advance` posts the server offset before it moves the browser clock, the isolation pair runs serially, and the `.env.example` docs no longer imply that `.env` feeds Playwright.
+- Deferred: nothing checks that `failApi` passes non-matching requests through. The first mutation-failure story will assert it.
+
+## Ticket 6 — Frontend pure core
+
+**Agents.** The dev persona (bmad-build) planned the ticket. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine as the plan's `context:` requires. Four review lenses then read the diff, and the same subagent applied the patches.
+
+**Prompt that worked.** The same one as earlier tickets: "Read <plan> fully and implement it; the plan is the sole source of truth. Load every file listed in its frontmatter `context:` before you start." The plan's Design Notes gave the pending-tie rule and the clock-test recipe (fake timers plus a fresh import), so the agent had nothing to invent there.
+
+**MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Vitest with coverage, and `vite build`.
+
+**What was built.**
+- `lib/api.ts`: the five AD-3 calls. Every rejection is an `ApiError` with a client `code`, mapped status-first (AD-5) under a 10 s `AbortController` timeout that covers the body read as well as the fetch.
+- `lib/sort.ts`: the AD-6 mirror. Id-less (pending) tasks sort after confirmed ones on a tie and break ties by `key`, so the comparator stays a total order.
+- `lib/clock.svelte.ts`: `clock.now` and `clock.sample()`, refreshed every 30 s and on `visibilitychange`, `focus` and `pageshow`.
+- ESLint rules (`no-restricted-properties` for `Date.now`, `no-restricted-syntax` for `new Date()` and `Date()`) that make the clock the only wall-clock read in `src/`.
+
+**Test generation.** The AI wrote one test per matrix row. The sort tests import `contracts/ordering-cases.json` directly (through `resolveJsonModule`), so there is no copy of the fixtures in `frontend/`. The clock tests use `vi.useFakeTimers()`, `vi.setSystemTime()` and a fresh module import per test, so the clock needs no test hook. The AI checked that the tests can fail with deliberate breaks, which it then reverted:
+- Flipping the id tie-break failed the fixture tie cases.
+- Dropping 503 from the status list, or the 413 rule, failed those rows.
+- Not clearing the timeout failed the timer-count test.
+- A `Date.now()` added to `sort.ts`, or to a `.svelte` component, failed `npm run lint`.
+
+**Debugging with AI.** A stalled response body never settles on its own, because the fetch signal does not reach a hand-built `Response`. So `api.ts` races both the fetch and the body read against the abort, rather than relying on `fetch` to honour the signal.
+
+**What AI missed or could not do.**
+- The lint rule banned only the literal `Date.now`. A `new Date()` with no arguments, or a bare `Date()`, also reads the wall clock and passed lint. `no-restricted-syntax` now bans both, and `new Date(ms)` stays allowed.
+- No test showed that `clock.now` is reactive: swapping `$state` for a plain `let` passed every test. A test in `clock.svelte.test.ts` now runs an `$effect` on `clock.now` and asserts that it re-runs after the 30 s tick.
+- The first attempt at that test failed even with `$state`. `vi.resetModules()` gave the clock a fresh copy of the Svelte runtime, so the test file's effect could not track it. The reactivity test now lives in its own file, which installs fake time in `vi.hoisted` and imports the clock statically.
+
+**Review.** Four lenses (blind, edge-case, verification-gap and intent-alignment) produced about 30 findings, each checked against the code.
+- **Patched (5):**
+  - the `new Date()` lint gap;
+  - the clock reactivity test;
+  - gaps in the api tests: the stalled body still pending at 9,999 ms with the signal aborted at 10 s, no `content-type` or body on GET/PUT/DELETE, and a 500 with an empty body;
+  - a fixture check that asserts `same_ms_open_tie` and `cross_group_tie` by name, not just a case count;
+  - this log section.
+- **Deferred (1):** no automated test pins the lint rule, and no CI runs lint.
+- **Rejected:** the rest, for example validating the shape of 2xx bodies, tearing down listeners on HMR, and NaN timestamps (the server always sends `.sssZ`).
