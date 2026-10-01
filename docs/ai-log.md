@@ -435,3 +435,53 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - The `failApi` tests wait for the `GET` by method too, and a new case fails `GET /api/health` while `GET /api/tasks` loads the seeded row, which exercises the path half of the guard.
 - **Deferred:** an automated recreate-the-backend repro, which needs container orchestration outside the test layers (logged in deferred-work).
 - **Main-session checks:** with `backend-test` stopped, the page still serves and `/api` returns 502. Once it is back, `/api/health` is 200 again without restarting nginx.
+
+## Ticket 2.1 — Age label on every row
+
+**Agents.** The dev persona (bmad-build) wrote the plan for the epic's tracer bullet, and the user approved it. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine, DESIGN.md and EXPERIENCE.md as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan's label/words table and its boundary matrix (59 s, 60 s, 59 m 59 s, 1 h, 23 h 59 m, 24 h, 47 h, 3 d, plus a future timestamp) became the core of the unit tests, which add the 0 s and 100 d cases and the same boundaries for completed tasks.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Vitest with coverage, `vite build`, the rebuilt test stack, the e2e typecheck and Playwright on the system Chrome.
+
+**What was built.**
+- `lib/age.ts`: pure `ageLabel(timestamp, now, done)` → `{ label, words }`. The age is clamped to 0 and rounded down to whole days, hours or minutes. Completed tasks get `done …` and `completed … ago`, and the words are singular for 1.
+- `TaskRow`: a `$derived` age from `clock.now` (`completed_at` on done rows, `added_at` otherwise). The label is an `aria-hidden` column between the text and the delete button: 12 px tabular JetBrains Mono, at least `9ch` wide, right-aligned, in `text-secondary` (open) or `text-muted` (done), and centred on the first text line. Its size and width come from new `app.css` tokens (`--font-size-age-label`, `--space-age-column-min`). The words sit in a `.visually-hidden` span right after the task text, led by ", " so the two don't run together. Neither is in a live region.
+- Epic 1's whole-row text assertions (the rows, capture and harness E2E specs, plus `App.test.ts`) now target the task-text element through a `rowTexts` helper, so the age doesn't change their meaning.
+- `e2e/tests/age.spec.ts` has four tests:
+  - **Live:** 5h becomes 6h after `advance(1 h)` with no reload. An ARIA snapshot shows the text and the words, and never the label.
+  - **Visual contract:** each label's font, tabular figures, right alignment, `9ch` minimum and colour are checked through `toHaveCSS`, and labels of different lengths share one right edge.
+  - **Not live:** a MutationObserver on both live regions records no writes across the whole `advance` window.
+  - **Wide label:** added 120 d and completed 100 d shows `done 100d`, beside a 300-character word at 320 px, with no horizontal scroll, the labels fully visible and axe clean.
+- **Results:**
+  - Frontend: 269 Vitest tests in 14 files pass, with coverage at 98.49% statements, 94.77% branches, 100% functions and 99.51% lines against the 70% gate.
+  - E2E: 55 Playwright tests pass, including 4 for age. One harness test fails on purpose (`test.fail()`).
+
+**What AI decided beyond the plan.**
+- The words span carries `data-age-words`, so tests can find it without relying on its CSS class.
+- The not-live E2E uses the 24 h crossing (23h → 1d), so the same test also covers the UJ-3 label change.
+- TaskRow unit tests drive time with `vi.setSystemTime` and `clock.sample()`, because the clock's interval is registered with real timers at import. They sample again after restoring real timers.
+- The accessibility tree reads "aged , added 5 hours ago": the hidden span is its own box, so a space separates it from the text even with no whitespace in the markup. The comma provides the pause.
+
+**What AI missed.**
+- The label and the task text ran together for screen readers ("aged added 5 hours ago").
+- The wide-label test seeded added and completed both at 100 d, so it couldn't tell which timestamp was used.
+- Running the frontend's Prettier over the e2e specs reformatted them wholesale (e2e has no Prettier config). The specs were restored and edited again by hand.
+
+**Review.** Four lenses produced about 25 findings, each checked against the code.
+- **Patched:**
+  - The screen-reader separator.
+  - The age tokens in `app.css`.
+  - The stale "epic 2" header comment in `age.ts`.
+  - The visual-contract E2E checks.
+  - The timestamp-choice and long-text E2E cases.
+  - A MutationObserver check for "not live".
+  - Re-sampling the clock after the unit tests.
+  - The `0 s` and `47 h` boundary cases for completed tasks.
+  - The harness `rowTexts` helper.
+- **Rejected:**
+  - Guarding against NaN timestamps: the server always sends `.sssZ` (AD-7).
+  - Labels over 999 days overflowing `9ch`.
+  - The three-argument signature: the plan specifies it.
+  - Unifying test selectors: cosmetic.
+- **Found during verification:** the 1.11 lint-rules test timed out intermittently under coverage; given a longer timeout.

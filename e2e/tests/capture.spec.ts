@@ -11,6 +11,8 @@ const HOUR = 3_600_000
 
 const input = (page: Page) => page.getByLabel('New task')
 const rows = (page: Page) => page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')
+/** Each row's task text, without its age label (story 2.1). */
+const rowTexts = (page: Page) => rows(page).locator('.text')
 const skeleton = (page: Page) => page.getByTestId('skeleton')
 /** The toast cards (not the live region, which may carry the same copy). */
 const toast = (page: Page) => page.locator('[data-toast-kind]')
@@ -61,18 +63,18 @@ for (const variant of ['stale', 'fresh'] as const) {
     await page.keyboard.press('Enter')
     expect((await posted).status()).toBe(201)
 
-    await expect(rows(page)).toHaveText(['buy milk'])
+    await expect(rowTexts(page)).toHaveText(['buy milk'])
     await expect(input(page)).toHaveValue('')
     await expect(input(page)).toBeFocused()
     const row = await rows(page).first().elementHandle()
 
     releaseGet()
     await expect(page.getByRole('main')).toHaveAttribute('aria-busy', 'false')
-    await expect(rows(page)).toHaveText(['buy milk'])
+    await expect(rowTexts(page)).toHaveText(['buy milk'])
     expect(await row?.evaluate((el) => el.isConnected)).toBe(true)
 
     await page.reload()
-    await expect(rows(page)).toHaveText(['buy milk'])
+    await expect(rowTexts(page)).toHaveText(['buy milk'])
   })
 }
 
@@ -125,7 +127,7 @@ test('paste newline: the input holds the text with spaces, and Enter adds it', a
   await expect(input(page)).toHaveValue('a b')
 
   await input(page).press('Enter')
-  await expect(rows(page)).toHaveText(['a b'])
+  await expect(rowTexts(page)).toHaveText(['a b'])
 })
 
 test('empty state: after a reset the page shows the empty-state copy', async ({ page }) => {
@@ -190,7 +192,7 @@ test('skeleton: a GET delayed 1.5 s shows three bars after about 300 ms, then th
   await expect(skeleton(page)).toHaveAttribute('aria-hidden', 'true')
   await expect(skeleton(page).locator('.bar')).toHaveCount(3)
 
-  await expect(rows(page)).toHaveText(['slow one'])
+  await expect(rowTexts(page)).toHaveText(['slow one'])
   await expect(skeleton(page)).toHaveCount(0)
   await expect(page.getByRole('main')).toHaveAttribute('aria-busy', 'false')
   const delay = await skeletonDelay(page)
@@ -202,7 +204,7 @@ test('skeleton: none for a fast GET', async ({ page, seed }) => {
   await seed({ text: 'fast one', addedAgoMs: HOUR })
   await watchSkeleton(page)
   await page.goto('/')
-  await expect(rows(page)).toHaveText(['fast one'])
+  await expect(rowTexts(page)).toHaveText(['fast one'])
 
   // Well past the 300 ms delay: the timer has fired and found the list loaded.
   await page.waitForTimeout(500)
@@ -221,7 +223,7 @@ test('survives reload: an added row is still there after a reload', async ({ pag
   expect((await posted).status()).toBe(201)
 
   await page.reload()
-  await expect(rows(page)).toHaveText(['keep me'])
+  await expect(rowTexts(page)).toHaveText(['keep me'])
 })
 
 test('add fails: the row goes, the toast shows and the text returns', async ({ page, seed }) => {
@@ -230,13 +232,13 @@ test('add fails: the row goes, the toast shows and the text returns', async ({ p
   await page.goto('/')
 
   // failApi lets the GET through: the seeded list still loads.
-  await expect(rows(page)).toHaveText(['already here'])
+  await expect(rowTexts(page)).toHaveText(['already here'])
 
   await input(page).fill('x')
   await input(page).press('Enter')
 
   await expect(toast(page)).toHaveText(ADD_FAILED)
-  await expect(rows(page)).toHaveText(['already here'])
+  await expect(rowTexts(page)).toHaveText(['already here'])
   await expect(input(page)).toHaveValue('x')
 })
 
@@ -260,7 +262,7 @@ test('fail after typing on: the row goes, the toast shows and the new text is ke
   await input(page).fill('first')
   await input(page).press('Enter')
   await expect(input(page)).toHaveValue('')
-  await expect(rows(page)).toHaveText(['first'])
+  await expect(rowTexts(page)).toHaveText(['first'])
   await page.keyboard.type('second')
   releasePost()
 

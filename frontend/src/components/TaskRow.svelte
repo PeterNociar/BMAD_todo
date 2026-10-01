@@ -1,14 +1,19 @@
 <script lang="ts">
-  // One Ledger row (DESIGN task-row): tick ring, task text, delete ×. The keyed `<li
-  // data-task-row>` lives in App, because `animate:flip` must sit on the each block's direct
-  // child; this component fills it. The store announces and toasts (AD-17); focus moves only
-  // through lib/focus.ts (AD-18). No age label or bar until epic 2: their slot is padding.
+  // One Ledger row (DESIGN task-row): tick ring, task text, age label, delete ×. The keyed
+  // `<li data-task-row>` lives in App, because `animate:flip` must sit on the each block's
+  // direct child; this component fills it. The store announces and toasts (AD-17); focus moves
+  // only through lib/focus.ts (AD-18). The age is recomputed from `clock.now` (AD-8): the
+  // visible label is aria-hidden, and a visually hidden span speaks it in words right after the
+  // task text, after a comma so the two never run together. Neither is a live region. The age bar's slot (left padding) stays empty for now.
+  import { ageLabel } from '../lib/age'
+  import { clock } from '../lib/clock.svelte'
   import { returnToInput } from '../lib/focus'
   import { tasks, type Row } from '../lib/tasks.svelte'
 
   let { row }: { row: Row } = $props()
 
   const done = $derived(row.completed_at !== null)
+  const age = $derived(ageLabel(row.completed_at ?? row.added_at, clock.now, done))
   const tickName = $derived(done ? `Mark "${row.text}" not done` : `Mark "${row.text}" done`)
 
   function toggle(): void {
@@ -43,6 +48,8 @@
   </button>
 
   <span class="text">{row.text}</span>
+  <span class="visually-hidden" data-age-words>, {age.words}</span>
+  <span class="age" aria-hidden="true">{age.label}</span>
 
   <button
     type="button"
@@ -74,6 +81,25 @@
   }
 
   .done .text {
+    color: var(--color-text-muted);
+  }
+
+  /* The age column (DESIGN age-label): 12px tabular mono, right-aligned in a column that fits
+     "done 100d", centred on the first text line. */
+  .age {
+    flex: none;
+    min-width: var(--space-age-column-min);
+    margin-top: calc((var(--line) - var(--font-size-age-label) * var(--line-height-body)) / 2);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-age-label);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--line-height-body);
+    text-align: right;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+  }
+
+  .done .age {
     color: var(--color-text-muted);
   }
 
