@@ -32,9 +32,13 @@
   --space-gap-input-list-phone: 0.875rem; /* 14px */
   --space-empty-state-pad-y: 0.875rem; /* 14px */
   --content-max: 40rem; /* 640px */
+  --space-age-column-min: 9ch; /* fits the longest label, "done 100d" */
 
   /* Body type line height (DESIGN typography.body). */
   --line-height-body: 1.35;
+
+  /* Age label type (DESIGN typography.age-label): JetBrains Mono 12px. */
+  --font-size-age-label: 0.75rem; /* 12px */
 
   --radius-sm: 4px;
   --radius-md: 6px;

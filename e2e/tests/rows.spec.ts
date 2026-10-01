@@ -12,6 +12,8 @@ const ID = '[0-9a-f-]{36}'
 const input = (page: Page) => page.getByLabel('New task')
 const list = (page: Page) => page.getByRole('list', { name: 'Tasks' })
 const rows = (page: Page) => list(page).getByRole('listitem')
+/** Each row's task text, without its age label (story 2.1). */
+const rowTexts = (page: Page) => rows(page).locator('.text')
 const toast = (page: Page) => page.locator('[data-toast-kind]')
 const tick = (page: Page, text: string) =>
   page.getByRole('button', { name: `Mark "${text}" done`, exact: true })
@@ -42,12 +44,12 @@ test('tick: the row moves to the top of the completed tasks, filled and muted, f
 }) => {
   await seedList(seed)
   await page.goto('/')
-  await expect(rows(page)).toHaveText(['one', 'two', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'two', 'three', 'old done'])
 
   const done = settled(page, 'PUT', new RegExp(`^/api/tasks/${ID}/tick$`))
   await tick(page, 'two').click()
 
-  await expect(rows(page)).toHaveText(['one', 'three', 'two', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'three', 'two', 'old done'])
   await expect(untick(page, 'two')).toBeVisible()
   await expect(row(page, 'two').locator('.fill')).toHaveCount(1)
   await expect(row(page, 'two').locator('.text')).toHaveCSS('color', 'rgb(91, 102, 118)')
@@ -57,25 +59,25 @@ test('tick: the row moves to the top of the completed tasks, filled and muted, f
   expect((await done).status()).toBe(200)
 
   await page.reload()
-  await expect(rows(page)).toHaveText(['one', 'three', 'two', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'three', 'two', 'old done'])
 })
 
 test('untick: the row returns to its original open position', async ({ page, seed }) => {
   await seedList(seed)
   await page.goto('/')
   await tick(page, 'two').click()
-  await expect(rows(page)).toHaveText(['one', 'three', 'two', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'three', 'two', 'old done'])
 
   const undone = settled(page, 'PUT', new RegExp(`^/api/tasks/${ID}/untick$`))
   await untick(page, 'two').click()
 
-  await expect(rows(page)).toHaveText(['one', 'two', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'two', 'three', 'old done'])
   await expect(tick(page, 'two')).toBeVisible()
   await expect(input(page)).toBeFocused()
   expect((await undone).status()).toBe(200)
 
   await page.reload()
-  await expect(rows(page)).toHaveText(['one', 'two', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'two', 'three', 'old done'])
 })
 
 test('delete: gone at once with no dialog, and still gone after a reload', async ({
@@ -95,13 +97,13 @@ test('delete: gone at once with no dialog, and still gone after a reload', async
   await row(page, 'two').hover()
   await del(page, 'two').click()
 
-  await expect(rows(page)).toHaveText(['one', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'three', 'old done'])
   await expect(input(page)).toBeFocused()
   expect((await deleted).status()).toBe(204)
   expect(dialogs).toBe(0)
 
   await page.reload()
-  await expect(rows(page)).toHaveText(['one', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'three', 'old done'])
 })
 
 test('tick rollback: a 503 puts the row back open in place, with the action toast', async ({
@@ -119,7 +121,7 @@ test('tick rollback: a 503 puts the row back open in place, with the action toas
   await tick(page, 'two').click()
 
   await expect(toast(page)).toHaveText(ACTION_FAILED)
-  await expect(rows(page)).toHaveText(['one', 'two', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'two', 'three', 'old done'])
   await expect(tick(page, 'two')).toBeVisible()
 })
 
@@ -138,7 +140,7 @@ test('untick rollback: a 503 on a done task leaves it done, with the action toas
   await untick(page, 'old done').click()
 
   await expect(toast(page)).toHaveText(ACTION_FAILED)
-  await expect(rows(page)).toHaveText(['one', 'two', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'two', 'three', 'old done'])
   await expect(untick(page, 'old done')).toBeVisible()
 })
 
@@ -158,7 +160,7 @@ test('delete rollback: a 503 brings the row back where it was, with the action t
   await del(page, 'two').click()
 
   await expect(toast(page)).toHaveText(ACTION_FAILED)
-  await expect(rows(page)).toHaveText(['one', 'two', 'three', 'old done'])
+  await expect(rowTexts(page)).toHaveText(['one', 'two', 'three', 'old done'])
 })
 
 test('keyboard only: Tab + Space ticks, Down moves rows, Tab + Enter deletes; focus returns', async ({
@@ -175,7 +177,7 @@ test('keyboard only: Tab + Space ticks, Down moves rows, Tab + Enter deletes; fo
   await page.keyboard.press('Tab')
   await expect(tick(page, 'one')).toBeFocused()
   await page.keyboard.press('Space')
-  await expect(rows(page)).toHaveText(['two', 'three', 'one'])
+  await expect(rowTexts(page)).toHaveText(['two', 'three', 'one'])
   await expect(input(page)).toBeFocused()
 
   await page.keyboard.press('ArrowDown')
@@ -186,7 +188,7 @@ test('keyboard only: Tab + Space ticks, Down moves rows, Tab + Enter deletes; fo
   await expect(del(page, 'three')).toBeFocused()
   await expect(del(page, 'three')).toHaveCSS('opacity', '1')
   await page.keyboard.press('Enter')
-  await expect(rows(page)).toHaveText(['two', 'one'])
+  await expect(rowTexts(page)).toHaveText(['two', 'one'])
   await expect(input(page)).toBeFocused()
 })
 
@@ -366,7 +368,7 @@ test('motion: tick slides the rows for about 200 ms', async ({ page, seed }) => 
 
   expect(durations.length).toBeGreaterThan(0)
   for (const d of durations) expect(d).toBe(200)
-  await expect(rows(page)).toHaveText(['two', 'one'])
+  await expect(rowTexts(page)).toHaveText(['two', 'one'])
 })
 
 test.describe('reduced motion', () => {
@@ -379,7 +381,7 @@ test.describe('reduced motion', () => {
     await expect(rows(page)).toHaveCount(2)
 
     expect(await animationsAfterClick(tick(page, 'one'))).toEqual([])
-    await expect(rows(page)).toHaveText(['two', 'one'])
+    await expect(rowTexts(page)).toHaveText(['two', 'one'])
   })
 })
 
@@ -391,7 +393,7 @@ test('reduced motion: a change after load applies to the next tick', async ({ pa
 
   await page.emulateMedia({ reducedMotion: 'reduce' })
   expect(await animationsAfterClick(tick(page, 'one'))).toEqual([])
-  await expect(rows(page)).toHaveText(['two', 'one'])
+  await expect(rowTexts(page)).toHaveText(['two', 'one'])
 })
 
 for (const width of [320, 1280]) {

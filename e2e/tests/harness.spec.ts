@@ -13,6 +13,9 @@ import {
 import type { Page } from '@playwright/test'
 
 const HOUR = 3_600_000
+/** Each row's task text, without its age label (story 2.1). */
+const rowTexts = (page: Page) =>
+  page.getByRole('list', { name: 'Tasks' }).getByRole('listitem').locator('.text')
 const EMPTY_STATE = 'Nothing waiting. Type a task above and press Enter.'
 // Host and containers share one clock; this only absorbs request latency.
 const TOLERANCE_MS = 30_000
@@ -37,10 +40,7 @@ test('seed and load: a seeded task shows on the list with its added_at in the pa
   expectNear(Date.parse(done.completed_at!), Date.now() - HOUR)
 
   await page.goto('/')
-  await expect(page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')).toHaveText([
-    'old',
-    'done',
-  ])
+  await expect(rowTexts(page)).toHaveText(['old', 'done'])
 })
 
 test('advance moves the browser clock and the server clock together', async ({
@@ -91,7 +91,7 @@ test.describe('isolation', () => {
     await seed({ text: 'left behind', addedAgoMs: 1_000 })
     await page.goto('/')
     await advance(5 * HOUR)
-    await expect(page.getByRole('listitem')).toHaveText(['left behind'])
+    await expect(rowTexts(page)).toHaveText(['left behind'])
   })
 
   test('the next test starts with no tasks and the server offset at 0', async ({
@@ -109,7 +109,7 @@ test.describe('isolation', () => {
 
     await page.goto('/')
     expectNear(await page.evaluate(() => Date.now()), Date.now())
-    await expect(page.getByRole('listitem')).toHaveText(['now'])
+    await expect(rowTexts(page)).toHaveText(['now'])
   })
 })
 
@@ -155,9 +155,7 @@ test('failApi: with POST /api/tasks failed, the seeded list still loads through 
 
   // Same path, other method: passed through to the server.
   expect(response.status()).toBe(200)
-  await expect(page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')).toHaveText([
-    'seeded',
-  ])
+  await expect(rowTexts(page)).toHaveText(['seeded'])
 
   // The matching request is still failed, so the route is live rather than absent.
   const postStatus = await page.evaluate(async () => {
@@ -184,9 +182,7 @@ test('failApi: with GET /api/health failed, the seeded list still loads through 
 
   // Same method, other path: passed through to the server.
   expect(response.status()).toBe(200)
-  await expect(page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')).toHaveText([
-    'seeded',
-  ])
+  await expect(rowTexts(page)).toHaveText(['seeded'])
 
   // The matching request is still failed, so the route is live rather than absent.
   const healthStatus = await page.evaluate(async () => (await fetch('/api/health')).status)

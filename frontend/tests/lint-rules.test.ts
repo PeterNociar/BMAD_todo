@@ -5,7 +5,10 @@
 // given path; the file's contents on disk, if it has any, are never read.
 import { fileURLToPath } from 'node:url'
 import { ESLint } from 'eslint'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// The first lintText call cold-starts the typed parser, which can pass 5 s under coverage.
+vi.setConfig({ testTimeout: 30_000 })
 
 // The real config, plus one parser tweak: `src/X.svelte` and `src/lib/store.svelte.ts` are not
 // on disk, so the typed project service cannot find them. The bans are syntax rules and need

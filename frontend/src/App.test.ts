@@ -148,7 +148,9 @@ describe('App: page', () => {
     const older = { ...task('older', 1), added_at: '2026-09-30T07:00:00.000Z' }
     await renderLoaded([task('newer', 2), older])
 
-    const items = screen.getAllByRole('listitem').map((li) => li.textContent?.trim())
+    const items = screen
+      .getAllByRole('listitem')
+      .map((li) => li.querySelector('.text')?.textContent?.trim())
     expect(items).toEqual(['older', 'newer'])
   })
 
@@ -172,7 +174,7 @@ describe('App: adding', () => {
 
     expect(api.addTask).toHaveBeenCalledWith('buy milk')
     expect(input.value).toBe('')
-    expect(screen.getByRole('listitem')).toHaveTextContent('buy milk')
+    expect(screen.getByRole('listitem').querySelector('.text')).toHaveTextContent('buy milk')
     expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument()
   })
 
@@ -238,7 +240,7 @@ describe('App: adding', () => {
     api.addTask.mockReturnValue(post.promise)
 
     await typeAndEnter(input, 'x')
-    expect(screen.getByRole('listitem')).toHaveTextContent('x')
+    expect(screen.getByRole('listitem').querySelector('.text')).toHaveTextContent('x')
     expect(input.value).toBe('')
 
     post.reject(new Error('unavailable'))
@@ -390,7 +392,7 @@ describe('App: loading', () => {
     await vi.advanceTimersByTimeAsync(0)
     await tick()
     expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
-    expect(screen.getByRole('listitem')).toHaveTextContent('loaded')
+    expect(screen.getByRole('listitem').querySelector('.text')).toHaveTextContent('loaded')
     expect(main).toHaveAttribute('aria-busy', 'false')
   })
 
