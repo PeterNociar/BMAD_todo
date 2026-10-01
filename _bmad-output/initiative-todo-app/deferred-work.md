@@ -19,3 +19,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-frontend-pure-core-api-client-sort-mirror-and-clock-plan.md`
   summary: No automated check proves the AD-8 lint rule (`Date.now`, `new Date()`, `Date()` banned in `src/` outside the clock) still fires; a later config edit could switch it off silently.
   evidence: The rule was checked by hand with throwaway edits, and the repo has no CI that runs lint. A Vitest test using ESLint's Node API `lintText` on `src/x.ts`, `src/X.svelte` and `src/lib/clock.svelte.ts` would pin it; worth adding with CI.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-the-task-store-confirmed-state-and-op-queues-plan.md`
+  summary: The 1.8 `load()` keeps only unconfirmed adds, so an add confirmed while the first GET is in flight either vanishes (the GET was served before the POST) or comes back re-keyed by id, losing its key, its hold and any pending ops. A second or overlapping `load()` also drops pending and in-flight ops, and has no stale-response guard.
+  evidence: Medium if left in place; the user-visible case is typing right after page load. Entry 1.12's AD-10 seq merge owns it. Its tests should cover POST-before-GET with the task absent and with it present (one row, key kept, hold kept), and a load while an op is in flight. Found by four lenses in the 1.8 review.
