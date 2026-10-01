@@ -2,7 +2,7 @@ import { flushSync } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import * as api from './api'
 import { ApiError, type Task } from './api'
-import { createTasks, type AddFailure, type Tasks } from './tasks.svelte'
+import { createTasks, HOLD_MS, type AddFailure, type Tasks } from './tasks.svelte'
 import { toasts } from './toasts.svelte'
 
 vi.mock('./api', async (importActual) => {
@@ -861,5 +861,123 @@ describe('reactivity', () => {
     flushSync()
     expect(seen).toEqual([[], ['milk']])
     cleanup()
+  })
+})
+
+describe('hold timer (FR-4)', () => {
+  // The countdown uses the global setTimeout, so this suite fakes it too; settled api promises
+  // run their handlers when the fake clock advances.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+    vi.setSystemTime(T0)
+  })
+
+  const flush = () => vi.advanceTimersByTimeAsync(0)
+
+  async function readyStore(): Promise<void> {
+    const done = store.load()
+    lists[0].resolve([])
+    await flush()
+    await done
+  }
+
+  it('releases the hold 3 s after an add once the list is ready, and not before', async () => {
+    await readyStore()
+    void store.add('milk')
+    const key = store.heldKey
+    expect(key).not.toBeNull()
+
+    await vi.advanceTimersByTimeAsync(HOLD_MS - 1)
+    expect(store.heldKey).toBe(key)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.heldKey).toBeNull()
+  })
+
+  it('restarts the countdown when a newer add takes the hold', async () => {
+    await readyStore()
+    void store.add('first')
+    await vi.advanceTimersByTimeAsync(2_000)
+    void store.add('second')
+    const second = store.heldKey
+
+    await vi.advanceTimersByTimeAsync(1_000) // the first add's 3 s mark
+    expect(store.heldKey).toBe(second)
+    await vi.advanceTimersByTimeAsync(HOLD_MS - 1_000 - 1)
+    expect(store.heldKey).toBe(second)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.heldKey).toBeNull()
+  })
+
+  it.each(['tick', 'remove'] as const)(
+    'cancels the countdown when %s ends the hold early',
+    async (action) => {
+      await readyStore()
+      void store.add('milk')
+      const key = store.heldKey!
+      adds[0].resolve(task('id-milk', 'milk', '09:00:00'))
+      await flush()
+      expect(vi.getTimerCount()).toBe(1)
+
+      store[action](key)
+      expect(store.heldKey).toBeNull()
+      expect(vi.getTimerCount()).toBe(0)
+    },
+  )
+
+  it('cancels the countdown when the held add fails', async () => {
+    await readyStore()
+    const result = store.add('milk').catch(() => {})
+    expect(vi.getTimerCount()).toBe(1)
+    adds[0].reject(new ApiError('validation_error', 422))
+    await flush()
+    await result
+    expect(store.heldKey).toBeNull()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('keeps the hold and its countdown when the held task is unticked', async () => {
+    await readyStore()
+    void store.add('milk')
+    const key = store.heldKey!
+    adds[0].resolve(task('id-milk', 'milk', '09:00:00', '09:00:00'))
+    await flush()
+    await vi.advanceTimersByTimeAsync(1_000)
+
+    store.untick(key)
+    expect(store.heldKey).toBe(key)
+    await vi.advanceTimersByTimeAsync(HOLD_MS - 1_000 - 1)
+    expect(store.heldKey).toBe(key)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.heldKey).toBeNull()
+  })
+
+  it('keeps a hold taken while loading past 3 s, then releases it 3 s after the list is ready', async () => {
+    const done = store.load()
+    void store.add('early')
+    const key = store.heldKey
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(store.loadState).toBe('loading')
+    expect(store.heldKey).toBe(key)
+
+    lists[0].resolve([])
+    await flush()
+    await done
+    expect(store.loadState).toBe('ready')
+    await vi.advanceTimersByTimeAsync(HOLD_MS - 1)
+    expect(store.heldKey).toBe(key)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.heldKey).toBeNull()
+  })
+
+  it('keeps the hold while a list that never loads stays loading (epic 3 adds load_failed)', async () => {
+    const done = store.load()
+    void store.add('early')
+    const key = store.heldKey
+    lists[0].reject(new ApiError('network_error', null))
+    await flush()
+    await done
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(store.loadState).toBe('loading')
+    expect(store.heldKey).toBe(key)
   })
 })
