@@ -154,3 +154,53 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - this log section.
 - **Deferred (1):** no automated test pins the lint rule, and no CI runs lint.
 - **Rejected:** the rest, for example validating the shape of 2xx bodies, tearing down listeners on HMR, and NaN timestamps (the server always sends `.sssZ`).
+
+## Ticket 7 — Toasts, live regions and focus modules
+
+**Agents.** The dev persona (bmad-build) planned the ticket. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine and EXPERIENCE.md as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets: "Read <plan> fully and implement it; the plan is the sole source of truth. Load every file listed in its frontmatter `context:` before you start." The plan's Design Notes settled the two subtle mechanisms ahead of time: the hold timer reads time only through `clock.sample()`, and a live region is cleared before each message so that a repeated message is read again.
+
+**MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, and the plan's grep for `aria-live`, `role`, and `.focus(`.
+
+**What was built.**
+- `lib/toasts.svelte.ts`: the AD-17 API and the verbatim copy as `COPY`. It shows at most two toasts, newest first. The load-failure toast is pinned, and a third toast drops the oldest transient one. Toasts dismiss after 5 s, and `hold`/`release` pause and resume from the time that remained. It also holds `politeText` and `alertText`.
+- `components/LiveRegions.svelte`, which owns the only `role="status"` (polite) region and the only `role="alert"` region. `components/ToastLayer.svelte` renders the toasts: a decorative icon, the message, and either Dismiss or Retry (`onretry`). Hover or focus inside a toast pauses it.
+- Light toast tokens as `--color-*` custom properties on `:root` in `app.css`.
+- `lib/focus.ts`: `registerInput`, `returnToInput` (gated on `(hover: hover)`), `installSafetyNet`, `installTypeToFocus`, `onInputKeydown` and `onRowKeydown`, following the row contract `data-task-row` / `data-row-control`.
+
+**Test generation.** The AI wrote one test per matrix row, plus edge cases: nested holds, a dropped toast's timer, a delegated row listener, and DOM order changed at keypress. The AI checked that the tests can fail with deliberate breaks, which it then reverted:
+- Not clearing the polite region failed the repeat-announce test.
+- Removing the hover gate from `returnToInput` failed the phone tests.
+- Removing either path of the safety net (the MutationObserver, or the `focusout` listener) failed its own test.
+
+**Debugging with AI.**
+- The module is a singleton, so a test that rendered `LiveRegions` after an earlier test had announced something found the region already filled. The first-paint test moved to its own file, which gets a fresh module.
+- Svelte leaves an empty text node in each region, so `toBeEmptyDOMElement()` fails on a region that is in fact empty. The test asserts `textContent === ''` instead.
+
+**What AI decided beyond the plan.**
+- Holds nest: hover and focus each hold the toast, and the timer resumes only after both are released. Without this, a pointer leaving a toast whose Dismiss button still has focus would restart the timer.
+- The safety net also uses a MutationObserver, because not every engine fires `focusout` when the focused element is removed (jsdom does not).
+- Type-to-focus ignores Space, so Space still scrolls the page.
+- Row navigation (Up from the first row, Esc) focuses the input even on phone, because it is an explicit keyboard request. Only `returnToInput`, the safety net and type-to-focus are gated on hover.
+- Each toast element needed a `svelte-ignore a11y_no_static_element_interactions`: its hover handlers only pause the timer, and adding a role would change the semantics.
+
+**What AI missed.**
+- **Same-tick announcements.** Two announcements in one tick (for example an action-error toast and a success message) each set the region on their own timeout, so the first was overwritten before a screen reader read it.
+- **Touch-synthesised hover.** On touch, a tap fires a synthetic `mouseenter` and no `mouseleave` until the next tap elsewhere, so a tapped toast never dismissed itself.
+
+**Review.** Four lenses read the diff, and each of about 40 findings was checked against the code.
+- **Patched:**
+  - Same-tick announcements are merged into one message: a call made while a region has a pending text joins its text to it.
+  - On recovery, `hideLoadFailure` clears the stale alert text and cancels any pending alert.
+  - The safety net forgets an element that focus left by a blank-space click, so removing that element later no longer pulls focus to the input.
+  - Type-to-focus accepts AltGr characters, which arrive as Ctrl+Alt.
+  - Touch taps no longer pin a toast: hover holds use pointer events and count only `pointerType === 'mouse'`.
+  - `remaining` is clamped to the time left, so a clock that steps back can't lengthen a toast.
+  - A lint ban on `.focus()` outside `lib/focus.ts` (AD-18), merged with the AD-8 `no-restricted-syntax` entries.
+  - Test gaps: an exact timer count after a toast is dropped, a known starting state for each region test, Up from row 1 on phone, `defaultPrevented` on Down from the last row, and Down during IME composition.
+- **Rejected:**
+  - Placement, because 1.9 mounts the layer.
+  - `maxlength`, because the input has none (AD-12).
+  - Inline-edit keys, because editing is not in scope.
+  - The Retry prop seam, because 1.9 wires `tasks.retry()`.
