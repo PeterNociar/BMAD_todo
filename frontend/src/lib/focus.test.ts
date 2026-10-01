@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   installSafetyNet,
   installTypeToFocus,
+  keepFocus,
   onInputKeydown,
   onRowKeydown,
   registerInput,
@@ -320,5 +321,31 @@ describe('onInputKeydown', () => {
     press({ key: 'ArrowUp' })
     press({ key: 'ArrowDown', shiftKey: true })
     expect(document.activeElement).toBe(input)
+  })
+})
+
+describe('keepFocus', () => {
+  it('focuses a connected element without scrolling', () => {
+    const other = document.querySelector<HTMLButtonElement>('#other')!
+    const focus = vi.spyOn(other, 'focus')
+    keepFocus(other)
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+    expect(document.activeElement).toBe(other)
+  })
+
+  it('does nothing when the element already has focus', () => {
+    const other = document.querySelector<HTMLButtonElement>('#other')!
+    other.focus()
+    const focus = vi.spyOn(other, 'focus')
+    keepFocus(other)
+    expect(focus).not.toHaveBeenCalled()
+  })
+
+  it('does nothing for a disconnected element', () => {
+    const gone = document.createElement('button')
+    const focus = vi.spyOn(gone, 'focus')
+    keepFocus(gone)
+    expect(focus).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(document.body)
   })
 })

@@ -2,7 +2,7 @@
   // The composition root: the sticky header and input, the toast layer, the list area and the
   // live regions. Task state and all I/O live in the store (AD-9); focus moves only through
   // lib/focus.ts (AD-18).
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { flip } from 'svelte/animate'
   import { cubicOut } from 'svelte/easing'
   import LiveRegions from './components/LiveRegions.svelte'
@@ -11,6 +11,7 @@
   import {
     installSafetyNet,
     installTypeToFocus,
+    keepFocus,
     onInputKeydown,
     onRowKeydown,
     registerInput,
@@ -35,6 +36,8 @@
   let input: HTMLInputElement | undefined = $state()
   let page: HTMLDivElement | undefined = $state()
   let top: HTMLElement | undefined = $state()
+  let toastAnchor: HTMLDivElement | undefined = $state()
+  let list: HTMLUListElement | undefined = $state()
   let value = $state('')
   let skeletonDue = $state(false)
 
@@ -49,10 +52,13 @@
     const uninstallTypeToFocus = installTypeToFocus()
     returnToInput()
     void tasks.load()
-    const unobserveTop = observeStickyHeight()
+    if (top) sticky.watch(top)
+    if (toastAnchor) toastStack.watch(toastAnchor)
 
     return () => {
-      unobserveTop()
+      sticky.stop()
+      toastStack.stop()
+      held.stop()
       uninstallSafetyNet()
       uninstallTypeToFocus()
       registerInput(null)
@@ -60,24 +66,83 @@
   })
 
   /**
-   * Keeps `--sticky-height` at the sticky header's height, for the row controls'
-   * `scroll-margin-top`. Set through the CSSOM: the CSP has no 'unsafe-inline' (AD-19).
+   * Watches one element's border-box height at a time (`watch(null)` stops watching) and
+   * reports it, 0 with no element. Border box: the header's padding changes at the 600 px
+   * breakpoint, and a row's padding is part of what it covers. Without ResizeObserver each
+   * height is measured once per `watch` (a static fallback; every supported browser has it).
    */
-  function observeStickyHeight(): () => void {
-    if (!page || !top || typeof ResizeObserver !== 'function') return () => {}
-    const pageEl = page
-    const topEl = top
-    // Border box: the header's padding changes at the 600 px breakpoint.
-    const update = (entries: readonly ResizeObserverEntry[] = []) => {
-      const height =
-        entries[0]?.borderBoxSize?.[0]?.blockSize ?? topEl.getBoundingClientRect().height
-      pageEl.style.setProperty('--sticky-height', `${height}px`)
+  function watchHeight(report: (height: number, el: Element | null) => void) {
+    let current: Element | null = null
+    const measure = (entries: readonly ResizeObserverEntry[] = []) => {
+      if (!current) return report(0, null)
+      const entry = entries.find((e) => e.target === current)
+      report(
+        entry?.borderBoxSize?.[0]?.blockSize ?? current.getBoundingClientRect().height,
+        current,
+      )
     }
-    const observer = new ResizeObserver(update)
-    observer.observe(topEl, { box: 'border-box' })
-    update()
-    return () => observer.disconnect()
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
+    return {
+      get current() {
+        return current
+      },
+      watch(el: Element | null) {
+        if (el === current) return
+        if (current) observer?.unobserve(current)
+        current = el
+        if (el) observer?.observe(el, { box: 'border-box' })
+        measure()
+      },
+      stop: () => observer?.disconnect(),
+    }
   }
+
+  /** Writes a measured height to `.page` through the CSSOM: the CSP has no 'unsafe-inline' (AD-19). */
+  const setHeight = (name: string, value: string) => page?.style.setProperty(name, value)
+
+  /** `--sticky-height`: the sticky header and input, for the held row's `top` and clearance. */
+  const sticky = watchHeight((h) => setHeight('--sticky-height', `${h}px`))
+  /**
+   * `--held-height`: the held row plus the 8 px gap below it, 0 with nothing held. The toast
+   * stack sits that far below the list's top edge, and row controls clear it.
+   */
+  const held = watchHeight((h, el) =>
+    setHeight('--held-height', el ? `calc(${h}px + var(--space-3))` : '0px'),
+  )
+  /** `--toast-height`: the visible toast stack (0 with none), for the row controls' clearance. */
+  const toastStack = watchHeight((h) => setHeight('--toast-height', `${h}px`))
+
+  // Before the DOM update: the control inside the held row with keyboard focus
+  // (`:focus-visible`), if any. Settling moves the row in the DOM, which blurs it. A tapped or
+  // clicked control is left alone (EXPERIENCE scopes this to keyboard focus).
+  let focusedInHeld: HTMLElement | null = null
+  $effect.pre(() => {
+    void tasks.heldKey
+    const active = document.activeElement
+    const el = held.current
+    focusedInHeld =
+      el && active instanceof HTMLElement && el.contains(active) && active.matches(':focus-visible')
+        ? active
+        : null
+  })
+
+  // After the DOM update: watch the new held row. When a hold ends with keyboard focus inside
+  // the row, focus goes back to that control and the control is scrolled into view below the
+  // sticky header. Otherwise the page never scrolls (EXPERIENCE › New-task hold).
+  $effect(() => {
+    const key = tasks.heldKey
+    void tasks.rows
+    const el = key === null ? null : (list?.querySelector(':scope > li.held') ?? null)
+    untrack(() => {
+      const prev = held.current
+      held.watch(el)
+      const focused = focusedInHeld
+      focusedInHeld = null
+      if (!focused || prev === el || !focused.isConnected) return
+      keepFocus(focused)
+      focused.scrollIntoView({ block: 'nearest' })
+    })
+  })
 
   // Each transition into loading restarts the delay, so a later load (Retry) never flashes.
   $effect(() => {
@@ -143,7 +208,7 @@
       {onpaste}
     />
 
-    <div class="toasts">
+    <div class="toasts" bind:this={toastAnchor}>
       <ToastLayer onretry={() => void tasks.load()} />
     </div>
   </header>
@@ -154,9 +219,14 @@
         {#if tasks.rows.length > 0}
           <!-- Arrow keys and Esc, delegated for every row control (lib/focus.ts). -->
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <ul aria-label="Tasks" onkeydown={onRowKeydown}>
+          <ul aria-label="Tasks" onkeydown={onRowKeydown} bind:this={list}>
             {#each tasks.rows as row (row.key)}
-              <li class="task" data-task-row animate:flip={slide}>
+              <li
+                class="task"
+                class:held={row.key === tasks.heldKey}
+                data-task-row
+                animate:flip={slide}
+              >
                 <TaskRow {row} />
               </li>
             {/each}
@@ -242,10 +312,11 @@
     box-shadow: 0 0 0 1px var(--color-accent);
   }
 
-  /* Overlays the top of the list at input width; never covers the input. */
+  /* Overlays the top of the list at input width; never covers the input. With a held row it
+     sits 8 px below that row (DESIGN toast.offsetTop): --held-height carries the gap. */
   .toasts {
     position: absolute;
-    top: 100%;
+    top: calc(100% + var(--held-height, 0px));
     left: var(--inset);
     right: var(--inset);
     z-index: 1;
@@ -255,8 +326,14 @@
     display: block;
   }
 
+  /* clip, not hidden: it rounds the corners without making a scroll container, so the held
+     row's position: sticky works against the page. No scroll anchoring: adding or settling a
+     held row never moves the page (EXPERIENCE › New-task hold). */
   .list {
+    /* hidden first: Safari < 16 drops clip and still needs the corners clipped. */
     overflow: hidden;
+    overflow: clip;
+    overflow-anchor: none;
     background: var(--color-surface);
     border: 1px solid var(--color-divider);
     border-radius: var(--radius-md);
@@ -266,6 +343,18 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  /* The held new task stays directly below the sticky input regardless of scroll (FR-4), above
+     the rows that scroll beneath it and below the toasts (the header's layer). No highlight. */
+  .held {
+    position: sticky;
+    top: var(--sticky-height, 0px);
+    z-index: 1;
+    background: var(--color-surface);
+    /* Its own controls clear only the header: the held row and the toasts are not above it. */
+    --held-height: 0px;
+    --toast-height: 0px;
   }
 
   /* Skeleton rows; task rows get the same padding from TaskRow. */

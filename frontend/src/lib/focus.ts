@@ -144,3 +144,11 @@ export function onRowKeydown(e: KeyboardEvent): void {
   }
   control(all[e.key === 'ArrowUp' ? index - 1 : index + 1], type)?.focus()
 }
+
+/**
+ * Puts focus back on `el` after a keyed DOM move blurred it (the held row settling, story 2.5):
+ * the control keeps focus as far as the user can tell. It never scrolls; the caller scrolls.
+ */
+export function keepFocus(el: HTMLElement): void {
+  if (el.isConnected && document.activeElement !== el) el.focus({ preventScroll: true })
+}

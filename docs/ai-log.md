@@ -585,3 +585,45 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 **What AI missed or could not do.** A bulk text replacement also rewrote the new helper's own body into a self-call; I caught it on read-back before running anything. One test claimed to prove a guard that no code path could reach.
 
 **Review.** The quick lens raised four low findings. I patched three: an honest test name, an untick test and a failed-add cancel test. I deferred one: a `load()` re-entering loading doesn't pause the countdown, which only becomes reachable with epic 3's retry.
+
+## Ticket 2.5 — Held row under the input
+
+**Agents.** The dev persona (bmad-build) wrote the plan, and the user approved it at about 1,950 tokens. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading DESIGN.md and EXPERIENCE.md as the plan's `context:` requires.
+
+**Prompt that worked.** "Read the plan fully and implement it — the plan is the sole source of truth. Load every file listed in its frontmatter `context:` before you start." The I/O matrix became `e2e/tests/hold.spec.ts`, one test per row. The Code Map's pointer to the `--sticky-height` observer became one shared height watcher.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the rebuilt test stack, the e2e typecheck and Playwright on the system Chrome.
+
+**What was built.**
+- `App.svelte`: the `li` whose key is `tasks.heldKey` gets `class:held`, which is `position: sticky` at `top: var(--sticky-height)` on a `surface` background, `z-index: 1` (below the header and its toasts). `.list` is `overflow: clip`, so the corners stay rounded without a scroll container.
+- A `watchHeight` helper watches one element's border box at a time, and writes `--sticky-height`, `--held-height` and `--toast-height` on `.page` through `setProperty` (CSP). `--held-height` is the held row plus the 8 px gap, 0 with nothing held, so the toast stack's `top: calc(100% + var(--held-height, 0px))` puts toasts 8 px below the held row, or at the list top as before.
+- `TaskRow.svelte`: the controls' `scroll-margin-top` is the sum of the three heights. Inside the held row both extra heights are reset to 0, so its own controls only clear the header.
+- Settling: an `$effect.pre` records the control inside the held row that has keyboard focus (`:focus-visible`) before the DOM update. After the update, the effect watches the new held row. If the hold ended with keyboard focus inside, it puts focus back through a new `keepFocus()` in `lib/focus.ts` and calls `scrollIntoView({ block: 'nearest' })` on that control. A tapped or clicked control is left alone, and the page never scrolls.
+- Unit cover in `App.test.ts`: the observer stub now records each observer and its targets. Tests cover the sticky height, the toast height, the no-`ResizeObserver` fallback, the held class following `heldKey` and clearing at `HOLD_MS`, `--held-height` re-targeting on a newer add, keyboard focus kept with one `scrollIntoView`, a focused control without `:focus-visible` neither restored nor scrolled, and no scroll with focus elsewhere. `focus.test.ts` covers `keepFocus` connected, already active and disconnected.
+- **Results:** 325 Vitest tests pass, with coverage at 98.88% statements, 95.01% branches, 100% functions and 99.59% lines against the 70% gate. Check, lint, Prettier and build are green. All 74 E2E tests pass, and `hold.spec.ts` passed three repeats in a row.
+
+**What AI decided beyond the plan.**
+- `overflow-anchor: none` on `.list`. Without it, Chrome's scroll anchoring moved `scrollY` by one row when the held row was inserted at the top, and the "visible on add" test failed. A mutation run proved it.
+- `keepFocus()` in `lib/focus.ts`. The plan expected focus to stay on the held tick by itself. But Svelte's keyed `{#each}` moves the row with `before()`, which blurs it, and the "focused held control" test failed without the restore. Focus still moves only through `lib/focus.ts` (AD-18).
+- The 8 px gap is folded into `--held-height` rather than toggling a class on the toast anchor. The gap then also counts in the controls' clearance.
+- Overriding `--held-height` and `--toast-height` to 0 on the held row itself, so tabbing to its tick never asks the browser to scroll a sticky row clear of itself.
+
+**What AI missed or could not do.**
+- The tap-focus path after an early tick. On phone, `returnToInput` does nothing, so the tapped tick keeps focus. The first settle restored that focus and scrolled the page to where the done row landed.
+- A clearance test that couldn't fail: it focused the last row, which can never scroll under the header.
+- The fixture's page clock also runs in real time, so a hold ends after 3 s of wall time. Each E2E test checks `li.held` is still present when it measures, so a slow run fails loudly instead of passing on a settled row.
+
+**Review.** Four lenses raised about 30 findings, each checked against the code.
+- **Patched:**
+  - The settle restores only keyboard focus, so a tap-tick on phone no longer makes the page jump.
+  - `overflow: hidden` before `overflow: clip`, as a fallback for Safari before 16.
+  - The clearance test now uses a middle row and checks it lands within 2 px of header + held row + gap + toast, so it can fail.
+  - New E2E checks: Tab to the held tick doesn't scroll, and settling to an off-screen place with focus in the input doesn't follow.
+  - Unit tests for `keepFocus`.
+  - Test cleanup: `afterEach` restores mocks, globals and timers, and `scrollIntoView` is spied on rather than assigned and deleted.
+  - Honest comments: the settle scrolls the focused control, and the unproven "slides from where it was" claim is gone.
+- **Rejected:**
+  - Pausing the page clock: AD-8 forbids `pauseAt` and `setFixedTime`, and each test asserts the hold is still on.
+  - Cross-browser runs of `overflow: clip` and `overflow-anchor`: E2E is Chrome-only by design.
+  - Capping the held row on short viewports.
+  - Querying the held `li` some other way than by its class.
