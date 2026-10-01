@@ -16,7 +16,15 @@ target_metadata = SQLModel.metadata
 
 
 def database_url() -> str:
-    """AD-21: a caller-set `sqlalchemy.url` wins over the app settings."""
+    """AD-21: a caller-set `sqlalchemy.url` wins over the app settings.
+
+    On both paths the value is a SQLAlchemy URL, whose `make_url` percent-decodes the
+    password: a literal `%` must be URL-encoded as `%25` (`p%41w` would become `pAw`).
+    `sqlalchemy.url` also lives in Alembic's configparser, which interpolates `%`, so a caller
+    of `set_main_option("sqlalchemy.url", url)` must then escape every `%` as `%%` (`%25`
+    becomes `%%25`); `get_main_option` hands back the unescaped URL. The settings fallback
+    never goes through configparser, so `DATABASE_URL` needs only the URL encoding.
+    """
     return config.get_main_option("sqlalchemy.url") or get_settings().database_url
 
 

@@ -134,6 +134,65 @@ test('failApi: GET /api/tasks gets a 503 error body and the empty state never re
   await expect(page.getByRole('list', { name: 'Tasks' })).toHaveCount(0)
 })
 
+/** Waits for the page's `GET /api/tasks` response. */
+function tasksGet(page: Page) {
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' && new URL(response.url()).pathname === '/api/tasks',
+  )
+}
+
+test('failApi: with POST /api/tasks failed, the seeded list still loads through GET', async ({
+  page,
+  seed,
+}) => {
+  await seed({ text: 'seeded', addedAgoMs: HOUR })
+  await failApi(page, { method: 'POST', path: '/api/tasks' })
+
+  const responsePromise = tasksGet(page)
+  await page.goto('/')
+  const response = await responsePromise
+
+  // Same path, other method: passed through to the server.
+  expect(response.status()).toBe(200)
+  await expect(page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')).toHaveText([
+    'seeded',
+  ])
+
+  // The matching request is still failed, so the route is live rather than absent.
+  const postStatus = await page.evaluate(async () => {
+    const posted = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'blocked' }),
+    })
+    return posted.status
+  })
+  expect(postStatus).toBe(503)
+})
+
+test('failApi: with GET /api/health failed, the seeded list still loads through GET', async ({
+  page,
+  seed,
+}) => {
+  await seed({ text: 'seeded', addedAgoMs: HOUR })
+  await failApi(page, { method: 'GET', path: '/api/health' })
+
+  const responsePromise = tasksGet(page)
+  await page.goto('/')
+  const response = await responsePromise
+
+  // Same method, other path: passed through to the server.
+  expect(response.status()).toBe(200)
+  await expect(page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')).toHaveText([
+    'seeded',
+  ])
+
+  // The matching request is still failed, so the route is live rather than absent.
+  const healthStatus = await page.evaluate(async () => (await fetch('/api/health')).status)
+  expect(healthStatus).toBe(503)
+})
+
 /** Appends an inline `<script>`, which `default-src 'self'` blocks. */
 async function injectInlineScript(page: Page): Promise<void> {
   await page.evaluate(() => {

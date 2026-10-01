@@ -7,7 +7,7 @@ paradigm: 'client-server; layered backend (router -> service -> model); single-s
 scope: 'Todo App v1: Svelte SPA served by nginx, FastAPI backend, PostgreSQL, local docker-compose'
 status: final
 created: '2026-09-30'
-updated: '2026-09-30'
+updated: '2026-10-01'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13, FR-14, FR-15, FR-16, FR-17, FR-18, NFR-1, NFR-2, NFR-3, NFR-4, NFR-5, NFR-6, NFR-7, NFR-8]
 sources:
   - ../prd-todo-app/prd-todo-app.md
@@ -44,6 +44,8 @@ flowchart LR
   subgraph BE[backend/app]
     R[routers/*] --> D[deps.py]
     R --> SC[schemas/*]
+    R -. "annotation-only" .-> SV
+    R -. "annotation-only" .-> M
     D --> SV[services/*]
     D --> K[clock.py]
     D --> DBM[db.py]
@@ -56,7 +58,7 @@ flowchart LR
   M --> DB[(PostgreSQL)]
 ```
 
-Arrows are the only dependencies allowed. Nothing points back up the chain. The composition roots (`app/main.py`, `App.svelte`) may import anything, and `routers/health.py` and `routers/testing.py` may import `db.py` (`get_session`) and `models/` directly. `routers/testing.py` also imports `clock.py` and `services/testing_task_service.py`, because it builds its own service (AD-14).
+Arrows are the only dependencies allowed; a dotted arrow is annotation-only use: `routers/tasks.py` imports `TaskService` and `Task` at runtime (FastAPI reads the annotations) to name types in signatures, and never calls them. Nothing points back up the chain. The composition roots (`app/main.py`, `App.svelte`) may import anything, and `routers/health.py` and `routers/testing.py` may import `db.py` (`get_session`) and `models/` directly. `routers/testing.py` also imports `clock.py` and `services/testing_task_service.py`, because it builds its own service (AD-14).
 
 ## Invariants & Rules
 
@@ -204,7 +206,7 @@ Task = `{"id": uuid, "text": str, "added_at": ts, "completed_at": ts | null}`, w
 | `test` | `db-test` (own volume; databases `todo_pytest` for pytest and `todo_e2e` for `backend-test`, the second created by an init script; no compose service points at `todo_pytest`), `backend-test` (`APP_ENV=test`), `frontend-test` | `127.0.0.1:8082` → `frontend-test`, `127.0.0.1:5436` → `db-test` (for pytest) |
 
   - Inside containers, uvicorn listens on `8000` and nginx on `8080`. Host ports are moved off 8080 and 5433 (app `8081`, test `8082`, `db-test` `5436`) so the stack runs beside a local Postgres and other dev servers (2026-09-30).
-  - **nginx upstream:** `API_UPSTREAM` is `host:port` with no scheme. The config is `frontend/nginx/default.conf.template`, copied to `/etc/nginx/templates/`, with `proxy_pass http://${API_UPSTREAM};` and no URI part. `vite.config.ts` proxies `/api` to `http://${API_UPSTREAM ?? 'localhost:8000'}` with `server.host: true`. Compose sets `API_UPSTREAM` for `frontend`, `frontend-dev` and `frontend-test`.
+  - **nginx upstream:** `API_UPSTREAM` is `host:port` with no scheme. The config is `frontend/nginx/default.conf.template`, copied to `/etc/nginx/templates/`, which proxies through a variable (`set $api http://${API_UPSTREAM}; proxy_pass $api;`, no URI part) with `resolver 127.0.0.11 valid=10s ipv6=off;`, so a recreated backend's new IP is picked up without restarting nginx (2026-10-01). This relies on Docker's embedded DNS (the compose user-defined network); `/etc/hosts` entries are not consulted. An unresolvable backend no longer stops nginx starting: nginx stays healthy and each `/api` request gets a 502, which the client maps to `unavailable` and rolls back. `vite.config.ts` proxies `/api` to `http://${API_UPSTREAM ?? 'localhost:8000'}` with `server.host: true`. Compose sets `API_UPSTREAM` for `frontend`, `frontend-dev` and `frontend-test`.
   - **Postgres volumes:** Postgres 18 volumes mount at `/var/lib/postgresql`, not `/var/lib/postgresql/data`.
   - **Images:** multi-stage Dockerfiles. The frontend runtime is `nginxinc/nginx-unprivileged:1.30-alpine`, and the backend runtime is Python slim with a non-root `app` user. 
   - **Health checks:** app health checks live only in the Dockerfiles, and compose does not redefine them. The backend uses `python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"` with `start_period` ≥ 30 s. The frontend uses busybox `wget -qO- http://127.0.0.1:8080/`. Compose defines only the `db` health check (`pg_isready`). Every `depends_on` uses `condition: service_healthy`.

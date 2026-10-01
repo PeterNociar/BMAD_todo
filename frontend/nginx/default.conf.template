@@ -13,7 +13,16 @@ server {
     add_header Referrer-Policy "no-referrer" always;
 
     location /api/ {
-        proxy_pass http://${API_UPSTREAM};
+        # Docker's DNS, re-asked every 10 s: a recreated backend gets a new IP, and a
+        # proxy_pass with a literal host would keep the startup IP (502) until a restart.
+        # A variable forces the runtime lookup; with no URI part the path passes unchanged.
+        # Side effects: this relies on Docker's embedded DNS (a compose user-defined network),
+        # and /etc/hosts entries are not consulted. An unresolvable backend no longer stops
+        # nginx starting: nginx stays healthy and each /api request gets a 502, which the
+        # client maps to `unavailable` (and rolls back).
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $api http://${API_UPSTREAM};
+        proxy_pass $api;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
