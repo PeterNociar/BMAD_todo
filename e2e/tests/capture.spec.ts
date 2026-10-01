@@ -29,19 +29,52 @@ async function loaded(page: Page): Promise<void> {
   await expect(page.getByRole('main')).toHaveAttribute('aria-busy', 'false')
 }
 
-test('type right after load: the row shows and the input is empty and focused', async ({
-  page,
-}) => {
-  await page.goto('/')
-  await loaded(page)
+/**
+ * Type right after load, with the race forced: the first `GET /api/tasks` is held until the
+ * add's POST has returned 201. `stale` answers it with the pre-POST body (`[]`); `fresh` lets it
+ * reach the server, so it lists the task. Either way the AD-10 merge keeps one row under its
+ * optimistic key (the row element is never remounted), and the row survives a reload (1.12).
+ */
+for (const variant of ['stale', 'fresh'] as const) {
+  test(`type right after load (${variant} GET): one row, kept, and still there after reload`, async ({
+    page,
+  }) => {
+    let releaseGet!: () => void
+    const getReleased = new Promise<void>((resolve) => (releaseGet = resolve))
+    let held = false
+    await page.route('**/api/tasks', async (route) => {
+      if (route.request().method() !== 'GET' || held) return route.fallback()
+      held = true
+      await getReleased
+      if (variant === 'stale') return route.fulfill({ status: 200, json: [] })
+      return route.continue()
+    })
 
-  await page.keyboard.type('buy milk')
-  await page.keyboard.press('Enter')
+    await page.goto('/')
+    await expect(input(page)).toBeFocused()
+    await expect(page.getByRole('main')).toHaveAttribute('aria-busy', 'true')
 
-  await expect(rows(page)).toHaveText(['buy milk'])
-  await expect(input(page)).toHaveValue('')
-  await expect(input(page)).toBeFocused()
-})
+    const posted = page.waitForResponse(
+      (r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/tasks',
+    )
+    await page.keyboard.type('buy milk')
+    await page.keyboard.press('Enter')
+    expect((await posted).status()).toBe(201)
+
+    await expect(rows(page)).toHaveText(['buy milk'])
+    await expect(input(page)).toHaveValue('')
+    await expect(input(page)).toBeFocused()
+    const row = await rows(page).first().elementHandle()
+
+    releaseGet()
+    await expect(page.getByRole('main')).toHaveAttribute('aria-busy', 'false')
+    await expect(rows(page)).toHaveText(['buy milk'])
+    expect(await row?.evaluate((el) => el.isConnected)).toBe(true)
+
+    await page.reload()
+    await expect(rows(page)).toHaveText(['buy milk'])
+  })
+}
 
 test('whitespace: no row, no request, and the input keeps its spaces', async ({ page }) => {
   const posts = recordPosts(page)
