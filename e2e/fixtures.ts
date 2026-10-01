@@ -16,9 +16,11 @@
  *   "move both clocks together" (story 2.3). It and `advance` share one offset counter.
  * - `preparePage(page)` gives a page from a context a spec opens itself the same clock and CSP
  *   set-up as `page`; call the returned check at the end of the test.
+ * - `failApi(page, {method, path})` fails matching `/api/**` requests with an AD-5 error body
+ *   and returns a function that clears that failure (unroutes it), e.g. before a Retry.
  */
 import { AxeBuilder } from '@axe-core/playwright'
-import { test as base, expect, type Page } from '@playwright/test'
+import { test as base, expect, type Page, type Route } from '@playwright/test'
 
 export { expect }
 
@@ -184,11 +186,12 @@ export type FailApiOptions = {
 /**
  * Fulfils every matching `/api/**` request with the AD-5 error body `{detail, code}`.
  * Defaults to `503 service_unavailable`. Other requests go through untouched.
+ * Returns a function that clears this failure (removes its route) so later requests succeed.
  */
-export async function failApi(page: Page, options: FailApiOptions): Promise<void> {
+export async function failApi(page: Page, options: FailApiOptions): Promise<() => Promise<void>> {
   const { method, path, status = 503, code = 'service_unavailable' } = options
   const detail = options.detail ?? 'Injected failure'
-  await page.route('**/api/**', async (route) => {
+  const handler = async (route: Route) => {
     const request = route.request()
     const url = new URL(request.url())
     if (request.method() !== method.toUpperCase() || url.pathname !== path) {
@@ -196,7 +199,9 @@ export async function failApi(page: Page, options: FailApiOptions): Promise<void
       return
     }
     await route.fulfill({ status, contentType: 'application/json', json: { detail, code } })
-  })
+  }
+  await page.route('**/api/**', handler)
+  return () => page.unroute('**/api/**', handler)
 }
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']

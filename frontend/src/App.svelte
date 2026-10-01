@@ -151,7 +151,11 @@
     const timer = setTimeout(() => {
       skeletonDue = true
     }, SKELETON_DELAY_MS)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      // Leaving loading: a later load (Retry) starts with no skeleton until its own delay.
+      skeletonDue = false
+    }
   })
 
   function submit(e: KeyboardEvent): void {
@@ -209,7 +213,7 @@
     />
 
     <div class="toasts" bind:this={toastAnchor}>
-      <ToastLayer onretry={() => void tasks.load()} />
+      <ToastLayer onretry={() => void tasks.retry()} />
     </div>
   </header>
 
