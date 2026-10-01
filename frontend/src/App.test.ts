@@ -30,6 +30,7 @@ vi.mock('./lib/tasks.svelte', async (importActual) => {
       return current
     },
     resetTasks() {
+      current.dispose()
       current = actual.createTasks()
     },
   }

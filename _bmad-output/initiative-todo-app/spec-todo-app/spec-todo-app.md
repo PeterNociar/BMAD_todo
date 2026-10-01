@@ -105,4 +105,8 @@ sources:
 
 ## Open Questions
 
-- UX should confirm that a failed background poll after the first successful load stays silent, keeping the list and retrying on the next poll (architecture AD-10, CAP-10).
+None open.
+
+### Resolved
+
+- **Silent failed poll (architecture AD-10, CAP-10).** Decided (2026-10-01, user): a failed background poll after the first successful load stays silent; the list is kept and the next 30 s tick retries.

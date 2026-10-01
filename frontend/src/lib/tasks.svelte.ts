@@ -18,6 +18,11 @@
  * `ready` or `load_failed` is silent. Any successful GET sets `ready` and hides the toast.
  * `retry()` acts only in `load_failed`.
  *
+ * Background polling (AD-10): from the first successful GET, the store polls every 30 s while
+ * the tab is visible, stops while it is hidden and polls immediately when it becomes visible
+ * again. A poll is skipped (never queued) while a GET or an add's POST is in flight, goes
+ * through the same merge, and fails silently. `dispose()` stops it (tests only).
+ *
  * It never moves focus (AD-18), never retries on its own, and never persists pending ops.
  */
 import { addTask, ApiError, deleteTask, listTasks, tickTask, untickTask, type Task } from './api'
@@ -94,6 +99,9 @@ function send(op: Op, id: string): Promise<Task | null> {
 /** How long a new task stays held under the input before it settles (EXPERIENCE, FR-4). */
 export const HOLD_MS = 3_000
 
+/** The background poll's cadence while the tab is visible (AD-10). */
+export const POLL_MS = 30_000
+
 export function createTasks() {
   let entries = $state<Entry[]>([])
   let loadState = $state<LoadState>('loading')
@@ -113,6 +121,11 @@ export function createTasks() {
   /** The GET in flight, and the one queued behind it (at most one). */
   let getInFlight: Promise<void> | null = null
   let getQueued: Promise<void> | null = null
+  /** Polling has started (at the first successful GET); it starts once per store. */
+  let polling = false
+  let disposed = false
+  /** The 30 s poll cadence; running only while polling and the tab is visible. */
+  let pollTimer: ReturnType<typeof setInterval> | null = null
 
   const rows = $derived.by(() => {
     const visible = entries.map(view).filter((r): r is Row => r !== null)
@@ -304,6 +317,7 @@ export function createTasks() {
     }
     merge(server, S)
     loadState = 'ready'
+    startPolling()
     if (loadFailureShown) {
       loadFailureShown = false
       toasts.hideLoadFailure()
@@ -346,6 +360,53 @@ export function createTasks() {
     }
     getQueued ??= getInFlight.then(next, next)
     return getQueued
+  }
+
+  /**
+   * One background poll (AD-10): skipped, not queued, while a GET is in flight (`refresh()`
+   * would queue behind it) or while any add's POST is in flight. Tick, untick and delete ops
+   * in flight do not block it. A failure is silent: `loadFailed()` ignores it once `ready`.
+   */
+  function poll(): void {
+    if (getInFlight !== null) return
+    if (entries.some((e) => e.confirmed === null)) return
+    void refresh()
+  }
+
+  function stopPollTimer(): void {
+    if (pollTimer !== null) clearInterval(pollTimer)
+    pollTimer = null
+  }
+
+  /** (Re)starts the cadence, so the next tick is a full 30 s from now. */
+  function startPollTimer(): void {
+    stopPollTimer()
+    pollTimer = setInterval(poll, POLL_MS)
+  }
+
+  /** Hidden: stop polling. Visible again: poll at once, then every 30 s from that moment. */
+  function onVisibilityChange(): void {
+    if (document.visibilityState === 'visible') {
+      poll()
+      startPollTimer()
+    } else {
+      stopPollTimer()
+    }
+  }
+
+  /** Starts polling at the first successful GET; later calls do nothing. */
+  function startPolling(): void {
+    if (polling || disposed) return
+    polling = true
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    if (document.visibilityState === 'visible') startPollTimer()
+  }
+
+  /** Stops polling for good: clears the timer and removes the listener. The app never calls it. */
+  function dispose(): void {
+    disposed = true
+    stopPollTimer()
+    document.removeEventListener('visibilitychange', onVisibilityChange)
   }
 
   function load(): Promise<void> {
@@ -433,6 +494,7 @@ export function createTasks() {
     tick: (key: string) => enqueue(key, 'tick'),
     untick: (key: string) => enqueue(key, 'untick'),
     remove: (key: string) => enqueue(key, 'delete'),
+    dispose,
   }
 }
 

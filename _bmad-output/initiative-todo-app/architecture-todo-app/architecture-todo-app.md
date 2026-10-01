@@ -387,7 +387,11 @@ erDiagram
 
 ## Open Questions
 
-1. **A failed background poll after a successful load stays silent (AD-10).** This is new UX behaviour, and UX should confirm it (EXPERIENCE.md).
+None open.
+
+### Resolved
+
+- **A failed background poll after a successful load stays silent (AD-10).** Decided (2026-10-01, user): a failed background poll after the first successful load stays silent; the list is kept and the next 30 s tick retries.
 
 ## Deferred
 
