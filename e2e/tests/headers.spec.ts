@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures.ts'
 
 test('static pages carry the CSP and the shared security headers', async ({ request }) => {
   const response = await request.get('/')
