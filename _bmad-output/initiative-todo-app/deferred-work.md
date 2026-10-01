@@ -22,3 +22,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-the-task-store-confirmed-state-and-op-queues-plan.md`
   summary: The 1.8 `load()` keeps only unconfirmed adds, so an add confirmed while the first GET is in flight either vanishes (the GET was served before the POST) or comes back re-keyed by id, losing its key, its hold and any pending ops. A second or overlapping `load()` also drops pending and in-flight ops, and has no stale-response guard.
   evidence: Medium if left in place; the user-visible case is typing right after page load. Entry 1.12's AD-10 seq merge owns it. Its tests should cover POST-before-GET with the task absent and with it present (one row, key kept, hold kept), and a load while an op is in flight. Found by four lenses in the 1.8 review.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-capture-ui-header-input-and-adding-tasks-plan.md`
+  summary: DESIGN.md asks for both webfonts to be preloaded. 1.9 ships metric-matched fallbacks but no `<link rel="preload">`, because Vite's hashed asset URLs need a small plugin to inject it into `index.html`.
+  evidence: User decision (2026-10-01). The metric-matched fallbacks already prevent layout jumps; preloading would only shorten the swap. Revisit with the theme work in epic 3, which also touches `index.html` (`theme-init.js`).

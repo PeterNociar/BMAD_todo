@@ -1,12 +1,85 @@
 /* Light-mode tokens (DESIGN.md front matter). Dark mode arrives with epic 3. */
 :root {
+  --color-bg: #f2f4f7;
+  --color-surface: #ffffff;
+  --color-hover: #f4f6f9;
   --color-text-primary: #18202c;
+  --color-text-secondary: #475263;
+  --color-text-muted: #5b6676;
+  --color-divider: #dee3ea;
+  --color-border: #c9d0da;
   --color-accent: #4a5e7c;
+  --color-check-ring: #7d8a9c;
+  --color-check-fill: #4a5e7c;
+  --color-delete: #5b6676;
   --color-shadow-toast: #18202c1f;
   --color-error-bg: #fceceb;
   --color-error-border: #f3c7c3;
   --color-error-icon: #ba2b2e;
+
+  /* Spacing (DESIGN spacing scale, rem at a 16px root). */
+  --space-1: 0.125rem; /* 2px */
+  --space-2: 0.25rem; /* 4px */
+  --space-3: 0.5rem; /* 8px */
+  --space-4: 0.625rem; /* 10px */
+  --space-5: 0.75rem; /* 12px */
+  --space-6: 1.125rem; /* 18px */
+  --space-7: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-9: 2.25rem; /* 36px */
+  --space-10: 3rem; /* 48px */
+  --space-row-inset-left: 0.9375rem; /* 15px */
+  --space-gap-input-list-phone: 0.875rem; /* 14px */
+  --space-empty-state-pad-y: 0.875rem; /* 14px */
+  --content-max: 40rem; /* 640px */
+
+  --radius-sm: 4px;
   --radius-md: 6px;
+  --radius-full: 9999px;
+
+  --font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/*
+ * Metric-matched fallbacks, so text does not jump when the webfont swaps in
+ * (font-display: swap). Values come from each webfont's hhea metrics and average width
+ * relative to the local font: Inter (2048 upm, 1984 / -494) on Arial, JetBrains Mono
+ * (1000 upm, 1020 / -300) on Courier New. Liberation fonts are their metric twins on Linux.
+ */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans');
+  size-adjust: 107.4%;
+  ascent-override: 90.2%;
+  descent-override: 22.48%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Fallback';
+  src: local('Courier New'), local('CourierNewPSMT'), local('Liberation Mono');
+  size-adjust: 134.59%;
+  ascent-override: 75.79%;
+  descent-override: 22.29%;
+  line-gap-override: 0%;
+}
+
+html {
+  background: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
 .visually-hidden {

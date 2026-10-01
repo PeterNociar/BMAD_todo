@@ -1,6 +1,6 @@
 /**
- * The one task store (AD-9): the only code that changes task state and, apart from the
- * composition root, the only caller of `lib/api.ts`.
+ * The one task store (AD-9): the only code that changes task state and
+ * the only caller of `lib/api.ts`.
  *
  * Each entry keeps the last server-confirmed Task and a FIFO queue of pending ops. The view
  * folds the ops over the confirmed state (or, for an unconfirmed add, its provisional base).
