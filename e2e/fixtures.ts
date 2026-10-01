@@ -12,6 +12,10 @@
  *   afterwards (AD-14).
  * - `advance(ms)` moves the browser clock (`fastForward`) and the server clock together.
  *   Time only ever moves with `fastForward`/`runFor`; never `setFixedTime` or `pauseAt`.
+ * - `skewServer(ms)` moves only the server clock: the one deliberate exception to AD-8's
+ *   "move both clocks together" (story 2.3). It and `advance` share one offset counter.
+ * - `preparePage(page)` gives a page from a context a spec opens itself the same clock and CSP
+ *   set-up as `page`; call the returned check at the end of the test.
  */
 import { AxeBuilder } from '@axe-core/playwright'
 import { test as base, expect, type Page } from '@playwright/test'
@@ -36,11 +40,17 @@ export type SeedInput = {
 
 export type Seed = (input: SeedInput) => Promise<Task>
 export type Advance = (ms: number) => Promise<void>
+export type SkewServer = (ms: number) => Promise<void>
+
+/** The server clock offset for this test. `shift` adds to it and posts the new total. */
+type ServerClock = { shift: (ms: number) => Promise<void> }
 
 type HarnessFixtures = {
   resetTestData: void
+  serverClock: ServerClock
   seed: Seed
   advance: Advance
+  skewServer: SkewServer
 }
 
 export type CspViolation = { directive: string; blockedUri: string }
@@ -81,6 +91,20 @@ function assertNoCspViolations(page: Page): void {
   expect(listed, `CSP violations:\n${listed.join('\n')}`).toEqual([])
 }
 
+/**
+ * Installs the CSP listener and the fake clock on `page` before its first `goto` (AD-8,
+ * AD-19). Returns the teardown check, which fails on any recorded CSP violation.
+ */
+export async function preparePage(page: Page): Promise<() => void> {
+  const violations = cspViolations(page)
+  await page.exposeBinding('__reportCsp', (_source, violation: CspViolation) => {
+    violations.push(violation)
+  })
+  await page.addInitScript(cspListener)
+  await page.clock.install()
+  return () => assertNoCspViolations(page)
+}
+
 export const test = base.extend<HarnessFixtures>({
   resetTestData: [
     async ({ request, baseURL }, use) => {
@@ -93,14 +117,29 @@ export const test = base.extend<HarnessFixtures>({
   ],
 
   page: async ({ page }, use) => {
-    const violations = cspViolations(page)
-    await page.exposeBinding('__reportCsp', (_source, violation: CspViolation) => {
-      violations.push(violation)
-    })
-    await page.addInitScript(cspListener)
-    await page.clock.install()
+    const check = await preparePage(page)
     await use(page)
-    assertNoCspViolations(page)
+    check()
+  },
+
+  // One offset counter for `advance` and `skewServer`, so the two never desync. The server
+  // takes an absolute offset; reset set it to 0 for this test.
+  serverClock: async ({ request, resetTestData: _ }, use) => {
+    let offsetMs = 0
+    await use({
+      shift: async (ms) => {
+        // Fail clearly here rather than with the server's opaque 422 (StrictInt, ge=0).
+        if (!Number.isInteger(ms)) {
+          throw new Error(`server clock: ms must be an integer, got ${ms}`)
+        }
+        if (offsetMs + ms < 0) {
+          throw new Error(`server clock: offset would go negative (${offsetMs} + ${ms})`)
+        }
+        offsetMs += ms
+        const response = await request.post('/api/test/clock', { data: { offset_ms: offsetMs } })
+        expect(response.status(), `server clock: ${await response.text()}`).toBe(204)
+      },
+    })
   },
 
   seed: async ({ request, resetTestData: _ }, use) => {
@@ -113,16 +152,23 @@ export const test = base.extend<HarnessFixtures>({
     })
   },
 
-  advance: async ({ page, request, resetTestData: _ }, use) => {
-    // The server takes an absolute offset; reset set it to 0 for this test.
-    let offsetMs = 0
+  advance: async ({ page, serverClock }, use) => {
     await use(async (ms) => {
       // Server first, so timers that fire during the jump already see the new server time.
-      offsetMs += ms
-      const response = await request.post('/api/test/clock', { data: { offset_ms: offsetMs } })
-      expect(response.status(), `advance: ${await response.text()}`).toBe(204)
+      await serverClock.shift(ms)
       await page.clock.fastForward(ms)
     })
+  },
+
+  /**
+   * Moves only the server clock forward by `ms` (a whole number), leaving the browser clock
+   * where it is. This is the single, deliberate exception to AD-8's "move both clocks
+   * together": it exists to put the server ahead of the browser, as in clock drift (FR-15).
+   * It shares `advance`'s offset counter, so a later `advance` keeps the skew. The server's
+   * offset is never negative, so a shift that would take the total below 0 throws.
+   */
+  skewServer: async ({ serverClock }, use) => {
+    await use((ms) => serverClock.shift(ms))
   },
 })
 

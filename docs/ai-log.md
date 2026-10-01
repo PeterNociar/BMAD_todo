@@ -526,3 +526,42 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - A CSS guard for the dark pair: there is no dark CSS until epic 3, and that requirement is noted there.
   - Signalling when the nudge can't reach 3:1: this can't happen with DESIGN's backgrounds.
   - Validating the theme at runtime: it is typed.
+
+## Ticket 2.3 — Age bar and live overdue
+
+**Agents.** The dev persona (bmad-build) wrote the plan, and the user approved it at about 1,650 tokens. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine, DESIGN.md and EXPERIENCE.md as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan's I/O matrix became the E2E spec, one test per row, and its Code Map pointed at the existing `--sticky-height` CSSOM pattern in `App.svelte`, which the bar reuses.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the rebuilt test stack, the e2e typecheck and Playwright on the system Chrome.
+
+**What was built.**
+- `TaskRow`: an `aria-hidden` `[data-age-bar]` span on open rows only, absolutely positioned on the row's left edge, 3 px wide (new `--space-age-bar` token in `app.css`) and full row height, inside the existing 15 px inset. Its `background` is `var(--age-colour)`, which an `$effect` sets with `style.setProperty` on a `bind:this` element, so no `style` attribute is ever written from markup (CSP `default-src 'self'`). `clock.now` is read once into a `$derived` `now`, and both `ageLabel` and `ageColour(…, 'light')` derive from it. A comment says epic 3 switches the theme argument.
+- `TaskRow.test.ts`: seven new tests: the bar's presence and position, `--age-colour` equal to `ageColour` (12 h → `#8F7506`), the only declaration on the bar, no bar when done, the colour and label moving together on `clock.sample()` (12 h → 24 h → `#C43F3E` and `1d`), a future `added_at` → fresh and `now`, and the bar leaving on tick and returning on untick. The row-order test now skips the bar, which sits outside the flex flow.
+- `e2e/fixtures.ts`: a `serverClock` fixture owns the one offset counter. `advance(ms)` shifts it and then fast-forwards the page; the new `skewServer(ms)` shifts only the server, with a docstring naming it the single, deliberate exception to AD-8. The page set-up (CSP listener, binding, `clock.install()`) moved into an exported `preparePage(page)`, so a spec that opens its own contexts gets the same checks.
+- `e2e/tests/age-bar.spec.ts`: nine tests, one per matrix row plus a shared-counter test (the CSP row is the fixture's teardown check on every test): bar colour and geometry at 12 h, no bar when done, UJ-3 (23 h 59 m crosses on `advance(60_000)`, reads `1d` in overdue at the same index on the same DOM element, no live-region writes, input still focused), the same seed under `UTC` and `Pacific/Kiritimati` in two contexts, the server an hour ahead with an add through the UI (`now`, fresh), and tick (`done now`, no bar) and untick (index 1, `2d`, overdue) of a 2-day task, plus axe at 1280 px.
+- **Results:** 311 Vitest tests in 15 files pass, with coverage at 98.69% statements, 94.93% branches, 100% functions and 99.57% lines against the 70% gate. Check, lint, Prettier and build are green. All 63 E2E tests passed before review (two full runs); after review `age-bar.spec.ts` passed three runs in a row.
+
+**What AI decided beyond the plan.**
+- The colour derives from `added_at` only, since only open rows have a bar; the label keeps `completed_at ?? added_at`.
+- A `preparePage` helper, so the time-zone test's own contexts install the fake clock and fail on CSP violations like the `page` fixture.
+- The UJ-3 test tags the row's element before the crossing and checks the same element is still at index 1, which proves no remount as well as no move.
+- The future test reads the POST response and asserts the confirmed `added_at` is more than 55 minutes ahead of the browser's `Date.now()`, so it can't pass on the optimistic row alone.
+
+**What AI missed.**
+- Exact-colour E2E checks (`toHaveCSS('background-color', …)`) against a colour that moves continuously with real time between seeding and reading.
+- A UJ-3 colour assertion that couldn't see a change: at 23 h 59 m 30 s the bar is already the overdue colour, and the seed sat only 30 s from the boundary.
+
+**Review.** Four lenses produced about 25 findings, each checked against the code.
+- **Patched:**
+  - A ±2-per-channel colour helper, used for every bar-colour assertion.
+  - The UJ-3 and time-zone seeds now have minutes of slack; UJ-3 says honestly that its recolour is proved by the label and the TaskRow unit test.
+  - The time-zone "mid" colour is pinned (`rgb(146, 115, 2)` at 12 h 30 m).
+  - The time-zone contexts use `devices['Desktop Chrome']`, and their CSP check and close run in a `finally`.
+  - `skewServer`/`advance` throw on a non-integer or a negative running offset, the docstring no longer invites a negative skew, and a shared-counter test (`skewServer(1 h)` then `advance(1 h)` → `added_at` about 2 h ahead, browser shows `now`).
+  - The bar's `bind:this` type is `HTMLSpanElement | null`, and its CSS falls back to `transparent` before the effect runs.
+  - Honest unit-test names, and a real recolour on untick (the clock moves between tick and untick).
+- **Rejected:**
+  - Forced-colours handling: the label carries the age; the bar is decorative.
+  - The skew fixture in the live tests, and the visibility/wake triggers in E2E: the ticket scopes skew to the future case, and the triggers are unit-tested in 1.6.
+  - Running E2E on the app profile: it has no test router.

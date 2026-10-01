@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/svelte'
 import { tick } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ageColour } from '../lib/age'
 import { clock } from '../lib/clock.svelte'
 import type { Row } from '../lib/tasks.svelte'
 import TaskRow from './TaskRow.svelte'
@@ -163,8 +164,9 @@ describe('TaskRow: age', () => {
   it('orders the row contents tick, text, age, delete', () => {
     const { container } = render(TaskRow, { row: row() })
 
+    // The age bar is absolutely positioned on the left edge, outside the flex flow.
     const visible = [...container.querySelector('.task-row')!.children].filter(
-      (el) => !el.classList.contains('visually-hidden'),
+      (el) => !el.classList.contains('visually-hidden') && !el.classList.contains('age-bar'),
     )
     const roles = ['tick', 'text', 'age', 'delete']
     expect(visible).toHaveLength(roles.length)
@@ -195,5 +197,93 @@ describe('TaskRow: age', () => {
     const { container } = render(TaskRow, { row: row() })
 
     expect(container.querySelector('[aria-live], [role="status"], [role="alert"]')).toBeNull()
+  })
+})
+
+describe('TaskRow: age bar', () => {
+  const NOW = Date.parse('2026-09-30T20:00:00.000Z') // 12 h after row()'s added_at
+  const HOUR = 3_600_000
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+    clock.sample()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    clock.sample()
+  })
+
+  const bar = (container: HTMLElement) => container.querySelector<HTMLElement>('[data-age-bar]')
+  const colour = (container: HTMLElement) => bar(container)?.style.getPropertyValue('--age-colour')
+
+  it('an open row has an aria-hidden bar as the first child of the row', () => {
+    const { container } = render(TaskRow, { row: row() })
+
+    const el = bar(container)
+    expect(el).not.toBeNull()
+    expect(el).toHaveClass('age-bar')
+    expect(el).toHaveAttribute('aria-hidden', 'true')
+    expect(container.querySelector('.task-row')?.firstElementChild).toBe(el)
+  })
+
+  it('sets --age-colour through the CSSOM to the light ageColour of added_at', () => {
+    const { container } = render(TaskRow, { row: row() })
+
+    expect(colour(container)).toBe('#8F7506') // DESIGN age-12h
+    expect(colour(container)).toBe(ageColour(row().added_at, NOW, false, 'light'))
+  })
+
+  it('the only declaration on the bar is --age-colour', () => {
+    const { container } = render(TaskRow, { row: row() })
+
+    // jsdom can't tell setProperty from a markup style=; the E2E CSP check is the real proof.
+    const el = bar(container)!
+    expect(el.style.length).toBe(1)
+    expect(el.style.item(0)).toBe('--age-colour')
+  })
+
+  it('a completed row renders no bar', () => {
+    const { container } = render(TaskRow, { row: done() })
+
+    expect(bar(container)).toBeNull()
+  })
+
+  it('recomputes the colour with the label when clock.now moves', async () => {
+    const { container } = render(TaskRow, { row: row() })
+    expect(colour(container)).toBe('#8F7506')
+
+    vi.setSystemTime(NOW + 12 * HOUR) // 24 h: overdue
+    clock.sample()
+    await tick()
+
+    expect(colour(container)).toBe('#C43F3E') // DESIGN age-24h
+    expect(container.querySelector('.age')).toHaveTextContent(/^1d$/)
+  })
+
+  it('a future added_at shows the fresh colour and "now"', () => {
+    const { container } = render(TaskRow, {
+      row: row({ added_at: new Date(NOW + HOUR).toISOString() }),
+    })
+
+    expect(colour(container)).toBe('#249057') // DESIGN age-1h (fresh)
+    expect(container.querySelector('.age')).toHaveTextContent(/^now$/)
+  })
+
+  it('drops the bar on tick and brings it back, recoloured, on untick', async () => {
+    const view = render(TaskRow, { row: row() })
+
+    const before = bar(view.container)
+    await view.rerender({ row: done() })
+    expect(bar(view.container)).toBeNull()
+
+    vi.setSystemTime(NOW + 12 * HOUR) // 24 h after added_at: overdue
+    clock.sample()
+    await view.rerender({ row: row() })
+    const after = bar(view.container)
+    expect(after).not.toBeNull()
+    expect(after).not.toBe(before)
+    expect(colour(view.container)).toBe('#C43F3E')
   })
 })
