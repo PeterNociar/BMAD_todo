@@ -89,3 +89,13 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - The README didn't warn that `dev` and `app` share one database and both migrate it at startup.
 
 **Verification.** None of the compose wiring is covered by automated tests (deferred to entry 1.5's E2E suite). The main session ran and recorded the stack checks itself, including a live reload triggered by touching a source file.
+
+## Refactor — test-only use cases out of TaskService (PR #7)
+
+**What a human caught.** Ticket 4 put `seed` and `remove_all` on the production `TaskService`, and `delete_all` on the `Task` model. The routes were gated, but the methods still shipped in every build. The four review lenses on ticket 4 did not flag it; the user spotted it while reading PR #5.
+
+**Agents.** Claude Code in the main session, without a plan. It moved the methods into `TestingTaskService(TaskService)` in `services/testing_task_service.py`, which only `routers/testing.py` imports. The router builds the service with its own provider, so `deps.py` never imports test code. A follow-up bmad-build run updated AD-14, AD-20, the dependency note and the source tree in the spine, plus the README.
+
+**Test generation.** The AI added a test that builds the default app in a fresh interpreter and asserts that neither test-only module is in `sys.modules`. It runs in a subprocess because the session's test-mode app has already imported both modules in-process. The AI checked that the test can fail by temporarily importing the testing service from `deps.py`, which made it fail.
+
+**What the docs check found.** The spine said `routers/testing.py` reaches `db.py` through `deps.py`. `routers/health.py` has imported `get_session` from `app.db` directly since ticket 1, and the testing router now does too, so the rule was rewritten to match.

@@ -65,7 +65,7 @@ COMPOSE_PROFILES=test docker compose up -d --build --wait
 ```
 
 - `backend-test` runs with `APP_ENV=test` on the `todo_e2e` database of `db-test`, and `frontend-test` serves it on <http://127.0.0.1:8082>. Its data never mixes with the app's.
-- Only in this mode does the backend mount the test-only router (AD-14). Under `APP_ENV=app` every `/api/test/*` path is `404 not_found`.
+- Only in this mode does the backend mount the test-only router (AD-14). Under `APP_ENV=app` every `/api/test/*` path is `404 not_found`, and the test-only code (`routers/testing.py`, `services/testing_task_service.py`) is never imported.
   - `POST /api/test/tasks {"text", "added_ago_ms", "completed_ago_ms" | null}` → `201` Task, with times relative to the server clock.
   - `POST /api/test/clock {"offset_ms": int}` → `204`; shifts the server clock (0 clears it).
   - `POST /api/test/reset` → `204`; deletes every task and clears the offset.

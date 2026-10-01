@@ -13,3 +13,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-e2e-harness-against-the-test-profile-plan.md`
   summary: Nothing tests that `failApi` lets non-matching `/api/**` requests through (`route.fallback()`); dropping the method/path guard would still pass the only `failApi` test.
   evidence: The only call site, `e2e/tests/harness.spec.ts`, fails `GET /api/tasks` and sees no other API request. The first story that injects a mutation failure (1.9 or 1.10) should assert that the seeded list still loads while `POST /api/tasks` is failed.
+- source_plan: `_bmad-output/initiative-todo-app/plan-testing-task-service-docs.md`
+  summary: The spine's backend dependency diagram has no `routers/* → services/*` arrow, though `routers/tasks.py` imports `TaskService` for its `Depends` type annotation; add the arrow or reword "Arrows are the only dependencies allowed".
+  evidence: `backend/app/routers/tasks.py` imports `app.services.task_service.TaskService`; the mermaid graph only has `D --> SV`. This was already wrong before the TestingTaskService docs change, which fixed only the testing router's part of the note.
