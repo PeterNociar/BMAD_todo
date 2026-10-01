@@ -16,3 +16,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/plan-testing-task-service-docs.md`
   summary: The spine's backend dependency diagram has no `routers/* → services/*` arrow, though `routers/tasks.py` imports `TaskService` for its `Depends` type annotation; add the arrow or reword "Arrows are the only dependencies allowed".
   evidence: `backend/app/routers/tasks.py` imports `app.services.task_service.TaskService`; the mermaid graph only has `D --> SV`. This was already wrong before the TestingTaskService docs change, which fixed only the testing router's part of the note.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-frontend-pure-core-api-client-sort-mirror-and-clock-plan.md`
+  summary: No automated check proves the AD-8 lint rule (`Date.now`, `new Date()`, `Date()` banned in `src/` outside the clock) still fires; a later config edit could switch it off silently.
+  evidence: The rule was checked by hand with throwaway edits, and the repo has no CI that runs lint. A Vitest test using ESLint's Node API `lintText` on `src/x.ts`, `src/X.svelte` and `src/lib/clock.svelte.ts` would pin it; worth adding with CI.
