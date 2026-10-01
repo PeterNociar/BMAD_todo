@@ -485,3 +485,44 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - The three-argument signature: the plan specifies it.
   - Unifying test selectors: cosmetic.
 - **Found during verification:** the 1.11 lint-rules test timed out intermittently under coverage; given a longer timeout.
+
+## Ticket 2.2 — Age colour function for light and dark
+
+**Agents.** The dev persona (bmad-build) wrote the plan, and the user approved it, with one decision: each stop must be within ±2/255 per sRGB channel. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading DESIGN.md as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan's edge-case matrix and DESIGN.md's stop table became the unit tests.
+
+**MCP servers.** None. Verification used the shell: `svelte-check` and `tsc`, ESLint, Prettier, Vitest with coverage, and `vite build`. Throwaway Node scripts compared gamut-reduction methods against the stored stops.
+
+**What was built.**
+- `lib/age.ts`: pure `ageColour(timestamp, now, done, theme)` → `#RRGGBB`, or `null` for a completed task. Below 1 h it returns the fresh endpoint, from 24 h the overdue one, and in between `t = (hours − 1) / 23` with L, C and H linear (hue 155 → 25).
+  - The colour maths lives in the same file: OKLCH → OKLab → linear sRGB (Ottosson's matrices), the sRGB transfer functions, WCAG relative luminance and contrast, and `hexToOklch` for the tests.
+  - `fitGamut` reduces chroma, keeping L and H. `nudgeContrast` (exported) moves L away from the backgrounds in 0.005 steps until every background reaches 3:1, and stops at the end of the L range.
+  - `THEME_SURFACES` holds DESIGN's light and dark `surface` and `hover`.
+- `lib/age.test.ts`: every DESIGN stop in both themes (plus 25 h and 10 d) within ±2/255. A 0–30 h sweep in 15-minute steps keeps 3:1 on surface and hover, and its measured hue never rises by more than 0.5° (8-bit rounding). The suite also covers the fresh colour under 1 h, future timestamps, `null` when done, and the nudge darkening, lightening and running out of range.
+- `tests/theme-surfaces.test.ts` (node): the light `THEME_SURFACES` must equal `--color-surface` and `--color-hover` on `:root` in `app.css`.
+- **Results:** 293 Vitest tests in 15 files pass, with coverage at 98.65% statements, 94.75% branches, 100% functions and 99.57% lines against the 70% gate. Check, lint, Prettier and build are green.
+
+**What AI decided beyond the plan.**
+- **Gamut reduction uses a fixed 0.002 chroma step, not bisection.** Bisection to the gamut edge gives light 12 h `#8F7500`, which is 6/255 off DESIGN's `#8F7506` on blue and breaks the user's ±2/255 decision. No bisection margin brings every stop within tolerance in both themes: light 12 h wants blue 6 and dark 12 h wants blue 0. A 0.002 step reproduces all 14 stops exactly, so it's very likely the method that rendered them. The plan's design note had it backwards: a fixed step lands inside the edge, and that is where the stored stop sits.
+- The OKLCH helpers stay in `age.ts`, not in a sibling `oklch.ts`. The node tsconfig type-checks whatever `tests/` imports and requires file extensions, while `src/` imports never use them.
+- The hue test measures the hue from the output hex, so it checks the result rather than the formula's input.
+
+**What AI missed.**
+- An unparseable timestamp made `Date.parse` return NaN, which flowed into L, C and H. Light returned `#NANNANNAN`, and dark looped forever in `nudgeContrast` because NaN never trips the L-range exit.
+- A plan rule that couldn't meet its own tolerance: bisection to the gamut edge misses light 12 h by 6/255. The user signed off on the 0.002 chroma step instead.
+
+**Review.** Four lenses produced about 30 findings, each checked against the code.
+- **Patched:**
+  - A non-finite age now counts as 0 (the fresh colour), and the nudge loop exits on a non-finite L.
+  - `hexToRgb` throws on anything that isn't `#RRGGBB`.
+  - `fitGamut` clamps a negative chroma to 0.
+  - A sweep test checks that `ageColour` equals the un-nudged formula, so the nudge stays idle on the real path.
+  - Tests for the dark "ran out of lightness" exit, and for 3:1 on both backgrounds in the light nudge.
+  - Docstrings now say the chroma is lowered out of gamut, the stops are held within ±2/255, and which helpers are exported for tests and story 2.3.
+  - The drift guard reads every `:root` block and normalises 3-digit hex.
+- **Rejected:**
+  - Rendering the colour: that is story 2.3.
+  - A CSS guard for the dark pair: there is no dark CSS until epic 3, and that requirement is noted there.
+  - Signalling when the nudge can't reach 3:1: this can't happen with DESIGN's backgrounds.
+  - Validating the theme at runtime: it is typed.
