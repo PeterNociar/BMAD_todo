@@ -698,3 +698,30 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
   - App: a failed Retry (the toast and the alert text), and a task added under `load_failed` showing as the only row.
   - Store: a recovery GET failing silently under `load_failed`, and Retry racing a recovery GET.
 - After the fixes, 372 Vitest tests pass with 99.23% statement coverage, and all 76 E2E tests pass.
+
+## Ticket 3.2 — Background polling
+
+**Agents.** The dev persona (bmad-build) wrote the plan for the second story of epic-everywhere-and-handed-in. A Claude Code subagent (Claude Opus) implemented it from the plan alone, with the architecture spine as its only `context:` file.
+
+**Prompt that worked.** The same prompt as earlier tickets. The Code Map named the touch points (`runGet`'s success path, `getInFlight`, the `confirmed === null` test for an add's POST, the clock's `visibilitychange` pattern and the test's visibility stub), and the I/O matrix mapped one test to each row.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
+
+**What was built.**
+- `lib/tasks.svelte.ts`: exports `POLL_MS = 30_000`. The first successful GET calls `startPolling()`, which runs once per store: it adds the store's own `visibilitychange` listener and, if the tab is visible, starts a `setInterval`. Hidden clears the interval; visible again polls once and starts a fresh interval, so the next tick is 30 s later. `poll()` is skipped, never queued, while a GET is in flight, or while any entry has `confirmed === null` (an add's POST); tick, untick and delete ops do not block it. A poll goes through `refresh()` and the existing merge, and a failure is silent because `loadFailed()` already ignores failures once `ready`. `dispose()` clears the interval and removes the listener; the app singleton never calls it. The header comment gains the polling rules.
+- `tasks.svelte.test.ts`: the global `afterEach` calls `store.dispose()`. A new `background polling (AD-10)` suite fakes `setInterval` and stubs `document.visibilityState` as `clock.test.ts` does, with one test per store matrix row (no poll while loading or under `load_failed`, the 30 s/60 s cadence, a remote add, a remote delete that ends the hold, hidden for 90 s, the visible-refetch, GET in flight on a tick and on visible, an add's POST in flight, a tick op in flight, a silent failure, `dispose()`), plus one cadence per store across several successful GETs and a first load that lands while hidden.
+- `e2e/tests/sync.spec.ts`: the test's `request` context plays the other device. A POST shows up on the idle tab after `advance(30 s)` with focus still on the input; a DELETE removes the row after one poll and it stays gone after a second. Each step waits for the poll's `GET /api/tasks` response.
+- Spec and architecture: the Open Questions item on the silent failed poll moved to a Resolved list with the user's decision (2026-10-01).
+- **Results:** 388 Vitest tests pass, with coverage at 99.26% statements, 96.33% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green. All 78 E2E tests pass, including the existing ones that `advance` past 30 s.
+
+**What AI decided beyond the plan.**
+- The listener is added when polling starts rather than when the store is created, so the module singleton, which tests never load, registers nothing.
+- If the first load lands while the tab is hidden, no interval starts; the first visible change polls and starts it.
+- The resolved Open Questions keep their heading with "None open." and a short Resolved list, in both the spec and the architecture spine.
+
+**Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 15 findings: 1 medium, 9 low, 5 false. Five were patched and nothing was deferred.
+- `App.test.ts` never disposed the store it swapped out, so each test left a polling interval and a listener behind. `resetTasks()` now disposes the old store first.
+- The `visibilityState` stub leaked into later suites. It is deleted after each test.
+- The `getQueued` guard in `poll()` could never fire, so it was dropped.
+- The skipped-refetch tests now also check that the cadence restarts from the visible event.
+- After the fixes, 388 Vitest tests pass with 99.26% statement coverage, and all 78 E2E tests pass.

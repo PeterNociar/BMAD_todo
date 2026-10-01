@@ -2,7 +2,7 @@ import { flushSync } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import * as api from './api'
 import { ApiError, type Task } from './api'
-import { createTasks, HOLD_MS, type AddFailure, type Tasks } from './tasks.svelte'
+import { createTasks, HOLD_MS, POLL_MS, type AddFailure, type Tasks } from './tasks.svelte'
 import { COPY, toasts } from './toasts.svelte'
 
 vi.mock('./api', async (importActual) => {
@@ -92,6 +92,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  store.dispose()
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
@@ -1200,5 +1201,253 @@ describe('hold timer (FR-4)', () => {
     expect(store.heldKey).toBe(key)
     await vi.advanceTimersByTimeAsync(1)
     expect(store.heldKey).toBeNull()
+  })
+})
+
+describe('background polling (AD-10)', () => {
+  // The poll uses the global setInterval, so this suite fakes it (and setTimeout, for the hold).
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'],
+    })
+    vi.setSystemTime(T0)
+  })
+
+  afterEach(() => {
+    // Drop the own stub so jsdom's prototype getter applies again for later suites.
+    delete (document as { visibilityState?: unknown }).visibilityState
+  })
+
+  function setVisibility(state: DocumentVisibilityState): void {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
+  }
+
+  function changeVisibility(state: DocumentVisibilityState): void {
+    setVisibility(state)
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+
+  const flush = () => vi.advanceTimersByTimeAsync(0)
+  const gets = () => vi.mocked(api.listTasks).mock.calls.length
+
+  async function readyStore(...loadedTasks: Task[]): Promise<void> {
+    const done = store.load()
+    lists[0].resolve(loadedTasks)
+    await flush()
+    await done
+    expect(store.loadState).toBe('ready')
+  }
+
+  it('exports a 30 s cadence', () => {
+    expect(POLL_MS).toBe(30_000)
+  })
+
+  it('sends no poll while loading', async () => {
+    void store.load()
+    await vi.advanceTimersByTimeAsync(2 * POLL_MS)
+    expect(store.loadState).toBe('loading')
+    expect(gets()).toBe(1)
+  })
+
+  it('sends no poll under load_failed', async () => {
+    const done = store.load()
+    lists[0].reject(new ApiError('unavailable', 503))
+    await flush()
+    await done
+    expect(store.loadState).toBe('load_failed')
+    await vi.advanceTimersByTimeAsync(2 * POLL_MS)
+    expect(gets()).toBe(1)
+  })
+
+  it('polls once at 30 s and once at 60 s, and not before', async () => {
+    await readyStore(OPEN)
+    await vi.advanceTimersByTimeAsync(POLL_MS - 1)
+    expect(gets()).toBe(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(gets()).toBe(2)
+    lists[1].resolve([OPEN])
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    expect(gets()).toBe(3)
+    lists[2].resolve([OPEN])
+    await flush()
+    expect(store.loadState).toBe('ready')
+  })
+
+  it('keeps one cadence per store after later successful GETs', async () => {
+    await readyStore(OPEN)
+    for (let n = 1; n <= 3; n++) {
+      await vi.advanceTimersByTimeAsync(POLL_MS)
+      expect(gets()).toBe(n + 1)
+      lists[n].resolve([OPEN])
+      await flush()
+    }
+  })
+
+  it('picks up a remote add keyed by id, keeping the held row and announcing nothing', async () => {
+    await readyStore(OLDER)
+    await vi.advanceTimersByTimeAsync(POLL_MS - 1_000)
+    void store.add('milk')
+    const key = store.heldKey!
+    const milk = task('id-milk', 'milk', '09:00:29')
+    adds[0].resolve(milk)
+    await flush()
+    announce.mockClear()
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(gets()).toBe(2)
+    const remote = task('id-remote', 'from phone', '08:30:00')
+    lists[1].resolve([OLDER, remote, milk])
+    await flush()
+
+    expect(store.heldKey).toBe(key)
+    expect(store.rows[0]).toEqual({ key, ...milk })
+    expect(store.rows.find((r) => r.id === remote.id)).toEqual({ key: remote.id, ...remote })
+    expect(texts()).toEqual(['milk', 'call bank', 'from phone'])
+    expect(announce).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
+  })
+
+  it('removes a task deleted elsewhere, and a held row deleted elsewhere loses the hold', async () => {
+    await readyStore(OLDER, OPEN)
+    await vi.advanceTimersByTimeAsync(POLL_MS - 1_000)
+    void store.add('milk')
+    const milk = task('id-milk', 'milk', '09:00:29')
+    adds[0].resolve(milk)
+    await flush()
+    expect(store.heldKey).not.toBeNull()
+    announce.mockClear()
+
+    await vi.advanceTimersByTimeAsync(1_000)
+    lists[1].resolve([OLDER])
+    await flush()
+
+    expect(texts()).toEqual(['call bank'])
+    expect(store.heldKey).toBeNull()
+    expect(announce).not.toHaveBeenCalled()
+  })
+
+  it('sends no GET while hidden for 90 s', async () => {
+    await readyStore(OPEN)
+    changeVisibility('hidden')
+    await vi.advanceTimersByTimeAsync(3 * POLL_MS)
+    expect(gets()).toBe(1)
+  })
+
+  it('polls at once when visible again, then 30 s after that', async () => {
+    await readyStore(OPEN)
+    await vi.advanceTimersByTimeAsync(10_000)
+    changeVisibility('hidden')
+    await vi.advanceTimersByTimeAsync(50_000)
+    expect(gets()).toBe(1)
+
+    changeVisibility('visible')
+    expect(gets()).toBe(2)
+    lists[1].resolve([OPEN])
+    await vi.advanceTimersByTimeAsync(POLL_MS - 1)
+    expect(gets()).toBe(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(gets()).toBe(3)
+  })
+
+  it('does not start the cadence when the first load lands while hidden', async () => {
+    setVisibility('hidden')
+    await readyStore(OPEN)
+    await vi.advanceTimersByTimeAsync(2 * POLL_MS)
+    expect(gets()).toBe(1)
+    changeVisibility('visible')
+    expect(gets()).toBe(2)
+  })
+
+  it('skips a tick while a GET is in flight, without queueing one', async () => {
+    await readyStore(OPEN)
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    expect(gets()).toBe(2)
+    await vi.advanceTimersByTimeAsync(POLL_MS) // lists[1] still in flight
+    expect(gets()).toBe(2)
+    lists[1].resolve([OPEN])
+    await flush()
+    expect(gets()).toBe(2)
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    expect(gets()).toBe(3)
+  })
+
+  it('skips a visible-refetch while a GET is in flight', async () => {
+    await readyStore(OPEN)
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    expect(gets()).toBe(2)
+    await vi.advanceTimersByTimeAsync(10_000)
+    changeVisibility('hidden')
+    changeVisibility('visible')
+    lists[1].resolve([OPEN])
+    await flush()
+    expect(gets()).toBe(2)
+    // The cadence restarted at the visible event: nothing at the old 60 s mark.
+    await vi.advanceTimersByTimeAsync(POLL_MS - 10_000)
+    expect(gets()).toBe(2)
+    await vi.advanceTimersByTimeAsync(10_000 - 1)
+    expect(gets()).toBe(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(gets()).toBe(3)
+  })
+
+  it('skips a tick and a visible-refetch while an add POST is in flight; the next tick polls', async () => {
+    await readyStore(OPEN)
+    void store.add('milk')
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    expect(gets()).toBe(1)
+    await vi.advanceTimersByTimeAsync(10_000)
+    changeVisibility('hidden')
+    changeVisibility('visible')
+    expect(gets()).toBe(1)
+
+    adds[0].resolve(task('id-milk', 'milk', '09:00:00'))
+    // The cadence restarted at the visible event: nothing at the old 60 s mark.
+    await vi.advanceTimersByTimeAsync(POLL_MS - 10_000)
+    expect(gets()).toBe(1)
+    await vi.advanceTimersByTimeAsync(10_000 - 1)
+    expect(gets()).toBe(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(gets()).toBe(2)
+  })
+
+  it('polls while a tick op is in flight', async () => {
+    await readyStore(OPEN)
+    store.tick(OPEN.id)
+    expect(api.tickTask).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    expect(gets()).toBe(2)
+    // The pending tick stays applied on top of the merged list.
+    lists[1].resolve([OPEN])
+    await flush()
+    expect(store.rows[0].completed_at).not.toBeNull()
+  })
+
+  it('keeps the list silently when a poll fails, and the next tick polls', async () => {
+    await readyStore(OPEN, OLDER)
+    const before = store.rows
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    lists[1].reject(new ApiError('unavailable', 503))
+    await flush()
+
+    expect(store.loadState).toBe('ready')
+    expect(store.rows).toEqual(before)
+    expect(showLoadFailure).not.toHaveBeenCalled()
+    expect(alert).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
+    expect(announce).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(POLL_MS)
+    expect(gets()).toBe(3)
+  })
+
+  it('sends no GET after dispose(), on ticks or a visibility change', async () => {
+    await readyStore(OPEN)
+    store.dispose()
+    await vi.advanceTimersByTimeAsync(2 * POLL_MS)
+    changeVisibility('hidden')
+    changeVisibility('visible')
+    await flush()
+    expect(gets()).toBe(1)
+    expect(vi.getTimerCount()).toBe(0)
   })
 })
