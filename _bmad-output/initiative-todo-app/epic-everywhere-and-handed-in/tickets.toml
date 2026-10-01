@@ -1,0 +1,108 @@
+# Stories of epic-everywhere-and-handed-in, in build order. Reference strings starting with # point at architecture-todo-app/architecture-todo-app.md sections.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Load failure and Retry"
+description = "Gives the store loadState load_failed and retry() (AD-10): a failed first GET shows toasts.showLoadFailure() with Retry and hides the list (no skeleton, no empty state); Retry shows the skeleton again and loads; any successful GET (Retry or a recovery GET) sets ready and closes the toast with hideLoadFailure(), and focus goes to the input via the safety net; a failed Retry keeps the toast and alerts COPY.retryFailed; a failed GET once the list is ready stays silent and keeps the list (the rule entry 2 relies on); a task added under load_failed still shows as the held row and its 3 s counts down, the rest of the list stays hidden; re-entering loading cancels a running hold countdown and starts a full 3 s once the load settles (user decision, closes the 2.4 deferral); App wires the toast's onretry to tasks.retry(); e2e/fixtures.ts gains a way to clear an injected failure (owner of that fixture change)."
+verify = "Vitest covers load_failed, retry success and failure, the alert, silent failure while ready, the held row under load_failed and the countdown restart; an E2E fails GET /api/tasks on load, sees the Retry toast and no empty state, clears the failure, presses Retry and sees the list with the toast gone and focus on the input."
+covers = ["CAP-9"]
+after = ["1.12", "1.9", "2.5"]
+hitl = false
+risk = "medium"
+references = ["#ad-10", "#ad-17", "ux-todo-app/EXPERIENCE.md#state-patterns"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Background polling"
+description = "Adds the AD-10 poll inside the store (its own visibility listener, no App.svelte change, so it never collides with entry 5) on top of entry 1's silent-when-ready rule and 1.12's refresh(): every 30 s while the tab is visible and the list has loaded once, paused while hidden, an immediate GET when it becomes visible again, a tick or visible-refetch skipped (not queued) while a GET or any POST is in flight, and silent on failure once ready (user decision); merges keep keys, holds and focus untouched and announce nothing; it records the failed-poll decision in the spec and architecture Open Questions."
+verify = "Vitest with fake timers covers the 30 s cadence, hidden pause, visible refetch, the in-flight skips and silent failure; an E2E adds a task through the API (the other device), advance(30 s) shows it in the idle tab with no focus change, and a task deleted through the API disappears and does not come back."
+covers = ["CAP-10"]
+after = [1]
+hitl = false
+risk = "medium"
+references = ["#ad-10", "#ad-11"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Phone access over Tailscale"
+description = "Verifies and corrects the README's existing phone-access section (tailscale serve fronting the app profile on the tailnet, and the APP_BIND alternative with its plain-http caveat), and the author runs it on real devices: a task added on the phone appears in the idle laptop tab within about 30 s, recorded in its own AI-log section; entry 9 links it from the hand-in README."
+verify = "The author confirms on real devices that the phone loads the app over the tailnet and a phone add reaches the laptop tab within about 30 s; the README steps reproduce it."
+covers = ["CAP-10"]
+after = [2]
+hitl = true
+risk = "low"
+references = ["#ad-16"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Dark theme and pre-paint theme script"
+description = "Adds the dark palette as -dark twins of every DESIGN token, applied under [data-theme=dark] and under prefers-color-scheme: dark when nothing is stored; public/theme-init.js loaded by a blocking <script src> in <head> that sets data-theme from localStorage before first paint (AD-19, no inline script, storage access in try/catch); lib/theme.svelte.ts exposing the resolved theme (stored or system, following live system changes while nothing is stored) and a setter that stores the choice (session-only when storage is unavailable), which entry 5 uses; TaskRow passing the resolved theme to ageColour; the theme-surfaces drift test reading both dark blocks, checking they agree and match THEME_SURFACES.dark; and a small Vite plugin preloading the three latin woff2 faces main.ts imports (Inter 400 and 600, JetBrains Mono 400; deferred from 1.9)."
+verify = "E2E with colorScheme dark shows the dark tokens and dark age colours (±2/255) with no CSP violation; a stored theme applies before first paint (data-theme set before the stylesheet paints); the built index.html carries the three preloads; Vitest guards both THEME_SURFACES pairs against app.css and the setter's storage fallback."
+covers = ["CAP-11"]
+after = ["2.6"]
+hitl = false
+risk = "medium"
+references = ["#ad-19", "ux-todo-app/DESIGN.md#colors", "ux-todo-app/EXPERIENCE.md#component-patterns"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "Theme toggle"
+description = "Adds the one two-state theme toggle in the header per DESIGN (sun/moon pill) and EXPERIENCE using entry 4's theme setter: named for the action (Switch to dark theme / Switch to light theme), activating it stores the other mode, there is no way back to following the system, pointer activation returns focus to the input and keyboard activation keeps it on the toggle, and it sits before the input in tab order."
+verify = "E2E: on first visit the theme matches the emulated OS setting; the toggle switches and the choice survives a reload with no flash; its accessible name flips; keyboard activation keeps focus and a click returns it to the input; axe has no critical violations in both themes at 320 and 1280 px."
+covers = ["CAP-11"]
+after = [4, 1]
+hitl = false
+risk = "low"
+references = ["ux-todo-app/EXPERIENCE.md#voice-and-tone", "ux-todo-app/DESIGN.md#components"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "Refactor sweep"
+description = "Cleans up what the build records and deferred review findings of this epic call for, including the rows.spec motion flake deferred in 2.6; scope set when it starts."
+verify = "All suites pass with coverage at 70% or more and the app profile still meets the epic's Done when."
+covers = []
+after = [1, 2, 3, 4, 5]
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 7
+type = "story"
+title = "User-journey E2E suite"
+description = "Adds e2e/tests/journeys.spec.ts with at least five end-to-end journeys on the test profile, driven only through the UI and the 1.5 fixtures: UJ-1 (jot a task mid-meeting, it stays visible then settles), UJ-2 (clear the backlog: tick, untick an overdue task back to its place, delete, with rollback on failure, ending on the empty state), UJ-3 (a task goes overdue live), load-failure Retry, and cross-device sync."
+verify = "npm test in e2e/ runs the journey suite green three times in a row on the rebuilt test stack, with at least five journey tests and no CSP or critical axe violations."
+covers = ["CAP-9", "CAP-10"]
+after = [6]
+hitl = false
+risk = "low"
+references = ["ux-todo-app/EXPERIENCE.md#key-flows"]
+
+[[entry]]
+id = 8
+type = "story"
+title = "QA reports"
+description = "Writes the four deliverables reports in docs/ against the finished app: coverage (backend, frontend, E2E counts, at least 70% meaningful); accessibility (axe on every state in both themes at 320 and 1280 px, zero critical, addressing the type-to-focus vs WCAG 2.1.4 flag); a security review of XSS, injection, CSP, headers, the gated test router and secrets with findings and their fixes; and a scripted Chrome DevTools Protocol performance check (Lighthouse or a Playwright trace, user decision) on the test profile's production build seeded with 500 tasks through AD-14, against the NFR-2 targets (feedback under 100 ms, API under 300 ms, 500 rows rendered under 200 ms, actions with 500 rows under 100 ms)."
+verify = "docs/ holds the four reports with the commands that produced them; any security finding is fixed in the same story or recorded with its reason; the suites stay green after fixes."
+covers = []
+after = [7]
+hitl = false
+risk = "medium"
+references = ["spec-todo-app/deliverables.md"]
+
+[[entry]]
+id = 9
+type = "story"
+title = "Hand-in documentation"
+description = "Completes the README (setup, tests, profiles, Tailscale from entry 3), confirms docker compose up on a clean checkout gives a working app, writes docs/bmad-process.md recording how BMad guided the build (brief to PRD to UX to spine to epics to stories, with links), completes docs/ai-log.md with the epic summaries and where human expertise was critical, and adds docs/hand-in-checklist.md ticking every deliverables.md item with a link."
+verify = "A fresh reader can set up, run every test suite and reach the phone from the README alone; a clean-checkout docker compose up serves the app; docs/ has the BMad record, a complete AI log and the hand-in checklist."
+covers = []
+after = [8]
+hitl = false
+risk = "low"
+references = ["spec-todo-app/deliverables.md"]
