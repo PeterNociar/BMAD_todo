@@ -355,3 +355,44 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - The duplicate risk after a timed-out POST, because AD-9 accepts that a change that landed shows up, and EXPERIENCE returns the text to the input.
 
 **Residual risk.** After a fold, the twin's in-flight op reaches the server before the add's own queued ops, while the view applies the add's ops first, so the row can flip once when that op settles. This needs an op on the duplicate row in the brief window before the POST returns.
+
+## Ticket 10 — List rows
+
+**Agents.** The dev persona (bmad-build) planned the ticket, and the user left the "toasts sit below a held row" rule to epic 2 (logged in deferred-work). A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine, DESIGN.md and EXPERIENCE.md as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets: "Read <plan> fully and implement it; the plan is the sole source of truth. Load every file listed in its frontmatter `context:` before you start." The Design Notes gave the flip options, the delete-reveal CSS and the touch hit-area trick, so the row needed no design decisions of its own.
+
+**MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the rebuilt compose test stack and Playwright with the system Chrome.
+
+**What was built.**
+- `components/TaskRow.svelte`: the tick button (an SVG ring, or the filled check when done), the plain-text task text that wraps anywhere, and the delete ×. The controls carry `data-row-control`, and their names are `Mark "X" done`, `Mark "X" not done` and `Delete "X"`, with every icon `aria-hidden`. Tick calls `tasks.tick` or `tasks.untick` by state, delete calls `tasks.remove`, and each then calls `returnToInput()`. Completed rows get muted text and no strike-through. Under `(hover: hover)` the row takes the hover tint, and the delete is at opacity 0 with `pointer-events: none` until the row is hovered or holds focus. Under `(hover: none)` the delete is always visible, and both hit areas stretch over the row padding to the full row height.
+- `App.svelte`: each `<li data-task-row>` is keyed by `key`, with `animate:flip` (200 ms, `cubicOut`, and a duration function that reads `prefers-reduced-motion` when the animation runs). `onRowKeydown` is on the `ul`. A border-box `ResizeObserver` on the sticky header keeps `--sticky-height` on the page, set through the CSSOM, which the row controls use as `scroll-margin-top`.
+- `e2e/tests/rows.spec.ts`: one test per matrix row, plus a sticky-clearance test, a companion motion test that sees a 200 ms animation, and a test that turns reduced motion on after load, which proves the duration is read when the animation runs.
+
+**Test generation.** `TaskRow.test.ts` mocks the store and `lib/focus` and checks names, icons, state styling, plain text, and that each action calls the store by key before `returnToInput()`. `App.test.ts` runs the real store on a mocked api for reorder on tick and untick, delete, tick rollback, focus return, the arrow keys and Esc, and the sticky-height observer. The rows spec (18 tests) passed five runs in a row (90 test runs). A deliberate break, zeroing `scroll-margin-top`, failed the sticky test. The first version of that test passed without the margin, because Chrome centres an element it scrolls into view on `focus()`.
+
+**What AI decided beyond the plan.**
+- The `li` lives in App and `TaskRow` fills it, because Svelte allows `animate:` only on an element that is the keyed each block's direct child. The hover tint and the delete reveal therefore hang off TaskRow's root `div`, which fills the `li`.
+- `vitest-setup.ts` stubs `Element.prototype.getAnimations`, which jsdom lacks. Svelte's flip calls it when a keyed row leaves. In jsdom every rect is zero, so no animation ever runs.
+- On touch, the ring and the glyph stay on the first text line (padding-top inside the stretched button) rather than centring in the row, to match DESIGN's first-line alignment on wrapped rows.
+
+**What AI missed.**
+- The first touch styles used a `button` selector inside the media query, which lost to the `.tick`/`.delete` margins on specificity, so the hit areas did not stretch. The touch E2E test caught it.
+- The touch block used the Level 4 `@media not (hover: hover)`, which iOS Safari before 16.4 drops, so those phones would have lost the touch hit areas.
+- The reduced-motion check emulated the setting before load, so it couldn't fail if the setting were read only once at load.
+
+**Review.** Four lenses produced about 30 findings, each checked against the code.
+- **Patched:**
+  - `(hover: none)` for the touch styles, for older iOS.
+  - The sticky-height observer watches the border box, so a padding change at the 600 px breakpoint updates `--sticky-height`.
+  - A `--line-height-body` token in `app.css`, used by the body rule and by the row's line calculation.
+  - The sticky-height test's `ResizeObserver` stub and `getBoundingClientRect` spy are restored in a `finally`, so they can no longer leak into later tests.
+  - A live reduced-motion E2E test: load without emulation, then `emulateMedia({ reducedMotion: 'reduce' })`, then tick.
+  - The motion helper counts only animations inside `[data-task-row]` and clicks through a locator's element handle, so quotes in task text can't break it.
+- **Rejected:**
+  - Double-clicking tick then untick, because EXPERIENCE says the last intent wins and requests are applied in order.
+  - Shorter names for long or quoted text, because EXPERIENCE fixes the verbatim `Mark "X" done` pattern.
+  - Moving focus on touch, because EXPERIENCE › Touch focus keeps it in place.
+  - Raw RGB values in the E2E colour checks.
+- **Deferred to epic 2:** toasts sitting below a held row.
+- **Manual check:** the app-profile `docker compose down` / `up` check passed. The task text and both times were identical afterwards, with the volume kept.

@@ -3,12 +3,16 @@
   // live regions. Task state and all I/O live in the store (AD-9); focus moves only through
   // lib/focus.ts (AD-18).
   import { onMount } from 'svelte'
+  import { flip } from 'svelte/animate'
+  import { cubicOut } from 'svelte/easing'
   import LiveRegions from './components/LiveRegions.svelte'
+  import TaskRow from './components/TaskRow.svelte'
   import ToastLayer from './components/ToastLayer.svelte'
   import {
     installSafetyNet,
     installTypeToFocus,
     onInputKeydown,
+    onRowKeydown,
     registerInput,
     returnToInput,
   } from './lib/focus'
@@ -17,8 +21,20 @@
 
   /** EXPERIENCE: the skeleton shows only once loading lasts longer than this, to avoid a flash. */
   const SKELETON_DELAY_MS = 300
+  /** EXPERIENCE › Motion: rows slide in about 200 ms, ease-out. */
+  const SLIDE_MS = 200
+
+  /** Read when each animation runs, so a live change to the setting applies at once. */
+  function reducedMotion(): boolean {
+    return (
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    )
+  }
+  const slide = { duration: () => (reducedMotion() ? 0 : SLIDE_MS), easing: cubicOut }
 
   let input: HTMLInputElement | undefined = $state()
+  let page: HTMLDivElement | undefined = $state()
+  let top: HTMLElement | undefined = $state()
   let value = $state('')
   let skeletonDue = $state(false)
 
@@ -33,13 +49,35 @@
     const uninstallTypeToFocus = installTypeToFocus()
     returnToInput()
     void tasks.load()
+    const unobserveTop = observeStickyHeight()
 
     return () => {
+      unobserveTop()
       uninstallSafetyNet()
       uninstallTypeToFocus()
       registerInput(null)
     }
   })
+
+  /**
+   * Keeps `--sticky-height` at the sticky header's height, for the row controls'
+   * `scroll-margin-top`. Set through the CSSOM: the CSP has no 'unsafe-inline' (AD-19).
+   */
+  function observeStickyHeight(): () => void {
+    if (!page || !top || typeof ResizeObserver !== 'function') return () => {}
+    const pageEl = page
+    const topEl = top
+    // Border box: the header's padding changes at the 600 px breakpoint.
+    const update = (entries: readonly ResizeObserverEntry[] = []) => {
+      const height =
+        entries[0]?.borderBoxSize?.[0]?.blockSize ?? topEl.getBoundingClientRect().height
+      pageEl.style.setProperty('--sticky-height', `${height}px`)
+    }
+    const observer = new ResizeObserver(update)
+    observer.observe(topEl, { box: 'border-box' })
+    update()
+    return () => observer.disconnect()
+  }
 
   // Each transition into loading restarts the delay, so a later load (Retry) never flashes.
   $effect(() => {
@@ -85,8 +123,8 @@
   }
 </script>
 
-<div class="page">
-  <header class="top">
+<div class="page" bind:this={page}>
+  <header class="top" bind:this={top}>
     <div class="header">
       <h1 class="wordmark">Todo</h1>
     </div>
@@ -114,9 +152,13 @@
     {#if showList}
       <div class="list">
         {#if tasks.rows.length > 0}
-          <ul aria-label="Tasks">
+          <!-- Arrow keys and Esc, delegated for every row control (lib/focus.ts). -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <ul aria-label="Tasks" onkeydown={onRowKeydown}>
             {#each tasks.rows as row (row.key)}
-              <li class="row">{row.text}</li>
+              <li class="task" data-task-row animate:flip={slide}>
+                <TaskRow {row} />
+              </li>
             {/each}
           </ul>
         {/if}
@@ -226,12 +268,13 @@
     list-style: none;
   }
 
+  /* Skeleton rows; task rows get the same padding from TaskRow. */
   .row {
     padding: var(--space-3) var(--space-5) var(--space-3) var(--space-row-inset-left);
-    overflow-wrap: anywhere;
   }
 
   .row + .row,
+  .task + .task,
   ul + .skeleton {
     border-top: 1px solid var(--color-divider);
   }

@@ -25,3 +25,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-capture-ui-header-input-and-adding-tasks-plan.md`
   summary: DESIGN.md asks for both webfonts to be preloaded. 1.9 ships metric-matched fallbacks but no `<link rel="preload">`, because Vite's hashed asset URLs need a small plugin to inject it into `index.html`.
   evidence: User decision (2026-10-01). The metric-matched fallbacks already prevent layout jumps; preloading would only shorten the swap. Revisit with the theme work in epic 3, which also touches `index.html` (`theme-init.js`).
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-list-rows-tick-untick-and-delete-plan.md`
+  summary: Toasts overlay the top of the list, so with no hold timer the newest (held) task stays first and an action-error toast covers it. EXPERIENCE says every toast sits 8 px below a held row.
+  evidence: User decision (2026-10-01): epic-age-nudge owns the hold (the 3 s timer and the held row staying under the sticky input), and should offset the toast layer below the held row when it lands.
