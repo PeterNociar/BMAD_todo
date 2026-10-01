@@ -10,3 +10,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-test-and-dev-compose-profiles-with-the-gated-testing-router-plan.md`
   summary: No automated check exercises the compose `test` and `dev` profiles, the `entrypoint.sh` argument pass-through (`--reload`), or `frontend-test` proxying to `backend-test`.
   evidence: pytest builds apps in-process and never reads compose; the repo has no CI. Entry 1.5's E2E suite, pointed at `:8082`, will cover the test stack. A smoke script (bring up `COMPOSE_PROFILES=test`, then `POST :8082/api/test/reset` gives 204 and `:8081` gives 404) could guard it sooner.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-e2e-harness-against-the-test-profile-plan.md`
+  summary: Nothing tests that `failApi` lets non-matching `/api/**` requests through (`route.fallback()`); dropping the method/path guard would still pass the only `failApi` test.
+  evidence: The only call site, `e2e/tests/harness.spec.ts`, fails `GET /api/tasks` and sees no other API request. The first story that injects a mutation failure (1.9 or 1.10) should assert that the seeded list still loads while `POST /api/tasks` is failed.

@@ -135,17 +135,23 @@ npm run dev              # Vite dev server on :5173, proxies /api to $API_UPSTRE
 
 ## End-to-end tests
 
-The Playwright suite runs against a running stack, with one worker.
+The Playwright suite runs against the compose `test` profile (`frontend-test` on `:8082`), with one worker, because every test shares that stack's database and server clock. It never touches the app stack on `:8081`: each test starts with `POST /api/test/reset`, which only exists in the test profile, so pointing the suite at `:8081` fails with a `404` before any data is changed.
 
 ```sh
-docker compose up -d --wait
+COMPOSE_PROFILES=test docker compose up -d --build --wait
 cd e2e
 npm ci
 npm run install:browsers    # first time only: downloads Chromium
+npm run typecheck           # type-check the specs and the harness
 npm test
 ```
 
-`E2E_BASE_URL` sets the target (default `http://127.0.0.1:8081`).
+Playwright doesn't read `.env`, so set these two variables in the shell:
+
+- `E2E_BASE_URL` sets the target (default `http://127.0.0.1:8082`), for example `E2E_BASE_URL=http://127.0.0.1:8082 npm test`.
+- `E2E_BROWSER_CHANNEL` runs an installed browser instead of the bundled Chromium, for example `E2E_BROWSER_CHANNEL=chrome npm test` when `install:browsers` can't download.
+
+Every spec imports `test` and `expect` from `e2e/fixtures.ts`, not from `@playwright/test`. The harness resets the test data before each test, installs `page.clock` before the first navigation, and fails a test on any CSP violation. It also provides `seed()`, `advance(ms)` (moves the browser and server clocks together), `failApi()` and `expectNoA11yViolations()`. `tests/harness.spec.ts` shows each one in use; its CSP test is an expected failure.
 
 ## Phone access
 
