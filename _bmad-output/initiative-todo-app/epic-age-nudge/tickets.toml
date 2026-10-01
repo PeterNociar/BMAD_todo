@@ -1,0 +1,74 @@
+# Stories of epic-age-nudge, in build order. Reference strings starting with # point at architecture-todo-app/architecture-todo-app.md sections.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Age label on every row"
+description = "Adds pure lib/age.ts `ageLabel(timestamp, now)` returning the visible label (now / 12m / 5h / 3d, rounded down; done now / done 2h for completed) and the spoken words (added 5 hours ago / added just now; completed 2 hours ago / completed just now), clamping future timestamps to now, and renders it in TaskRow as the right-aligned JetBrains Mono age column (min 9ch, tabular figures, text-secondary or text-muted when done) with the visible text aria-hidden and the words exposed to assistive tech, recomputed from clock.now; it updates the epic 1 row-text assertions the label breaks (rows.spec.ts, capture.spec.ts, App.test.ts, TaskRow.test.ts) and replaces TaskRow's no-age comment; entries 2 and 3 add colour to the same module and row."
+verify = "Vitest covers the label and word boundaries (59 s, 1 m, 59 m, 1 h, 23 h 59 m, 24 h, done variants, a future timestamp) and an E2E seeds a 5 h task, sees 5h with the accessible name containing added 5 hours ago, then advance(1 h) shows 6h without a reload, and at 320 px a done 100d-wide label causes no horizontal scroll and axe has no critical violations."
+covers = ["CAP-4", "CAP-5", "CAP-7"]
+after = ["1.10", "1.6", "1.5"]
+hitl = false
+risk = "low"
+references = ["#ad-8", "ux-todo-app/EXPERIENCE.md#voice-and-tone", "ux-todo-app/DESIGN.md#typography", "ux-todo-app/DESIGN.md#components", "ux-todo-app/DESIGN.md#layout--spacing"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Age colour function for light and dark"
+description = "Adds `ageColour(timestamp, now, theme)` to lib/age.ts implementing DESIGN.md's normative OKLCH gradient (fresh under 1 h, linear in time 1–24 h with L and C linear and hue 155→25, overdue from 24 h) for both light and dark endpoints, reducing out-of-gamut chroma and nudging L only where the colour would fall below 3:1 on surface or hover, returning a CSS colour string for open tasks and null for completed ones, with the light and dark surface and hover reference values held as a TS constant marked as copied from DESIGN.md's tokens (epic 3's CSS variables must match it); entry 3 consumes it with theme light and epic 3 switches the theme argument."
+verify = "Vitest checks every DESIGN.md reference stop (1h, 3h, 6h, 12h, 18h, 23h, 24h+, light and dark) within an agreed tolerance, at least 3:1 against surface and hover for a sweep of ages in both themes, monotonic hue, and null for completed tasks."
+covers = ["CAP-4"]
+after = [1]
+hitl = false
+risk = "high"
+unknown = "How close the formula plus gamut reduction and contrast nudge must land to the stored mid-stops kept 'as rendered' (olive, mustard, coral dark reds); the builder proposes a tolerance and the user confirms it."
+references = ["ux-todo-app/DESIGN.md#age-gradient", "ux-todo-app/DESIGN.md#contrast-wcag-21-aa"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Age bar and live overdue"
+description = "Adds the 3 px age bar on the left edge of open rows, coloured from entry 2's ageColour (light theme) via style.setProperty and recomputed with the label from the same clock.now snapshot, decorative for assistive tech and absent on completed rows, and proves the live behaviour end to end: a task crossing 24 h turns overdue and reads 1d within 60 s with no move, announcement or focus change, a time-zone change alters nothing, a future timestamp shows now and the fresh colour, and a ticked then unticked 2-day task returns red to its place; it adds a server-only clock-skew helper to e2e/fixtures.ts (a deliberate, single exception to AD-8's move-both-clocks rule, kept in step with advance()'s offset) and notes that epic 3 passes the dark theme to ageColour."
+verify = "E2E on the test profile seeds a 23 h 59 m 30 s task, advance(60 s) shows the overdue colour and 1d at the same index with no live-region text; with timezoneId changed the labels, colours and order are identical; a task added while the server clock is ahead shows now; a 2 d task ticked shows done now and unticked shows the overdue colour in its original place; axe has no critical violations."
+covers = ["CAP-4", "CAP-5", "CAP-7"]
+after = [1, 2]
+hitl = false
+risk = "medium"
+references = ["#ad-8", "#ad-14", "ux-todo-app/EXPERIENCE.md#age-nudge-and-new-task-hold"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Hold timer in the store"
+description = "Adds only the 3 s timer (global setTimeout) on top of the hold rules 1.8 and 1.12 already implement (a new add takes the hold, tick and delete end it, untick keeps it, a failed add, bury and merge drop clear it): the timer releases only its own key's hold, is cancelled when the hold ends early, and is not counted down while loadState is loading, leaving a never-loading list to epic 3's load_failed; entry 5 renders the held row from heldKey."
+verify = "Vitest with fake timers shows heldKey cleared 3 s after an add, an older timer never clearing a newer hold, the timer cancelled when tick or delete ends the hold early, and a hold kept past 3 s while loadState is loading and released 3 s after it becomes ready, with every existing hold test still green."
+covers = ["CAP-2"]
+after = ["1.12"]
+hitl = false
+risk = "low"
+references = ["#ad-9", "ux-todo-app/EXPERIENCE.md#age-nudge-and-new-task-hold"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "Held row under the input"
+description = "Renders entry 4's held row as the first list row kept visible directly under the sticky input regardless of scroll, then lets it slide to its sorted place with the existing animate:flip (instant under reduced motion), keeps a focused control in the held row focused and scrolled into view below the sticky header when the hold ends, and places toasts 8 px below the held row instead of over it (deferred from 1.10), measuring the held row like --sticky-height and including toasts in the scroll-margin clearance; the page never scrolls to follow the settling row."
+verify = "E2E with 30 seeded older tasks and the page scrolled down: after Enter the new row is visible under the input, about 3 s later it sits at the bottom of the open tasks; under reducedMotion it moves with no animation; the page scroll position is unchanged when it settles; a focused held-row control stays focused and visible; a failed tick while a task is held shows the toast below the held row; axe has no critical violations at 320 and 1280 px."
+covers = ["CAP-2"]
+after = [3, 4]
+hitl = false
+risk = "high"
+unknown = "How to keep the held row visible under the sticky input when .list clips overflow (position: sticky inside overflow: hidden), whether by changing the list container or rendering the held row outside it while keeping it first in DOM order."
+references = ["ux-todo-app/EXPERIENCE.md#age-nudge-and-new-task-hold", "ux-todo-app/EXPERIENCE.md#component-patterns", "ux-todo-app/DESIGN.md#layout--spacing"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "Refactor sweep"
+description = "Cleans up what the build records and deferred review findings of this epic call for; scope set when it starts."
+verify = "All suites pass with coverage at 70% or more and the app profile still meets the epic's Done when."
+covers = []
+after = [1, 2, 3, 4, 5]
+hitl = false
+risk = "low"

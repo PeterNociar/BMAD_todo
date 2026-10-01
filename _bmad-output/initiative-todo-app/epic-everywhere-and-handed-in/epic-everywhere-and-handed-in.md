@@ -52,3 +52,4 @@ This epic covers sync, resilience, the theme and the hand-in, on top of epics 1 
 - Waits on epic-capture-and-keep because: polling builds on the store's confirmed state and seq merge, and it uses the toasts module and compose profiles.
 - Waits on epic-age-nudge because: the reports audit the finished UI.
 - Unknown: UX has not yet confirmed that a failed background poll stays silent once the list has loaded (AD-10). Only the polling story waits on it, and it is recorded as that entry's `unknown` at inception.
+- Touch point: epic-age-nudge computes the age colour for both themes with `ageColour(timestamp, now, theme)` in `lib/age.ts`, and shows light. This epic switches the theme argument to `'dark'` under the dark theme. Its dark CSS tokens must match the surface and hover reference values in age.ts (2026-10-01).
