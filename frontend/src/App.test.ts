@@ -148,7 +148,7 @@ describe('App: page', () => {
     const older = { ...task('older', 1), added_at: '2026-09-30T07:00:00.000Z' }
     await renderLoaded([task('newer', 2), older])
 
-    const items = screen.getAllByRole('listitem').map((li) => li.textContent)
+    const items = screen.getAllByRole('listitem').map((li) => li.textContent?.trim())
     expect(items).toEqual(['older', 'newer'])
   })
 
@@ -356,14 +356,14 @@ describe('App: focus', () => {
     expect(removed).toHaveBeenCalledWith('focusout', expect.any(Function))
   })
 
-  it('Down from the input is left alone while rows have no controls (1.10 adds them)', async () => {
+  it("Down from the input moves to the first row's tick ring", async () => {
     stubHover(true)
     const { input } = await renderLoaded([task('a')])
 
     const notPrevented = await fireEvent.keyDown(input, { key: 'ArrowDown' })
 
-    expect(notPrevented).toBe(true)
-    expect(input).toHaveFocus()
+    expect(notPrevented).toBe(false)
+    expect(screen.getByRole('button', { name: 'Mark "a" done' })).toHaveFocus()
   })
 })
 
@@ -446,5 +446,165 @@ describe('App: loading', () => {
 
     await vi.advanceTimersByTimeAsync(1)
     expect(screen.getByTestId('skeleton').querySelectorAll('.bar')).toHaveLength(3)
+  })
+})
+
+function ordered(
+  n: number,
+  text: string,
+  addedAt: string,
+  completedAt: string | null = null,
+): Task {
+  return { ...task(text, n), added_at: addedAt, completed_at: completedAt }
+}
+
+const three = () => [
+  ordered(1, 'one', '2026-09-30T07:00:00.000Z'),
+  ordered(2, 'two', '2026-09-30T08:00:00.000Z'),
+  ordered(3, 'three', '2026-09-30T09:00:00.000Z'),
+]
+
+const texts = () =>
+  screen.getAllByRole('listitem').map((li) => li.querySelector('.text')?.textContent)
+
+describe('App: rows', () => {
+  it('renders each row as a data-task-row item with its tick and delete controls', async () => {
+    await renderLoaded([task('milk')])
+
+    const [li] = screen.getAllByRole('listitem')
+    expect(li).toHaveAttribute('data-task-row')
+    expect(li.querySelector('[data-row-control="tick"]')).toHaveAccessibleName('Mark "milk" done')
+    expect(li.querySelector('[data-row-control="delete"]')).toHaveAccessibleName('Delete "milk"')
+  })
+
+  it('tick moves the row to the top of the completed tasks; untick puts it back', async () => {
+    const { api } = await renderLoaded([
+      ...three(),
+      ordered(4, 'old done', '2026-09-30T06:00:00.000Z', '2026-09-30T06:30:00.000Z'),
+    ])
+    const two = three()[1]
+    api.tickTask.mockResolvedValue({ ...two, completed_at: '2026-09-30T10:00:00.000Z' })
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Mark "two" done' }))
+    expect(texts()).toEqual(['one', 'three', 'two', 'old done'])
+    expect(api.tickTask).toHaveBeenCalledWith(two.id)
+
+    api.untickTask.mockResolvedValue(two)
+    await fireEvent.click(await screen.findByRole('button', { name: 'Mark "two" not done' }))
+    expect(texts()).toEqual(['one', 'two', 'three', 'old done'])
+  })
+
+  it('delete removes the row at once', async () => {
+    const { api } = await renderLoaded(three())
+    api.deleteTask.mockResolvedValue(undefined)
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete "two"' }))
+
+    expect(texts()).toEqual(['one', 'three'])
+    expect(api.deleteTask).toHaveBeenCalledWith(three()[1].id)
+  })
+
+  it('a failed tick rolls the row back and shows the action toast', async () => {
+    const { api } = await renderLoaded(three())
+    api.tickTask.mockRejectedValue(new apiModule.ApiError('unavailable', 503))
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Mark "two" done' }))
+
+    await vi.waitFor(() =>
+      expect(screen.getByText("Couldn't update that task. It's back as it was.")).toBeVisible(),
+    )
+    expect(texts()).toEqual(['one', 'two', 'three'])
+    expect(screen.getByRole('button', { name: 'Mark "two" done' })).toBeInTheDocument()
+  })
+
+  it('returns focus to the input after a tick and after a delete on laptop', async () => {
+    stubHover(true)
+    const { api, input } = await renderLoaded(three())
+    api.tickTask.mockReturnValue(new Promise(() => {}))
+    api.deleteTask.mockReturnValue(new Promise(() => {}))
+
+    const tickOne = screen.getByRole('button', { name: 'Mark "one" done' })
+    tickOne.focus()
+    await fireEvent.click(tickOne)
+    expect(input).toHaveFocus()
+
+    const del = screen.getByRole('button', { name: 'Delete "three"' })
+    del.focus()
+    await fireEvent.click(del)
+    expect(input).toHaveFocus()
+  })
+
+  it('arrow keys move between rows keeping the control type; Up from row 1 and Esc return', async () => {
+    stubHover(true)
+    const { input } = await renderLoaded(three())
+    const tick = (t: string) => screen.getByRole('button', { name: `Mark "${t}" done` })
+    const del = (t: string) => screen.getByRole('button', { name: `Delete "${t}"` })
+
+    await fireEvent.keyDown(input, { key: 'ArrowDown' })
+    expect(tick('one')).toHaveFocus()
+    await fireEvent.keyDown(tick('one'), { key: 'ArrowDown' })
+    expect(tick('two')).toHaveFocus()
+    await fireEvent.keyDown(tick('two'), { key: 'ArrowUp' })
+    expect(tick('one')).toHaveFocus()
+    await fireEvent.keyDown(tick('one'), { key: 'ArrowUp' })
+    expect(input).toHaveFocus()
+
+    del('two').focus()
+    await fireEvent.keyDown(del('two'), { key: 'ArrowDown' })
+    expect(del('three')).toHaveFocus()
+    await fireEvent.keyDown(del('three'), { key: 'Escape' })
+    expect(input).toHaveFocus()
+  })
+
+  it("keeps 1.9's list name and the busy flag", async () => {
+    await renderLoaded([task('a')])
+    expect(screen.getByRole('list', { name: 'Tasks' })).toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'false')
+  })
+})
+
+describe('App: sticky height', () => {
+  it('sets --sticky-height from a ResizeObserver on the header, and disconnects on destroy', async () => {
+    let callback: ResizeObserverCallback | undefined
+    const observe = vi.fn()
+    const disconnect = vi.fn()
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: ResizeObserverCallback) {
+          callback = cb
+        }
+        observe = observe
+        unobserve = vi.fn()
+        disconnect = disconnect
+      },
+    )
+    let height = 120
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(() => ({ height }) as DOMRect)
+
+    try {
+      const { view } = await renderLoaded([])
+      const header = screen.getByRole('banner')
+      const page = header.parentElement!
+      expect(observe).toHaveBeenCalledWith(header, { box: 'border-box' })
+      expect(page.style.getPropertyValue('--sticky-height')).toBe('120px')
+
+      height = 150
+      callback?.([], {} as ResizeObserver)
+      expect(page.style.getPropertyValue('--sticky-height')).toBe('150px')
+
+      // An entry's border-box size wins over the rect.
+      const entry = { borderBoxSize: [{ blockSize: 170, inlineSize: 640 }] }
+      callback?.([entry as unknown as ResizeObserverEntry], {} as ResizeObserver)
+      expect(page.style.getPropertyValue('--sticky-height')).toBe('170px')
+
+      view.unmount()
+      expect(disconnect).toHaveBeenCalled()
+    } finally {
+      rect.mockRestore()
+      vi.unstubAllGlobals()
+    }
   })
 })
