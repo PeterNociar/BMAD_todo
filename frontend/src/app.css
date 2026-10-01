@@ -1,3 +1,14 @@
+/* Light-mode tokens (DESIGN.md front matter). Dark mode arrives with epic 3. */
+:root {
+  --color-text-primary: #18202c;
+  --color-accent: #4a5e7c;
+  --color-shadow-toast: #18202c1f;
+  --color-error-bg: #fceceb;
+  --color-error-border: #f3c7c3;
+  --color-error-icon: #ba2b2e;
+  --radius-md: 6px;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
