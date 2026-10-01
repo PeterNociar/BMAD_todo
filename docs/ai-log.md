@@ -665,3 +665,36 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
   - Enforcing `format:check` in CI or a hook: there is no CI, and the gap predates this ticket.
   - A shared root Prettier config.
   - The review diff leaving out the lockfile and deferred-work.md: by design.
+
+## Ticket 3.1 — Load failure and Retry
+
+**Agents.** The dev persona (bmad-build) wrote the plan for the first story of epic-everywhere-and-handed-in. A Claude Code subagent (Claude Opus) implemented it from the plan alone, with the architecture spine as its only `context:` file.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan's Code Map gave line numbers for every touch point (the `runGet` placeholder, the hold guard, `getQueued`, the `onretry` wiring, `failApi`), and the I/O matrix mapped one test to each row, so no exploration was needed beyond reading the named files.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
+
+**What was built.**
+- `lib/tasks.svelte.ts`: `LoadState` gains `load_failed`. A failed GET goes through `loadFailed()`: silent unless the state is `loading`; if a GET is queued behind it, that GET decides; otherwise the state becomes `load_failed` and the store raises the load-failure toast, or, after a failed Retry, keeps it and calls `toasts.alert(COPY.retryFailed)`. Every successful GET sets `ready` and hides the toast. `retry()` acts only in `load_failed` and delegates to `load()`. Under `load_failed`, `rows` is the held row alone, if any. The hold countdown now runs whenever the state is not `loading`, and entering `loading` cancels a running countdown while keeping `heldKey`, so a full 3 s starts when the load settles. The header comment states the failure rules.
+- `App.svelte`: `onretry` calls `tasks.retry()`. No other change: the empty state was already `ready`-only, the skeleton follows `loading`, and the focus safety net returns focus to the input when Retry disappears.
+- `e2e/fixtures.ts`: `failApi` keeps its handler in a const and returns `() => page.unroute('**/api/**', handler)`. Existing call sites ignore the return value.
+- `e2e/tests/load-failure.spec.ts`: a failed first GET shows the `load_failed` toast with Retry, no empty state, no list and no skeleton, and passes axe; after the failure is cleared, Retry renders the seeded list, the toast goes, and focus is on the input.
+- Unit cover: `tasks.svelte.test.ts` spies on `showLoadFailure`, `hideLoadFailure` and `alert`, and has one test per store matrix row (first load fails, Retry succeeds, Retry fails, double Retry, silent while ready, recovery GET recovers, queued GET decides, add under `load_failed`, Retry restarts the countdown), plus a queued GET that also fails, Retry outside `load_failed`, and a hold taken while loading released 3 s after the load fails. `App.test.ts` checks the Retry wiring end to end on the real store.
+- **Results:** 366 Vitest tests pass, with coverage at 99.23% statements, 96.16% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green. All 76 E2E tests pass.
+
+**What AI decided beyond the plan.**
+- The store tracks whether it raised the toast in a private `loadFailureShown` flag instead of reading `toasts.items`. Only the store raises or hides that toast, it cannot be dismissed, and the flag keeps the rule testable with the toast calls mocked.
+- `load()` itself cancels the running hold countdown, and `retry()` is `load()` behind the `load_failed` guard, so every entry into `loading` follows the same rule.
+- Three tests written for the old "a failed GET changes nothing" behaviour were rewritten for `load_failed`: the first-load failure, the recovery GET after a failed load, and the hold that never counted down while loading.
+
+**What AI missed or could not do.**
+- One full E2E run failed `rows.spec.ts` "motion: tick slides the rows for about 200 ms" (no animation captured). The spec passed three repeats on its own and the next full run was green. It is a timing flake in an older test that this change does not touch.
+
+**Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 18 findings: 2 medium, 9 low, 7 false. Nine were patched and nothing was deferred.
+- Rows hidden under `load_failed` came back while the Retry GET was loading. `rows` now hides the list whenever the load-failure toast is up, so the list stays hidden until a GET succeeds.
+- The double-Retry test passed without the guard. It now settles the GET, and an App test double-clicks Retry, which pins `onretry` to `retry()`.
+- After a load that lasted over 300 ms failed, `skeletonDue` stayed true, so Retry skipped the anti-flash delay. The effect's cleanup now resets it.
+- Tests added:
+  - App: a failed Retry (the toast and the alert text), and a task added under `load_failed` showing as the only row.
+  - Store: a recovery GET failing silently under `load_failed`, and Retry racing a recovery GET.
+- After the fixes, 372 Vitest tests pass with 99.23% statement coverage, and all 76 E2E tests pass.

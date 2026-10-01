@@ -12,12 +12,18 @@
  * an op means the task was deleted elsewhere (AD-11). A `network_error` or `unavailable`
  * failure also requests one immediate GET, so a change that did land shows up.
  *
- * It never moves focus (AD-18), never retries, and never persists pending ops.
+ * Load failure (AD-10, FR-17): a GET that fails while `loading` (with no GET queued behind it
+ * to decide instead) sets `load_failed` and raises the persistent toast, or, if a Retry failed,
+ * keeps it and alerts. Under `load_failed` only the held row renders. A GET that fails while
+ * `ready` or `load_failed` is silent. Any successful GET sets `ready` and hides the toast.
+ * `retry()` acts only in `load_failed`.
+ *
+ * It never moves focus (AD-18), never retries on its own, and never persists pending ops.
  */
 import { addTask, ApiError, deleteTask, listTasks, tickTask, untickTask, type Task } from './api'
 import { clock } from './clock.svelte'
 import { sortTasks } from './sort'
-import { toasts } from './toasts.svelte'
+import { COPY, toasts } from './toasts.svelte'
 
 export type Row = {
   key: string
@@ -27,7 +33,7 @@ export type Row = {
   completed_at: string | null
 }
 
-export type LoadState = 'loading' | 'ready'
+export type LoadState = 'loading' | 'ready' | 'load_failed'
 
 /** What a failed `add()` rejects with: the trimmed text, or `null` if ops were queued on it. */
 export type AddFailure = { text: string | null }
@@ -92,8 +98,10 @@ export function createTasks() {
   let entries = $state<Entry[]>([])
   let loadState = $state<LoadState>('loading')
   let heldKey = $state<string | null>(null)
-  /** The new-task hold's countdown (FR-4): 3 s, started only once the list is ready. */
+  /** The new-task hold's countdown (FR-4): 3 s, started only once a load has settled. */
   let holdTimer: ReturnType<typeof setTimeout> | null = null
+  /** The store has raised the load-failure toast and not yet hidden it (no GET has succeeded). */
+  let loadFailureShown = $state(false)
 
   /** Increments on every confirmed mutation (AD-10). */
   let seq = 0
@@ -109,26 +117,34 @@ export function createTasks() {
   const rows = $derived.by(() => {
     const visible = entries.map(view).filter((r): r is Row => r !== null)
     const held = visible.find((r) => r.key === heldKey)
+    // While the load-failure toast is up (load_failed, or its Retry loading) the list stays
+    // hidden until a GET succeeds (FR-17): only the held row shows.
+    if (loadFailureShown) return held ? [held] : []
     const rest = sortTasks(visible.filter((r) => r !== held))
     return held ? [held, ...rest] : rest
   })
 
-  /** Sets or clears the hold, cancelling any running countdown, then starts a new one if ready. */
-  function setHeld(key: string | null): void {
+  /** Cancels a running hold countdown, keeping the hold itself. */
+  function stopHoldTimer(): void {
     if (holdTimer !== null) clearTimeout(holdTimer)
     holdTimer = null
+  }
+
+  /** Sets or clears the hold, cancelling any running countdown, then starts a new one if settled. */
+  function setHeld(key: string | null): void {
+    stopHoldTimer()
     heldKey = key
     startHoldTimer()
   }
 
   /**
-   * Starts the 3 s countdown for the current hold unless one is running or the list hasn't
-   * loaded: a hold taken while loading counts down from the first successful GET. `setHeld`
-   * cancels the timer whenever the hold changes; the key check is a second guard so a stray
-   * timer can never end a newer hold.
+   * Starts the 3 s countdown for the current hold unless one is running or a load is in
+   * progress: a hold taken (or kept) while loading counts down from the moment that load
+   * settles, `ready` or `load_failed`. `setHeld` cancels the timer whenever the hold changes;
+   * the key check is a second guard so a stray timer can never end a newer hold.
    */
   function startHoldTimer(): void {
-    if (heldKey === null || holdTimer !== null || loadState !== 'ready') return
+    if (heldKey === null || holdTimer !== null || loadState === 'loading') return
     const key = heldKey
     holdTimer = setTimeout(() => {
       holdTimer = null
@@ -283,11 +299,32 @@ export function createTasks() {
     try {
       server = await listTasks()
     } catch {
-      // Epic 3 adds load_failed and Retry; until then a failed GET changes nothing.
+      loadFailed()
       return
     }
     merge(server, S)
     loadState = 'ready'
+    if (loadFailureShown) {
+      loadFailureShown = false
+      toasts.hideLoadFailure()
+    }
+    startHoldTimer()
+  }
+
+  /**
+   * A failed GET (AD-10, FR-17). While `ready` or `load_failed` it is silent. While `loading`,
+   * a GET queued behind this one decides instead; otherwise the state becomes `load_failed`, and
+   * the toast is raised, or, if it is already up (a failed Retry), kept with an alert.
+   */
+  function loadFailed(): void {
+    if (loadState !== 'loading' || getQueued !== null) return
+    loadState = 'load_failed'
+    if (loadFailureShown) {
+      toasts.alert(COPY.retryFailed)
+    } else {
+      loadFailureShown = true
+      toasts.showLoadFailure()
+    }
     startHoldTimer()
   }
 
@@ -313,7 +350,17 @@ export function createTasks() {
 
   function load(): Promise<void> {
     loadState = 'loading'
+    stopHoldTimer()
     return refresh()
+  }
+
+  /**
+   * Retries a failed load (AD-10): only in `load_failed`, so a second click while the retry is
+   * loading does nothing. A running hold countdown restarts when that load settles.
+   */
+  function retry(): Promise<void> {
+    if (loadState !== 'load_failed') return Promise.resolve()
+    return load()
   }
 
   async function add(text: string): Promise<void> {
@@ -381,6 +428,7 @@ export function createTasks() {
       return heldKey
     },
     load,
+    retry,
     add,
     tick: (key: string) => enqueue(key, 'tick'),
     untick: (key: string) => enqueue(key, 'untick'),

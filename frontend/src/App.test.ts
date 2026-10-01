@@ -163,6 +163,78 @@ describe('App: page', () => {
     expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument()
     expect(screen.getByLabelText('New task')).toBeInTheDocument()
   })
+
+  it('Retry after a failed load renders the list and closes the load-failure toast', async () => {
+    stubHover(true)
+    api.listTasks.mockRejectedValueOnce(new apiModule.ApiError('unavailable', 503))
+    render(App)
+
+    const retry = await screen.findByRole('button', { name: 'Retry' })
+    expect(store.tasks.loadState).toBe('load_failed')
+    expect(screen.getByText("Couldn't load your tasks.")).toBeInTheDocument()
+    expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Tasks' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
+
+    api.listTasks.mockResolvedValueOnce([task('back')])
+    retry.focus()
+    await fireEvent.click(retry)
+
+    await vi.waitFor(() => expect(store.tasks.loadState).toBe('ready'))
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+    const list = await screen.findByRole('list', { name: 'Tasks' })
+    expect(list).toHaveTextContent('back')
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByLabelText('New task')).toHaveFocus())
+  })
+
+  /** Renders App with the first GET failed and waits for the Retry button. */
+  async function renderFailed() {
+    api.listTasks.mockRejectedValueOnce(new apiModule.ApiError('unavailable', 503))
+    render(App)
+    return screen.findByRole('button', { name: 'Retry' })
+  }
+
+  it('sends one GET for a double click on Retry', async () => {
+    const retry = await renderFailed()
+    const get = deferred<Task[]>()
+    api.listTasks.mockReturnValueOnce(get.promise)
+
+    await fireEvent.click(retry)
+    await fireEvent.click(retry)
+    get.resolve([task('back')])
+
+    await vi.waitFor(() => expect(store.tasks.loadState).toBe('ready'))
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+  })
+
+  it('a failed Retry keeps the toast and Retry and alerts that it still could not load', async () => {
+    const retry = await renderFailed()
+    api.listTasks.mockRejectedValueOnce(new apiModule.ApiError('unavailable', 503))
+
+    await fireEvent.click(retry)
+
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent("Still couldn't load your tasks."),
+    )
+    expect(store.tasks.loadState).toBe('load_failed')
+    expect(screen.getByText("Couldn't load your tasks.")).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument()
+  })
+
+  it('shows a task added under load_failed as the only row', async () => {
+    await renderFailed()
+    api.addTask.mockResolvedValue(task('new'))
+
+    await typeAndEnter(screen.getByLabelText<HTMLInputElement>('New task'), 'new')
+
+    const list = screen.getByRole('list', { name: 'Tasks' })
+    const items = list.querySelectorAll('li')
+    expect(items).toHaveLength(1)
+    expect(items[0]).toHaveTextContent('new')
+    expect(items[0]).toHaveClass('held')
+  })
 })
 
 describe('App: adding', () => {

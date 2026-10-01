@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import * as api from './api'
 import { ApiError, type Task } from './api'
 import { createTasks, HOLD_MS, type AddFailure, type Tasks } from './tasks.svelte'
-import { toasts } from './toasts.svelte'
+import { COPY, toasts } from './toasts.svelte'
 
 vi.mock('./api', async (importActual) => {
   const actual = await importActual<typeof import('./api')>()
@@ -70,6 +70,9 @@ let unticks: Deferred<Task>[]
 let deletes: Deferred<void>[]
 let error: MockInstance<typeof toasts.error>
 let announce: MockInstance<typeof toasts.announce>
+let showLoadFailure: MockInstance<typeof toasts.showLoadFailure>
+let hideLoadFailure: MockInstance<typeof toasts.hideLoadFailure>
+let alert: MockInstance<typeof toasts.alert>
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -80,6 +83,9 @@ beforeEach(() => {
   deletes = control(api.deleteTask)
   error = vi.spyOn(toasts, 'error').mockImplementation(() => {})
   announce = vi.spyOn(toasts, 'announce').mockImplementation(() => {})
+  showLoadFailure = vi.spyOn(toasts, 'showLoadFailure').mockImplementation(() => {})
+  hideLoadFailure = vi.spyOn(toasts, 'hideLoadFailure').mockImplementation(() => {})
+  alert = vi.spyOn(toasts, 'alert').mockImplementation(() => {})
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(T0)
   store = createTasks()
@@ -100,12 +106,16 @@ async function loaded(...loadedTasks: Task[]): Promise<void> {
 const texts = () => store.rows.map((r) => r.text)
 
 describe('load', () => {
-  it('stays loading with no toast when the GET fails', async () => {
+  it('goes load_failed with one load-failure toast and no rows when the first GET fails', async () => {
     const done = store.load()
-    lists[0].reject(new ApiError('network_error', null))
+    lists[0].reject(new ApiError('unavailable', 503))
     await done
-    expect(store.loadState).toBe('loading')
+    expect(store.loadState).toBe('load_failed')
+    expect(showLoadFailure).toHaveBeenCalledTimes(1)
+    expect(alert).not.toHaveBeenCalled()
+    expect(hideLoadFailure).not.toHaveBeenCalled()
     expect(error).not.toHaveBeenCalled()
+    expect(store.rows).toEqual([])
     expect(api.listTasks).toHaveBeenCalledTimes(1)
   })
 
@@ -831,18 +841,162 @@ describe('recovery GET', () => {
     expect(store.rows).toEqual([{ key: X.id, ...X }])
   })
 
-  it('sets ready on any successful GET, after a failed first load', async () => {
+  it('sets ready and hides the toast when a recovery GET succeeds under load_failed', async () => {
     const done = store.load()
     lists[0].reject(new ApiError('network_error', null))
     await done
-    expect(store.loadState).toBe('loading')
+    expect(store.loadState).toBe('load_failed')
     const result = store.add('x')
-    adds[0].reject(new ApiError('unavailable', 503))
+    adds[0].reject(new ApiError('network_error', null))
     await expect(result).rejects.toEqual({ text: 'x' })
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
     lists[1].resolve([OLDER])
     await settle()
     expect(store.loadState).toBe('ready')
+    expect(hideLoadFailure).toHaveBeenCalledTimes(1)
     expect(texts()).toEqual(['call bank'])
+  })
+
+  it('keeps the list, with no toast or alert, when a recovery GET fails while ready', async () => {
+    await loaded(OPEN)
+    store.tick(OPEN.id)
+    ticks[0].reject(new ApiError('network_error', null))
+    await settle()
+    lists[1].reject(new ApiError('unavailable', 503))
+    await settle()
+    expect(store.loadState).toBe('ready')
+    expect(store.rows).toEqual([{ key: OPEN.id, ...OPEN }])
+    expect(showLoadFailure).not.toHaveBeenCalled()
+    expect(alert).not.toHaveBeenCalled()
+  })
+
+  it('lets a GET queued behind a failing first load decide: never load_failed', async () => {
+    const done = store.load()
+    const result = store.add('x')
+    adds[0].reject(new ApiError('network_error', null))
+    await expect(result).rejects.toEqual({ text: 'x' })
+    expect(api.listTasks).toHaveBeenCalledTimes(1)
+
+    lists[0].reject(new ApiError('unavailable', 503))
+    await settle()
+    expect(store.loadState).toBe('loading')
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+
+    lists[1].resolve([OLDER])
+    await done
+    await settle()
+    expect(store.loadState).toBe('ready')
+    expect(texts()).toEqual(['call bank'])
+    expect(showLoadFailure).not.toHaveBeenCalled()
+    expect(alert).not.toHaveBeenCalled()
+  })
+
+  it('goes load_failed once when the queued GET fails too', async () => {
+    const done = store.load()
+    const result = store.add('x')
+    adds[0].reject(new ApiError('network_error', null))
+    await expect(result).rejects.toEqual({ text: 'x' })
+    lists[0].reject(new ApiError('unavailable', 503))
+    await settle()
+    lists[1].reject(new ApiError('unavailable', 503))
+    await done
+    await settle()
+    expect(store.loadState).toBe('load_failed')
+    expect(showLoadFailure).toHaveBeenCalledTimes(1)
+    expect(alert).not.toHaveBeenCalled()
+    expect(store.rows).toEqual([])
+  })
+
+  it('stays load_failed, silently, when a recovery GET fails under load_failed', async () => {
+    const done = store.load()
+    lists[0].reject(new ApiError('unavailable', 503))
+    await done
+    expect(store.loadState).toBe('load_failed')
+    const result = store.add('x')
+    adds[0].reject(new ApiError('network_error', null))
+    await expect(result).rejects.toEqual({ text: 'x' })
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+    lists[1].reject(new ApiError('unavailable', 503))
+    await settle()
+    expect(store.loadState).toBe('load_failed')
+    expect(showLoadFailure).toHaveBeenCalledTimes(1)
+    expect(alert).not.toHaveBeenCalled()
+    expect(hideLoadFailure).not.toHaveBeenCalled()
+  })
+})
+
+describe('retry (AD-10, FR-17)', () => {
+  async function failed(): Promise<void> {
+    const done = store.load()
+    lists[0].reject(new ApiError('unavailable', 503))
+    await done
+    expect(store.loadState).toBe('load_failed')
+  }
+
+  it('goes loading then ready, shows the rows and hides the toast when Retry succeeds', async () => {
+    await failed()
+    const done = store.retry()
+    expect(store.loadState).toBe('loading')
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+    lists[1].resolve([OPEN, OLDER])
+    await done
+    expect(store.loadState).toBe('ready')
+    expect(texts()).toEqual(['call bank', 'buy milk'])
+    expect(hideLoadFailure).toHaveBeenCalledTimes(1)
+    expect(showLoadFailure).toHaveBeenCalledTimes(1)
+  })
+
+  it('goes back to load_failed, keeps the toast and alerts when Retry fails', async () => {
+    await failed()
+    const done = store.retry()
+    lists[1].reject(new ApiError('network_error', null))
+    await done
+    expect(store.loadState).toBe('load_failed')
+    expect(showLoadFailure).toHaveBeenCalledTimes(1)
+    expect(hideLoadFailure).not.toHaveBeenCalled()
+    expect(alert).toHaveBeenCalledTimes(1)
+    expect(alert).toHaveBeenCalledWith(COPY.retryFailed)
+    expect(store.rows).toEqual([])
+  })
+
+  it('sends one GET for two Retry clicks', async () => {
+    await failed()
+    void store.retry()
+    void store.retry()
+    expect(store.loadState).toBe('loading')
+    lists[1].resolve([OPEN])
+    await settle()
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+    expect(store.loadState).toBe('ready')
+  })
+
+  it('lets a Retry queued behind a failing recovery GET decide', async () => {
+    await failed()
+    const result = store.add('x')
+    adds[0].reject(new ApiError('network_error', null))
+    await expect(result).rejects.toEqual({ text: 'x' })
+    expect(api.listTasks).toHaveBeenCalledTimes(2)
+
+    const done = store.retry()
+    expect(store.loadState).toBe('loading')
+    lists[1].reject(new ApiError('unavailable', 503))
+    await settle()
+    expect(store.loadState).toBe('loading')
+    expect(alert).not.toHaveBeenCalled()
+    expect(api.listTasks).toHaveBeenCalledTimes(3)
+
+    lists[2].resolve([OPEN])
+    await done
+    expect(store.loadState).toBe('ready')
+    expect(hideLoadFailure).toHaveBeenCalledTimes(1)
+    expect(showLoadFailure).toHaveBeenCalledTimes(1)
+  })
+
+  it('does nothing unless the state is load_failed', async () => {
+    await loaded(OPEN)
+    await store.retry()
+    expect(api.listTasks).toHaveBeenCalledTimes(1)
+    expect(store.loadState).toBe('ready')
   })
 })
 
@@ -969,15 +1123,82 @@ describe('hold timer (FR-4)', () => {
     expect(store.heldKey).toBeNull()
   })
 
-  it('keeps the hold while a list that never loads stays loading (epic 3 adds load_failed)', async () => {
+  it('releases a hold taken while loading 3 s after the load fails', async () => {
     const done = store.load()
     void store.add('early')
     const key = store.heldKey
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(store.heldKey).toBe(key)
     lists[0].reject(new ApiError('network_error', null))
     await flush()
     await done
-    await vi.advanceTimersByTimeAsync(10_000)
+    expect(store.loadState).toBe('load_failed')
+    await vi.advanceTimersByTimeAsync(HOLD_MS - 1)
+    expect(store.heldKey).toBe(key)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.heldKey).toBeNull()
+  })
+
+  async function failedStore(): Promise<void> {
+    const done = store.load()
+    lists[0].reject(new ApiError('unavailable', 503))
+    await flush()
+    await done
+    expect(store.loadState).toBe('load_failed')
+  }
+
+  it('shows only the held add under load_failed, then nothing once its 3 s hold ends', async () => {
+    await failedStore()
+    void store.add('x')
+    adds[0].resolve(X)
+    await flush()
+    expect(texts()).toEqual(['x'])
+    await vi.advanceTimersByTimeAsync(HOLD_MS - 1)
+    expect(texts()).toEqual(['x'])
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.heldKey).toBeNull()
+    expect(store.rows).toEqual([])
+  })
+
+  it('keeps rows added under load_failed hidden during Retry until its GET succeeds', async () => {
+    await failedStore()
+    void store.add('x')
+    adds[0].resolve(X)
+    await flush()
+    await vi.advanceTimersByTimeAsync(HOLD_MS)
+    expect(store.heldKey).toBeNull()
+    expect(store.rows).toEqual([])
+
+    const done = store.retry()
+    expect(store.loadState).toBe('loading')
+    expect(store.rows).toEqual([])
+
+    lists[1].resolve([X])
+    await flush()
+    await done
+    expect(store.loadState).toBe('ready')
+    expect(texts()).toEqual(['x'])
+  })
+
+  it('cancels the countdown on Retry and restarts a full 3 s when it settles', async () => {
+    await failedStore()
+    void store.add('x')
+    const key = store.heldKey
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    const done = store.retry()
+    expect(vi.getTimerCount()).toBe(0)
+    await vi.advanceTimersByTimeAsync(5_000)
     expect(store.loadState).toBe('loading')
     expect(store.heldKey).toBe(key)
+
+    lists[1].resolve([OLDER])
+    await flush()
+    await done
+    expect(store.loadState).toBe('ready')
+    await vi.advanceTimersByTimeAsync(HOLD_MS - 1)
+    expect(store.heldKey).toBe(key)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(store.heldKey).toBeNull()
   })
 })
