@@ -185,10 +185,7 @@ export type FailApiOptions = {
  * Fulfils every matching `/api/**` request with the AD-5 error body `{detail, code}`.
  * Defaults to `503 service_unavailable`. Other requests go through untouched.
  */
-export async function failApi(
-  page: Page,
-  options: FailApiOptions,
-): Promise<void> {
+export async function failApi(page: Page, options: FailApiOptions): Promise<void> {
   const { method, path, status = 503, code = 'service_unavailable' } = options
   const detail = options.detail ?? 'Injected failure'
   await page.route('**/api/**', async (route) => {
