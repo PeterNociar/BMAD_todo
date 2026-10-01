@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/svelte'
 import { tick } from 'svelte'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.svelte'
 import * as apiModule from './lib/api'
 import type { Task } from './lib/api'
@@ -565,48 +565,231 @@ describe('App: rows', () => {
   })
 })
 
-describe('App: sticky height', () => {
-  it('sets --sticky-height from a ResizeObserver on the header, and disconnects on destroy', async () => {
-    let callback: ResizeObserverCallback | undefined
-    const observe = vi.fn()
-    const disconnect = vi.fn()
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        constructor(cb: ResizeObserverCallback) {
-          callback = cb
-        }
-        observe = observe
-        unobserve = vi.fn()
-        disconnect = disconnect
-      },
+/** A ResizeObserver stub that records each observer and the elements it watches. */
+type StubObserver = {
+  callback: ResizeObserverCallback
+  targets: Set<Element>
+  observe: ReturnType<typeof vi.fn>
+  unobserve: ReturnType<typeof vi.fn>
+  disconnect: ReturnType<typeof vi.fn>
+}
+
+function stubResizeObserver(): StubObserver[] {
+  const observers: StubObserver[] = []
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        const targets = new Set<Element>()
+        observers.push({
+          callback,
+          targets,
+          observe: (this.observe = vi.fn((el: Element) => targets.add(el))),
+          unobserve: (this.unobserve = vi.fn((el: Element) => targets.delete(el))),
+          disconnect: (this.disconnect = vi.fn(() => targets.clear())),
+        })
+      }
+      observe: ReturnType<typeof vi.fn>
+      unobserve: ReturnType<typeof vi.fn>
+      disconnect: ReturnType<typeof vi.fn>
+    },
+  )
+  return observers
+}
+
+/** The stub observer currently watching `el`. */
+function observerOf(observers: StubObserver[], el: Element): StubObserver {
+  const found = observers.find((o) => o.targets.has(el))
+  if (!found) throw new Error('element is not observed')
+  return found
+}
+
+/** Fires `observer` with one border-box entry for `target`. */
+function resize(observer: StubObserver, target: Element, blockSize: number): void {
+  const entry = { target, borderBoxSize: [{ blockSize, inlineSize: 640 }] }
+  observer.callback([entry as unknown as ResizeObserverEntry], {} as ResizeObserver)
+}
+
+describe('App: measured heights', () => {
+  let height = 120
+
+  beforeEach(() => {
+    height = 120
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ height }) as DOMRect,
     )
-    let height = 120
-    const rect = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockImplementation(() => ({ height }) as DOMRect)
+  })
 
-    try {
-      const { view } = await renderLoaded([])
-      const header = screen.getByRole('banner')
-      const page = header.parentElement!
-      expect(observe).toHaveBeenCalledWith(header, { box: 'border-box' })
-      expect(page.style.getPropertyValue('--sticky-height')).toBe('120px')
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
 
-      height = 150
-      callback?.([], {} as ResizeObserver)
-      expect(page.style.getPropertyValue('--sticky-height')).toBe('150px')
+  it('sets --sticky-height from a ResizeObserver on the header, and disconnects on destroy', async () => {
+    const observers = stubResizeObserver()
+    const { view } = await renderLoaded([])
+    const header = screen.getByRole('banner')
+    const page = header.parentElement!
+    const observer = observerOf(observers, header)
+    expect(observer.observe).toHaveBeenCalledWith(header, { box: 'border-box' })
+    expect(page.style.getPropertyValue('--sticky-height')).toBe('120px')
 
-      // An entry's border-box size wins over the rect.
-      const entry = { borderBoxSize: [{ blockSize: 170, inlineSize: 640 }] }
-      callback?.([entry as unknown as ResizeObserverEntry], {} as ResizeObserver)
-      expect(page.style.getPropertyValue('--sticky-height')).toBe('170px')
+    height = 150
+    observer.callback([], {} as ResizeObserver)
+    expect(page.style.getPropertyValue('--sticky-height')).toBe('150px')
 
-      view.unmount()
-      expect(disconnect).toHaveBeenCalled()
-    } finally {
-      rect.mockRestore()
-      vi.unstubAllGlobals()
-    }
+    // An entry's border-box size wins over the rect.
+    resize(observer, header, 170)
+    expect(page.style.getPropertyValue('--sticky-height')).toBe('170px')
+
+    view.unmount()
+    for (const o of observers) expect(o.disconnect).toHaveBeenCalled()
+  })
+
+  it('sets --toast-height from the toast anchor', async () => {
+    const observers = stubResizeObserver()
+    height = 0
+    await renderLoaded([])
+    const page = screen.getByRole('banner').parentElement!
+    const anchor = page.querySelector('.toasts')!
+    expect(page.style.getPropertyValue('--toast-height')).toBe('0px')
+
+    resize(observerOf(observers, anchor), anchor, 48)
+    expect(page.style.getPropertyValue('--toast-height')).toBe('48px')
+  })
+
+  it('works without ResizeObserver: the heights come from one rect read', async () => {
+    vi.stubGlobal('ResizeObserver', undefined)
+    await renderLoaded([])
+    const page = screen.getByRole('banner').parentElement!
+    expect(page.style.getPropertyValue('--sticky-height')).toBe('120px')
+    expect(page.style.getPropertyValue('--toast-height')).toBe('120px')
+  })
+})
+
+describe('App: held row', () => {
+  // jsdom has no scrollIntoView: a no-op stands in for the whole block, so each test can spy on
+  // it, and is removed afterwards.
+  beforeAll(() => {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: () => {},
+    })
+  })
+
+  afterAll(() => {
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+  })
+
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({ height: 36 }) as DOMRect,
+    )
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  /** Loads `loaded`, then adds "new" (confirmed as task n = 9) and returns its row. */
+  async function addHeld(loaded: Task[]) {
+    const ctx = await renderLoaded(loaded)
+    ctx.api.addTask.mockResolvedValue(task('new', 9))
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    await typeAndEnter(ctx.input, 'new')
+    await tick()
+    const page = screen.getByRole('banner').parentElement!
+    const rowOf = (text: string) =>
+      screen.getAllByRole('listitem').find((li) => li.querySelector('.text')?.textContent === text)!
+    return { ...ctx, page, rowOf }
+  }
+
+  it('marks only the held row, follows heldKey, and clears when the hold ends', async () => {
+    const { tasks, page, rowOf } = await addHeld([task('old', 1)])
+    expect(tasks.heldKey).not.toBeNull()
+    const items = screen.getAllByRole('listitem')
+    expect(items[0]).toBe(rowOf('new'))
+    expect(rowOf('new')).toHaveClass('held')
+    expect(rowOf('old')).not.toHaveClass('held')
+    expect(page.style.getPropertyValue('--held-height')).toBe('calc(36px + var(--space-3))')
+
+    vi.advanceTimersByTime(store.HOLD_MS)
+    await tick()
+    expect(tasks.heldKey).toBeNull()
+    expect(screen.getAllByRole('listitem').at(-1)).toBe(rowOf('new'))
+    expect(rowOf('new')).not.toHaveClass('held')
+    expect(page.style.getPropertyValue('--held-height')).toBe('0px')
+  })
+
+  it('a newer add moves the mark, and --held-height tracks the held row', async () => {
+    const observers = stubResizeObserver()
+    const { api, input, page, rowOf } = await addHeld([])
+    const first = rowOf('new')
+    const observer = observerOf(observers, first)
+    resize(observer, first, 54)
+    expect(page.style.getPropertyValue('--held-height')).toBe('calc(54px + var(--space-3))')
+
+    api.addTask.mockResolvedValue(task('newer', 8))
+    await typeAndEnter(input, 'newer')
+    await tick()
+    expect(rowOf('newer')).toHaveClass('held')
+    expect(rowOf('new')).not.toHaveClass('held')
+    expect(observer.targets.has(first)).toBe(false)
+    expect(observer.targets.has(rowOf('newer'))).toBe(true)
+    expect(page.style.getPropertyValue('--held-height')).toBe('calc(36px + var(--space-3))')
+  })
+
+  /** jsdom's `:focus-visible` heuristic is not the browser's: pin it for `el`. */
+  function focusVisible(el: HTMLElement, visible: boolean): void {
+    const matches = el.matches.bind(el)
+    vi.spyOn(el, 'matches').mockImplementation((selector) =>
+      selector === ':focus-visible' ? visible : matches(selector),
+    )
+  }
+
+  /** The tick ring of the held row "new". */
+  const tickOf = (row: HTMLElement) => row.querySelector<HTMLElement>('[data-row-control="tick"]')!
+
+  it('keeps keyboard focus on a held-row control when the hold ends, and scrolls it into view', async () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const { rowOf } = await addHeld([task('old', 1)])
+    const tickRing = tickOf(rowOf('new'))
+    focusVisible(tickRing, true)
+    tickRing.focus()
+
+    vi.advanceTimersByTime(store.HOLD_MS)
+    await tick()
+    expect(document.activeElement).toBe(tickRing)
+    expect(scroll).toHaveBeenCalledOnce()
+    expect(scroll.mock.contexts[0]).toBe(tickRing)
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest' })
+  })
+
+  it('neither restores nor scrolls a focused control without :focus-visible (a tap)', async () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const { rowOf } = await addHeld([task('old', 1)])
+    const tickRing = tickOf(rowOf('new'))
+    focusVisible(tickRing, false)
+    const keep = vi.spyOn(HTMLElement.prototype, 'focus')
+    tickRing.focus()
+    keep.mockClear()
+
+    vi.advanceTimersByTime(store.HOLD_MS)
+    await tick()
+    expect(keep).not.toHaveBeenCalled()
+    expect(scroll).not.toHaveBeenCalled()
+  })
+
+  it('never scrolls when the hold ends with focus elsewhere', async () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    const { input } = await addHeld([task('old', 1)])
+    input.focus()
+    vi.advanceTimersByTime(store.HOLD_MS)
+    await tick()
+    expect(scroll).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(input)
   })
 })

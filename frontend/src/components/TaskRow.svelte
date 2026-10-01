@@ -154,8 +154,11 @@
     color: inherit;
     font: inherit;
     cursor: pointer;
-    /* A focused control is never hidden under the sticky header and input (SC 2.4.11). */
-    scroll-margin-top: var(--sticky-height, 0px);
+    /* A focused control is never hidden under the sticky header and input, the held row or the
+       toasts (SC 2.4.11). */
+    scroll-margin-top: calc(
+      var(--sticky-height, 0px) + var(--held-height, 0px) + var(--toast-height, 0px)
+    );
   }
 
   button:focus-visible {
