@@ -1,7 +1,8 @@
 """AD-15 migration guard, on a scratch `*_pytest` database it creates and drops itself.
 
-Alembic is reached through `config.attributes["connection"]` (AD-21 step 1), so no URL is
-ever written into the configparser-backed `sqlalchemy.url`.
+The guard reaches Alembic through `config.attributes["connection"]` (AD-21 step 1). The `%`
+tests pin the URL steps: a caller-set `sqlalchemy.url` goes through configparser, so `%` must
+be escaped as `%%`.
 """
 
 from collections.abc import Iterator
@@ -15,6 +16,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Connection, create_engine, make_url, text
 
 from app.db import make_engine
+from tests.helpers import PERCENT_PASSWORD, public_tables
 from tests.settings import TestSettings
 
 TEST_DATABASE_URL = TestSettings().test_database_url
@@ -65,3 +67,21 @@ def test_migrations_have_one_head_upgrade_cleanly_and_match_models(
         text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename")
     ).scalars()
     assert list(tables) == ["alembic_version", "tasks"]
+
+
+def test_caller_url_with_escaped_percent_reaches_the_engine(percent_password_url: str) -> None:
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("sqlalchemy.url", percent_password_url.replace("%", "%%"))
+
+    assert make_url(config.get_main_option("sqlalchemy.url") or "").password == PERCENT_PASSWORD
+
+    command.upgrade(config, "head")  # logs in only if the engine got the password intact
+
+    assert public_tables(percent_password_url) == ["alembic_version", "tasks"]
+
+
+def test_caller_url_with_unescaped_percent_is_refused(percent_password_url: str) -> None:
+    config = Config(str(ALEMBIC_INI))
+
+    with pytest.raises(ValueError, match="interpolation"):
+        config.set_main_option("sqlalchemy.url", percent_password_url)

@@ -21,6 +21,7 @@ from app.config import ENV_FILE, Settings, get_settings
 from app.db import get_session
 from app.deps import current_settings
 from app.main import create_app
+from tests.helpers import PERCENT_PASSWORD, PERCENT_PASSWORD_ENCODED, public_tables
 from tests.settings import DEFAULT_TEST_DATABASE_URL, TestSettings
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -199,3 +200,25 @@ def test_alembic_uses_caller_url_over_settings() -> None:
 
     assert "CREATE TABLE" in buffer.getvalue()
     assert get_settings.cache_info().misses == 0
+
+
+@pytest.mark.parametrize(
+    "password",
+    [PERCENT_PASSWORD_ENCODED, PERCENT_PASSWORD],
+    ids=["url-encoded %25", "raw % with no valid escape"],
+)
+@pytest.mark.usefixtures("no_config")
+def test_alembic_settings_url_reaches_the_engine_url_decoded(
+    monkeypatch: pytest.MonkeyPatch, percent_password_url: str, password: str
+) -> None:
+    url = percent_password_url.replace(PERCENT_PASSWORD, password, 1)
+    monkeypatch.setenv("DATABASE_URL", url)
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+
+    assert not config.get_main_option("sqlalchemy.url")  # so env.py must fall back to settings
+
+    command.upgrade(config, "head")  # logs in only if the engine got the password `p%w`
+
+    assert get_settings.cache_info().misses == 1
+    assert get_settings().database_url == url
+    assert public_tables(url) == ["alembic_version", "tasks"]

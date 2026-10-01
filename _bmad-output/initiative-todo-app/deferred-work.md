@@ -28,3 +28,21 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-list-rows-tick-untick-and-delete-plan.md`
   summary: Toasts overlay the top of the list, so with no hold timer the newest (held) task stays first and an action-error toast covers it. EXPERIENCE says every toast sits 8 px below a held row.
   evidence: User decision (2026-10-01): epic-age-nudge owns the hold (the 3 s timer and the held row staying under the sticky input), and should offset the toast layer below the held row when it lands.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-refactor-sweep-plan.md`
+  summary: Resolved by entry 11: the nginx stale-IP risk (the walking-skeleton entry). It was real.
+  evidence: With `frontend-test` kept and `backend-test` restarted onto a new IP (a squatter container held the old one), `:8082/api/health` gave 502 and nginx logged the old upstream IP. `default.conf.template` now has `resolver 127.0.0.11 valid=10s ipv6=off;` and proxies through `set $api http://${API_UPSTREAM}; proxy_pass $api;`; the same repro then gave 200.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-refactor-sweep-plan.md`
+  summary: Resolved by entry 11: the `%` caveat in a caller-set `sqlalchemy.url` (the AD-21 and task-model entries).
+  evidence: `env.py`'s docstring states the `%%` contract. `tests/test_migrations.py` migrates a scratch database as a role whose password is `p%w` through a `%%`-escaped `set_main_option`, and shows an unescaped one is refused; `tests/test_config.py` migrates through `DATABASE_URL` with the raw `%`.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-refactor-sweep-plan.md`
+  summary: Resolved by entry 11: no test pinned the AD-8 lint ban (the pure-core entry), nor the AD-18 `.focus()` ban.
+  evidence: `frontend/tests/lint-rules.test.ts` lints snippets with ESLint's `lintText` at `src/x.ts`, `src/X.svelte`, `src/lib/clock.svelte.ts`, `src/lib/focus.ts` and a `*.test.ts` path. Turning the `Date.now` rule down to `warn` fails it.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-refactor-sweep-plan.md`
+  summary: Resolved by entry 11: nothing tested that `failApi` passes non-matching requests through (the e2e-harness entry).
+  evidence: A `harness.spec.ts` test fails `POST /api/tasks`, loads a seeded list through a real `GET` (200, row rendered), and checks a page `POST` still gets the injected 503.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-refactor-sweep-plan.md`
+  summary: Resolved by entry 11: the spine diagram's missing `routers/* → services/*` arrow (the testing-task-service-docs entry).
+  evidence: The backend graph now has dotted `R -. "annotation-only" .-> SV` and `R -. "annotation-only" .-> M`, matching `routers/tasks.py`, which imports both at runtime only to name types in signatures; the note under it says what a dotted arrow means.
+- source_plan: `_bmad-output/initiative-todo-app/epic-capture-and-keep/story-refactor-sweep-plan.md`
+  summary: No automated test recreates the backend onto a new IP and checks nginx follows it; entry 11 proved the fix by a manual repro, and `frontend/tests/nginx-template.test.ts` only pins the config statically.
+  evidence: The repro needs container orchestration (stop `backend-test`, a squatter container on `todo_default`, `up --no-deps backend-test`, curl `:8082`), which sits outside pytest, Vitest and Playwright. A compose smoke script, ideally run by CI, could own it.

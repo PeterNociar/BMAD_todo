@@ -396,3 +396,42 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - Raw RGB values in the E2E colour checks.
 - **Deferred to epic 2:** toasts sitting below a held row.
 - **Manual check:** the app-profile `docker compose down` / `up` check passed. The task text and both times were identical afterwards, with the volume kept.
+
+## Ticket 11 — Refactor sweep
+
+**Agents.** The dev persona (bmad-build) planned the sweep from deferred-work.md, and the user picked the scope: the nginx stale IP, the small test and code gaps, and the spine fix. A Claude Code subagent (Claude Opus) implemented it from the plan alone, after loading the architecture spine as the plan's `context:` requires.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan gave the nginx repro step by step (squatter container, `up --no-deps backend-test`, curl `:8082`) and the exact fix to apply only if it returned 502, so the experiment decided the change.
+
+**MCP servers.** None. Verification used the shell and Docker: ruff and pytest, `svelte-check`, ESLint, Vitest with coverage, `vite build`, the rebuilt test stack with Playwright on the system Chrome, and the rebuilt app profile.
+
+**What was built.**
+- nginx: the stale-IP risk was real (502, with nginx still dialling the old IP). `default.conf.template` now re-resolves through Docker's DNS every 10 s and proxies through a variable with no URI part. The same repro then gave 200, and the path, query, error bodies and headers passed through unchanged.
+- Alembic: `env.py` documents the `%%` contract. Tests migrate a scratch database owned by a role whose password is `p%w`, once through an escaped `sqlalchemy.url` and once through `DATABASE_URL` with a raw `%`; only a password that arrives intact can log in. A third test shows an unescaped `set_main_option` is refused.
+- `frontend/tests/lint-rules.test.ts` pins the AD-8 and AD-18 bans with ESLint's `lintText`.
+- A harness test proves `failApi` lets a non-matching `GET` through.
+- The spine diagram gains dotted annotation-only arrows from routers to services and models, and AD-16's nginx line describes the resolver and its side effects.
+
+**What AI decided beyond the plan.**
+- The lint test overrides `projectService` to `false` for `src/X.svelte` only, because that file is not on disk and the typed project service refuses it. The bans are syntax rules, so the real config is otherwise used unchanged. Only ban-rule errors are counted, and any parse error fails the test, so an "allowed" case cannot pass by linting nothing.
+- The `failApi` test also sends a page `POST` and expects the injected 503, so it fails if the route were never installed.
+- The `%` tests use a real role and password rather than inspecting the parsed URL, after checking that `db-test` enforces passwords on the forwarded port.
+- AD-16's `proxy_pass` sentence in the spine was updated to match the new config.
+
+**What AI missed.**
+- The first lint test also failed on `svelte/prefer-svelte-reactivity`, which flags `new Date()` in `.svelte.ts` files, so it now ignores rules other than the two bans.
+- The spine arrows were first labelled "type-only", but `routers/tasks.py` imports `TaskService` and `Task` at runtime, because FastAPI reads the annotations.
+- The first `env.py` docstring said `DATABASE_URL` is used "exactly as given, raw `%` included". SQLAlchemy's `make_url` percent-decodes the password (`p%41w` becomes `pAw`); `p%w` only survived because `%w` is no valid escape.
+
+**Review.** Four lenses produced about 30 findings, each checked against the code.
+- **Patched:**
+  - The `env.py` docstring: URL passwords are URL-encoded (a literal `%` is `%25`) on both paths, plus `%%` for `set_main_option`. A new test migrates through `DATABASE_URL` with a `%25`-encoded password.
+  - The settings-path test proves the path: `sqlalchemy.url` is empty before the upgrade, and `get_settings` was called once.
+  - The scratch-role fixture drops the database and the role in `finally` even if creating the database fails. `PERCENT_PASSWORD` is asserted quote-free, and it and `public_tables` live in `tests/helpers.py`.
+  - The lint test pins the cross-bans (Date calls in `lib/focus.ts`, `.focus()` in `lib/clock.svelte.ts`), `.focus()` in a `.svelte` file, the Date ban in another `.svelte.ts` file, and the AD-8 rule ids. A "File ignored" warning fails it, like a parse error.
+  - A static guard, `frontend/tests/nginx-template.test.ts`, fails if `/api/` loses the resolver or goes back to a literal `proxy_pass`.
+  - The nginx comment and AD-16 document the side effects: Docker's embedded DNS only (no `/etc/hosts`), and an unresolvable backend no longer stops nginx starting; each `/api` request gets a 502, which the client maps to `unavailable` and rolls back.
+  - The spine's dotted arrows read "annotation-only": imported to name types in signatures, never called.
+  - The `failApi` tests wait for the `GET` by method too, and a new case fails `GET /api/health` while `GET /api/tasks` loads the seeded row, which exercises the path half of the guard.
+- **Deferred:** an automated recreate-the-backend repro, which needs container orchestration outside the test layers (logged in deferred-work).
+- **Main-session checks:** with `backend-test` stopped, the page still serves and `/api` returns 502. Once it is back, `/api/health` is 200 again without restarting nginx.
