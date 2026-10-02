@@ -18,6 +18,8 @@
  *   set-up as `page`; call the returned check at the end of the test.
  * - `failApi(page, {method, path})` fails matching `/api/**` requests with an AD-5 error body
  *   and returns a function that clears that failure (unroutes it), e.g. before a Retry.
+ * - `recordThemeAtBody(page)` records `data-theme` on `<html>` at the moment `<body>` is
+ *   inserted, on every navigation; `themeAtBody(page)` reads it (stories 3.4 and 3.5).
  */
 import { AxeBuilder } from '@axe-core/playwright'
 import { test as base, expect, type Page, type Route } from '@playwright/test'
@@ -216,4 +218,43 @@ export async function expectNoA11yViolations(page: Page): Promise<void> {
       return `${violation.id}: ${targets}`
     })
   expect(critical, `Critical axe violations:\n${critical.join('\n')}`).toEqual([])
+}
+
+declare global {
+  interface Window {
+    __themeAtBody?: string | null
+    __themeAtBodyRecorder?: boolean
+  }
+}
+
+/** Runs in the page before its own scripts: records `data-theme` when `<body>` is inserted. */
+function themeAtBodyRecorder(): void {
+  window.__themeAtBodyRecorder = true
+  const observer = new MutationObserver(() => {
+    if (!document.body) return
+    window.__themeAtBody = document.documentElement.getAttribute('data-theme')
+    observer.disconnect()
+  })
+  observer.observe(document, { childList: true, subtree: true })
+}
+
+/**
+ * Records `data-theme` on `<html>` at the moment `<body>` is inserted, on every navigation
+ * (reloads included), so a test can prove the theme was applied before first paint.
+ */
+export async function recordThemeAtBody(page: Page): Promise<void> {
+  await page.addInitScript(themeAtBodyRecorder)
+}
+
+/**
+ * The `data-theme` recorded by `recordThemeAtBody` for the current document (null: none).
+ * Throws when the recorder was never installed, so a missing set-up never reads as "none".
+ */
+export async function themeAtBody(page: Page): Promise<string | null | undefined> {
+  const { installed, value } = await page.evaluate(() => ({
+    installed: window.__themeAtBodyRecorder === true,
+    value: window.__themeAtBody,
+  }))
+  if (!installed) throw new Error('themeAtBody: call recordThemeAtBody(page) before goto')
+  return value
 }

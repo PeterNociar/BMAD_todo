@@ -7,6 +7,7 @@
   import { cubicOut } from 'svelte/easing'
   import LiveRegions from './components/LiveRegions.svelte'
   import TaskRow from './components/TaskRow.svelte'
+  import ThemeToggle from './components/ThemeToggle.svelte'
   import ToastLayer from './components/ToastLayer.svelte'
   import {
     installSafetyNet,
@@ -196,6 +197,7 @@
   <header class="top" bind:this={top}>
     <div class="header">
       <h1 class="wordmark">Todo</h1>
+      <ThemeToggle />
     </div>
 
     <label for="new-task" class="visually-hidden">New task</label>
