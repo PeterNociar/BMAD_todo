@@ -1217,7 +1217,7 @@ Why: the epic chose the scripted route, and it leaves evidence in the repo that 
 
 - **Playwright MCP** (`@playwright/mcp`, system Chrome). It drove every journey the exercise names on the test stack, all passing: create, complete, untick, delete, reload, a failed save, a failed load with Retry, and the empty state. The accessibility snapshot alone confirmed the row order, spoken ages and button names, without reading the code. `browser_run_code_unsafe` allowed request aborts for the error cases.
 - **Chrome DevTools MCP** (`chrome-devtools-mcp`). A load trace with 500 rows (LCP 152 ms, CLS 0), two tick traces (INP 192 and 194 ms), its DOM-size and forced-reflow insights, and a Lighthouse audit (Accessibility 100, Best Practices 100, SEO 82).
-- **Postman MCP** (`@postman/postman-mcp-server`). Not run yet. It needs `POSTMAN_API_KEY` exported when Claude Code starts.
+- **Postman MCP** (`@postman/postman-mcp-server`). Run after a restart with the key exported. It loaded the live OpenAPI spec into Spec Hub, generated a collection from it (all 6 operations), then built and ran a 13-request contract collection against the test stack: 34 of 34 assertions passed. It confirmed the AD-3 and AD-5 contract from outside the codebase, including tick idempotence and the 405 error body.
 
 Full results are in [qa-mcp.md](qa-mcp.md).
 

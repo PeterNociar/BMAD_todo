@@ -1,12 +1,12 @@
 # QA report: MCP server passes
 
-- **Date:** 2026-10-02 (14:17–14:40 UTC)
+- **Date:** 2026-10-02 (14:17–14:40 UTC for Playwright and DevTools; 14:26–14:30 UTC for Postman, after a restart)
 - **Commit:** `main` at `a19a61e` plus the `.mcp.json` added on `chore/mcp-servers`. No app code changed since the QA reports were measured.
 - **Target:** the compose `test` profile on `:8082` (production Vite bundle behind nginx, FastAPI, Postgres 18), reset and seeded through the AD-14 test router.
 - **Servers:** registered in [`.mcp.json`](../.mcp.json) and called as tools by Claude Code (Opus 5.5):
   - `@playwright/mcp@0.0.83`, system Chrome, isolated profile;
   - `chrome-devtools-mcp@1.10.1`, installed stable Chrome 154, isolated profile, headed window;
-  - `@postman/postman-mcp-server@2.13.0`, pending (see Postman below).
+  - `@postman/postman-mcp-server@2.13.0`, with `POSTMAN_API_KEY` from the shell, against the author's Postman account (a new personal workspace, "BMAD Todo").
 
 These passes ran after the build was finished. They are a second look at the app with the tools the exercise suggests, not part of how it was built. The [AI log](ai-log.md) records that no MCP server was used during the build.
 
@@ -66,4 +66,30 @@ Lighthouse excludes performance from this tool; the traces above cover it. The S
 
 ## Postman MCP: API contract
 
-Pending. The server needs `POSTMAN_API_KEY` in the environment Claude Code starts with. In this session the key was in `.env` but not exported, so the server exited at start, and a broken npx cache entry (`Cannot find module 'ajv'`) also had to be cleared. Both are fixed; it runs once Claude Code is restarted with the key exported (see [README](../README.md#mcp-servers)).
+Driven with `createWorkspace`, `createSpec`, `generateCollection`, `getSpecCollections`, `createCollection`, `runCollection` and `getCollection`, in the personal workspace "BMAD Todo".
+
+1. **Spec.** The app profile's live OpenAPI 3.1 document (`GET :8081/api/openapi.json`, 5 paths, no test router) went into Postman Spec Hub as "Todo API (app profile, a19a61e)". Its `servers` entry points at the test stack, `http://127.0.0.1:8082`.
+2. **Generated collection.** Postman generated "Todo API (generated from spec)" from the spec, with state `in-sync`. It holds all 6 operations in 2 folders: tasks (List, Add, Tick, Untick, Delete) and health.
+3. **Contract tests.** A second collection, "Todo API contract tests", has 13 requests in order with Postman test scripts. Each response is checked against the spec's `TaskRead` or `ErrorResponse` schema (`pm.response.to.have.jsonSchema`), plus the AD-3, AD-5 and AD-12 rules. An export is committed as [`qa-artifacts/postman-contract-tests.postman_collection.json`](qa-artifacts/postman-contract-tests.postman_collection.json).
+4. **Run** (`runCollection`, test stack on `:8082`): **13 requests, 34 assertions, 34 passed, 0 failed**, in 14.1 s.
+5. **Reproducible without Postman:** `npx newman@6 run docs/qa-artifacts/postman-contract-tests.postman_collection.json` gives the same result, 13 requests and 34 assertions with 0 failures, against the test stack.
+
+| Request                             | Asserted                                                   |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `GET /health`                       | 200, `{"status":"ok"}`                                     |
+| `GET /tasks`                        | 200, an array of `TaskRead`                                |
+| `POST /tasks` with padded text      | 201, `TaskRead`, text trimmed (AD-12), `completed_at` null |
+| `POST /tasks` with blank text       | 422, `ErrorResponse`, `validation_error`                   |
+| `POST /tasks` with 2,001 characters | 422, `ErrorResponse`, `text_too_long`                      |
+| `PUT …/tick`                        | 200, `TaskRead`, `completed_at` set                        |
+| `PUT …/tick` again                  | 200, `completed_at` unchanged (idempotent)                 |
+| `PUT …/untick`                      | 200, `TaskRead`, `completed_at` null                       |
+| `PUT …/tick` with an unknown id     | 404, `ErrorResponse`, `task_not_found`                     |
+| `PUT …/tick` with a malformed id    | 404, `task_not_found`                                      |
+| `DELETE /tasks/{id}`                | 204, empty body                                            |
+| `DELETE` again                      | 404, `task_not_found`                                      |
+| `PATCH /tasks/{id}`                 | 405, `ErrorResponse`, `method_not_allowed`                 |
+
+Every documented 2xx, 404, 405 and 422 response matches the spec. The documented 500 and 503 responses weren't exercised, because they need the database stopped; the pytest suite covers 503 (`test_errors.py`, `test_health.py`).
+
+Setup notes: the server only connects when `POSTMAN_API_KEY` is exported in the shell that starts Claude Code. A broken npx cache entry (`Cannot find module 'ajv'`) had to be cleared once (see [README](../README.md#mcp-servers)).
