@@ -70,7 +70,7 @@ The exercise suggests these tools; it does not require them.
 
 Each item is stated as its source states it.
 
-- **Enter's feedback margin.** Enter's p95 is 94.5 ms against the 100 ms target, measured on an unthrottled machine, so a slower or throttled machine can fail the gate without a code change ([qa-performance.md](qa-performance.md)).
+- **Thin NFR-2 margins.** The 500-row render p95 is 190.7 ms against the 200 ms target (default motion), and the tightest feedback p95 is Enter under reduced motion, 87.4 ms against 100 ms (79.0 ms with default motion), measured on an unthrottled machine, so a slower or throttled machine can fail the gate without a code change ([qa-performance.md](qa-performance.md)).
 - **No throttled or phone measurement.** The performance check ran with no CPU or network throttling; throttling, phones and browsers other than Chrome were not measured ([qa-performance.md](qa-performance.md)).
 - **No manual screen-reader pass.** Axe is not a full manual audit: screen-reader wording, announcement timing and zoom to 400% were not tested by hand ([qa-accessibility.md](qa-accessibility.md)).
 - **No base-image CVE scan.** The base images were not scanned, because no image scanner is installed ([qa-security.md](qa-security.md)).
@@ -104,7 +104,7 @@ The fresh database starts empty (`[]`). The build reused image layers cached on 
 
 ## Checks run for this hand-in
 
-All on `7ae9b39`, 2026-10-02, in story 3.9:
+All on `7ae9b39`, 2026-10-02, in story 3.9, except where a row says otherwise:
 
 | Check                                                                                                       | Result                                                                                                                                                                                        |
 | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -116,5 +116,5 @@ All on `7ae9b39`, 2026-10-02, in story 3.9:
 | `qa/a11y.spec.ts` (e2e QA config)                                                                           | 36 passed (1.1m), zero violations                                                                                                                                                             |
 | `npm run check`, `lint`, `format:check` (frontend; includes the docs) and `typecheck`, `format:check` (e2e) | green                                                                                                                                                                                         |
 | Relative links in `README.md` and the docs changed in 3.9                                                   | every target exists                                                                                                                                                                           |
-| `qa/perf.spec.ts`                                                                                           | **skipped on purpose:** its figures and JSON are from the 3.10 run, which the reports quote                                                                                                   |
+| `qa/perf.spec.ts`                                                                                           | **skipped on purpose** in 3.9. The reports now quote a later `npm run qa` run, after retro actions A1 and A2, on top of `c6c4872`: `38 passed (5.8m)`                                         |
 | `scripts/check-infra.sh`                                                                                    | **skipped:** it resets the test stack and starts the dev profile against the app's database. Its last runs, in story 3.6, printed PASS on all five checks ([ai-log.md](ai-log.md) Ticket 3.6) |

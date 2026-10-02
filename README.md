@@ -195,7 +195,7 @@ cd e2e
 E2E_BROWSER_CHANNEL=chrome npm run qa    # about 6 minutes
 ```
 
-They write their output to `docs/qa-artifacts/`. The summary JSONs the reports quote (`a11y-summary.json`, `perf-results*.json`) are committed. The bulky DevTools traces and the per-cell accessibility files are gitignored. `npm run qa` fails if any NFR-2 target regresses, including feedback with 500 rows under both motion settings.
+They write their output to `docs/qa-artifacts/`. The summary JSONs the reports quote (`a11y-summary.json`, `perf-results*.json`) are committed. The bulky DevTools traces and the per-cell accessibility files are gitignored. `npm run qa` fails if any NFR-2 target regresses, including feedback with 500 rows under both motion settings. The asserts check that run's own measurements, not the committed JSON.
 
 ## Verify everything
 

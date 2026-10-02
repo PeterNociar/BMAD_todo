@@ -1182,3 +1182,29 @@ Why: the epic chose the scripted route, and it leaves evidence in the repo that 
 - **Dev-machine constraints.** The default host ports were taken, so the stack moved to `8081`, `5436` and `8082` (Ticket 1). Playwright's Chromium download timed out, so every E2E run used the system Chrome (Tickets 1 and 5). No CVE scanner was installed, so base images were not scanned (Ticket 3.8).
 - **What the review lenses caught that the AI's tests missed.** Two 500s (Ticket 3), a health check that ignored a missing database (Ticket 4), Alembic silently disabling the app's loggers (Ticket 2), same-tick announcements overwriting each other (Ticket 7), and the twin fold resurrecting a ticked task as open (Ticket 12).
 - **Not checked at all.** Throttled or phone-class performance, and a screen-reader pass by hand (Ticket 3.8).
+
+## Retro A1 + A2 — perf gate on same-run data, cheaper slideRow
+
+**Agents.** The dev persona (bmad-build) wrote a oneshot plan from actions A1 and A2 of the epic 3 retrospective ([plan](../_bmad-output/initiative-todo-app/plan-retro-a1-a2-perf-gate-and-slide-row.md)) and implemented it. A Claude Code subagent (Claude Opus) refreshed the docs from the new QA run.
+
+**Prompt that worked.** The user picked "two quick code fixes as one small story", and the plan's Intent named the findings (F11, F24, F13) and the exact change for each, so there was nothing to interpret.
+
+**MCP servers.** None. Verification used the shell, Docker and Playwright on the system Chrome.
+
+**What was built.**
+
+- `frontend/src/lib/motion.ts`: `slideRow` tests the viewport before reduced motion, so a row that stays off-screen never calls `matchMedia` (F13). `motion.test.ts` › "never queries the motion setting for a row that stays off-screen" failed against the old order, then passed.
+- `e2e/qa/perf.spec.ts`: the API, render and feedback asserts are all `expect.soft` at the end of the measurement test, on that run's samples. The separate "NFR-2 feedback under 100 ms" test, which read the committed JSON from disk, is gone, with the serial-mode config and the `readFileSync` import (F11, F24).
+- `docs/qa-performance.md` regenerated from the new `perf-results*.json`, plus the stale perf and QA-run figures in the README, `hand-in-checklist.md`, `qa-security.md`, `qa-coverage.md` and `qa-accessibility.md`. The frontend unit count (456) in `qa-coverage.md` and the checklist stays as the 3.9 snapshot on `7ae9b39`; this run counted 457 with the new `motion.test.ts` case.
+- **Results:**
+  - Frontend: 457 passed, 99.3% statements.
+  - E2E: 115 passed.
+  - `npm run qa`: 38 passed (36 accessibility cells, 2 measurement tests). Default-motion feedback p95 with 500 rows: Enter 79.0 ms, tick 56.3 ms, delete 55.9 ms. Render p95 190.7 ms.
+
+**What AI decided beyond the plan.**
+
+- Caching a `MediaQueryList`, the second half of A2, was deliberately not done: the option the user chose left it out, and after the reorder only the ~20 rows on screen query it.
+
+**What AI missed or could not do.**
+
+- The render p95 (190.7 ms, max 201.1 ms) is now the thinnest NFR-2 margin, about 9 ms on an unthrottled machine. It was 164.4 ms in the 3.10 run, and nothing on the render path changed, so the spread between runs is large; this run alone doesn't show what the reorder saved.

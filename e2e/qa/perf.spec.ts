@@ -22,8 +22,9 @@
  * GET it didn't expect is dropped, replaced and counted (`droppedForPoll` in the results).
  *
  * Gate. Every NFR-2 target (API, 500-row render, and feedback under both motion settings) is
- * asserted, so a regression fails `npm run qa`. Default-motion feedback met its target once only
- * rows on screen slide (`lib/motion.ts`).
+ * asserted on the figures this run just measured, never on a results file from an earlier run.
+ * The asserts are soft, so one run reports every miss. Default-motion feedback met its target
+ * once only rows on screen slide (`lib/motion.ts`).
  *
  * The check runs twice: with the default motion, and with `prefers-reduced-motion: reduce`
  * (rows move with no slide), which isolates what the row animation costs.
@@ -31,7 +32,7 @@
  * (`perf-tick-trace<suffix>.json`) and one load trace (`perf-load-trace<suffix>.json`) to open
  * in DevTools › Performance; the suffix is empty for the default run and `-reduced-motion`.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { cpus, totalmem } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import type { CDPSession, Page, Request } from '@playwright/test'
@@ -420,8 +421,6 @@ for (const motion of ['no-preference', 'reduce'] as const) {
   const suffix = motion === 'reduce' ? '-reduced-motion' : ''
   test.describe(`motion: ${motion}`, () => {
     test.use({ reducedMotion: motion })
-    // The feedback gate reads the results the measurement writes: skip it if that failed.
-    test.describe.configure({ mode: 'serial' })
 
     test(`NFR-2 with 500 tasks (motion: ${motion}): API, first render and action feedback`, async ({
       page,
@@ -665,25 +664,17 @@ for (const motion of ['no-preference', 'reduce'] as const) {
       writeFileSync(`${OUT_DIR}perf-results${suffix}.json`, `${JSON.stringify(results, null, 2)}\n`)
       console.log(JSON.stringify({ ...results, samples: undefined }, null, 2))
 
-      // The gate: a regression fails `npm run qa`. The feedback targets are checked by the
-      // next test.
+      // The gate, on this run's figures: a regression fails `npm run qa`.
       for (const [call, samples] of Object.entries(api)) {
-        expect(stats(samples).p95, `API ${call} p95`).toBeLessThan(TARGET.api)
+        expect.soft(stats(samples).p95, `API ${call} p95`).toBeLessThan(TARGET.api)
       }
-      expect(stats(column(loads, 'paintMs')).p95, '500-row render p95').toBeLessThan(TARGET.render)
-    })
-
-    /**
-     * NFR-2 feedback with 500 rows, gated under both motion settings. Default motion used to miss
-     * it (every moved row ran `animate:flip`); now only rows on screen slide (`lib/motion.ts`), and
-     * docs/qa-performance.md (Issue 1) keeps the before and after figures.
-     */
-    test(`NFR-2 feedback under 100 ms with 500 rows (motion: ${motion})`, () => {
-      const results = JSON.parse(readFileSync(`${OUT_DIR}perf-results${suffix}.json`, 'utf8')) as {
-        feedback: Record<string, { traceToPaint: { p95: number } }>
-      }
-      for (const [action, report] of Object.entries(results.feedback)) {
-        expect.soft(report.traceToPaint.p95, `${action} p95`).toBeLessThan(TARGET.feedback)
+      expect
+        .soft(stats(column(loads, 'paintMs')).p95, '500-row render p95')
+        .toBeLessThan(TARGET.render)
+      for (const [action, spans] of Object.entries({ enter, tick, delete: del })) {
+        expect
+          .soft(stats(column(spans, 'paintMs')).p95, `feedback ${action} p95`)
+          .toBeLessThan(TARGET.feedback)
       }
     })
   })

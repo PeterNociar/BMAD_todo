@@ -79,7 +79,7 @@ Per file (from `frontend/coverage/coverage-final.json`; every file is at 100% of
 | `hold.spec.ts`    | 11    | `theme.spec.ts`        | 9     |
 |                   |       | `theme-toggle.spec.ts` | 15    |
 
-The QA specs in `e2e/qa/` (40 tests, `npm run qa`) are not counted here. They are measurements, reported in [qa-accessibility.md](qa-accessibility.md) and [qa-performance.md](qa-performance.md).
+The QA specs in `e2e/qa/` (38 tests, `npm run qa`) are not counted here. They are measurements, reported in [qa-accessibility.md](qa-accessibility.md) and [qa-performance.md](qa-performance.md).
 
 ## Why the coverage is meaningful
 
