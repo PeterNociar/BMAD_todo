@@ -1066,3 +1066,48 @@ After the fixes, `journeys.spec.ts --repeat-each 3` passed 15 of 15, and the fiv
   - The `:8081` probes are listed as hitting the pre-3.8 build.
   - The summary JSONs are committed; the traces stay gitignored.
 - **Result:** the second run gave the same verdicts as the first. The heap growth seen in the first run did not reproduce, so the report no longer calls it a finding.
+
+## Ticket 3.10 — Row motion within NFR-2 at 500 rows
+
+**Agents.** The dev persona (bmad-build) wrote the plan from issue 1 of `qa-performance.md`. A Claude Code subagent (Claude Opus) implemented it from the plan alone; the plan listed no `context:` files.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan's Design Notes did the most work: they read the reduced-motion figures as proof that layout reads were not the cost (Svelte still measures every row there) and pointed at the per-row `element.animate()`, so the fix had a clear target. Its "Never" list ruled out a row-count threshold and a hand-rolled FLIP.
+
+**MCP servers.** None. Verification used the shell, Docker and Playwright on the system Chrome.
+
+**What was built.**
+
+- `frontend/src/lib/motion.ts`: `SLIDE_MS`, `prefersReducedMotion()` and `slideRow(node, { from, to })`. It returns `{ duration: 0 }` under reduced motion, or when the row's old and new boxes are both outside the viewport (`bottom > 0 && top < innerHeight` is "visible"), and otherwise `flip` with 200 ms and `cubicOut`. A zero duration means Svelte skips `element.animate()`, and `flip` is never called.
+- `frontend/src/lib/motion.test.ts`: 12 tests, written red first, one or more per matrix row, including the viewport edges, a live change of the setting and a missing `matchMedia`. The zero cases check the return shape and that `getComputedStyle` is never called.
+- `frontend/src/App.svelte`: the local motion code is gone; the rows use `animate:slideRow`.
+- `e2e/tests/rows.spec.ts`: `animationsAfterClick` became `rowMotionAfterClick`, which also reads every row's box before the click and after the animations end. The new "motion: only rows on screen slide" test seeds 40 open rows at 1280×800 and ticks the first. All 40 rows move; fewer than 40 animate, all for 200 ms, and each animated row's box before or after the move is on screen.
+- `e2e/qa/perf.spec.ts`: the `test.fail()` mark on the default-motion feedback gate is removed, and the comments updated.
+- `docs/qa-performance.md`: regenerated from the new `perf-results*.json`. Issue 1 is recorded as fixed, with the before and after figures. The README's QA paragraph no longer mentions an expected failure.
+- **Results:**
+  - Frontend: 456 passed, 99.3% statements, 96.62% branches.
+  - E2E: 115 passed.
+  - `npm run qa`: 40 passed, with no expected failures. Default-motion feedback p95 with 500 rows: Enter 94.5 ms (was 201.8), tick 62.7 ms (was 118.8), delete 74.3 ms (was 168.4). Layouts over the feedback set fell from 23,484 (64 actions) to 1,405 (62 actions).
+
+**Debugging with AI.**
+
+- The new E2E failed at first on a row whose "after" box was 813 px, off-screen. The wait for the recorded animations' `finished` promises returned early: the server's response re-render can abort a slide and start a new one after recording has stopped. The helper now waits until no row animation is left before reading the final boxes.
+- One run in eight then recorded 40 animations for about 20 visible rows: the same restart, this time inside the recording window. The test now counts animated rows, not animations.
+
+**What AI decided beyond the plan.**
+
+- The plan asked that each animated target's box intersect the viewport "at click time". A row that slides into view from just below the fold is animated by design but starts off-screen, so the test checks the box before or after the move, which is the rule itself.
+- The README's QA paragraph was updated, since it described the removed expected failure.
+
+**What AI missed or could not do.**
+
+- Enter has the least margin: p95 94.5 ms against 100 ms on this machine, unthrottled. A slower machine could miss it.
+- The new E2E was not run against the old `animate:flip` build to watch it fail. With every moved row animated it would see 40 animated rows and fail the "fewer than moved" check.
+
+**Review.** Four lenses ran (blind hunter, edge-case hunter, verification gap, intent alignment). Five low findings were patched:
+
+- The new E2E gained a completeness check: every moved row that is on screen before or after the move must be animated.
+- `rowMotionAfterClick` throws if row animations haven't settled within 2 s, instead of reading boxes mid-slide.
+- Two stale comments were corrected (`motion.ts`, `TaskRow.svelte`).
+- `qa-performance.md`: per-action units on both sides, a before-and-after table label, and a Gate note on Enter's margin.
+
+Unexplained heap figures were deferred, pending a heap snapshot. Ten findings were rejected, among them "a row crossing the whole viewport jumps": the approved rule is old and new boxes both outside the viewport. No runtime code changed after the QA run (comments only), so the measured figures stand.

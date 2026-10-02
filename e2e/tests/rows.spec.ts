@@ -352,29 +352,59 @@ test('sticky clearance: a row control focused from below the fold clears the sti
   expect(after.y).toBeGreaterThanOrEqual(header.y + header.height - 1)
 })
 
+/** A row's vertical extent in viewport coordinates. */
+interface Span {
+  top: number
+  bottom: number
+}
+
+/** What a click did to the rows: their animations, and which rows changed position. */
+interface RowMotion {
+  /** The duration of every row animation (a row can be animated again by a re-render). */
+  durations: number[]
+  /** One entry per animated row: its box before the click and after the move. */
+  animated: { from: Span; to: Span }[]
+  /** Every row whose box moved between the click and the end of its animations. */
+  moved: { from: Span; to: Span; animated: boolean }[]
+  /** `innerHeight` at click time. */
+  viewport: number
+}
+
 /**
- * Clicks `button` in the page and lists the durations of the row animations (targets inside
- * `[data-task-row]`) it starts. From just before the click, every `Element.animate()` call is
- * recorded and `document.getAnimations()` is sampled at once and on every frame, so an
- * animation that has already finished on a slow runner is still counted. Sampling stops at the
- * first frame with a row animation, or after 1 s (the reduced-motion case, which gets `[]`).
+ * Clicks `button` in the page and reports the row animations (targets inside `[data-task-row]`)
+ * it starts. From just before the click, every `Element.animate()` call is recorded and
+ * `document.getAnimations()` is sampled at once and on every frame, so an animation that has
+ * already finished on a slow runner is still counted. Sampling stops at the first frame with a
+ * row animation, or after 1 s (the reduced-motion case, which gets none). Every row's box is read
+ * just before the click and again once the animations have finished, to list the rows that moved;
+ * it throws if row animations are still running 2 s after sampling stops.
  */
-async function animationsAfterClick(button: Locator): Promise<number[]> {
+async function rowMotionAfterClick(button: Locator): Promise<RowMotion> {
   const handle = await button.elementHandle()
   return handle!.evaluate(async (el) => {
+    const span = (r: DOMRect) => ({ top: r.top, bottom: r.bottom })
+    const boxes = () =>
+      new Map(
+        [...document.querySelectorAll('[data-task-row]')].map((row) => [
+          row,
+          span(row.getBoundingClientRect()),
+        ]),
+      )
     // Durations are read when an animation is first seen: Svelte may detach a finished
     // animation's effect (`effect` becomes null) before sampling ends.
-    const seen = new Map<Animation, number>()
+    const seen = new Map<Animation, { duration: number; row: Element }>()
     const record = (a: Animation) => {
       if (seen.has(a)) return
       const target = (a.effect as KeyframeEffect | null)?.target
       const duration = Number(a.effect?.getComputedTiming().duration ?? 0)
-      if (target instanceof Element && target.closest('[data-task-row]') !== null && duration > 0)
-        seen.set(a, duration)
+      const row = target instanceof Element ? target.closest('[data-task-row]') : null
+      if (row !== null && duration > 0) seen.set(a, { duration, row })
     }
     const sample = () => {
       for (const a of document.getAnimations()) record(a)
     }
+    const viewport = innerHeight
+    const before = boxes()
     const animate = Element.prototype.animate
     Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
       const animation = animate.apply(this, args)
@@ -392,8 +422,38 @@ async function animationsAfterClick(button: Locator): Promise<number[]> {
     } finally {
       Element.prototype.animate = animate
     }
-    return [...seen.values()]
+    // Final boxes are read without the slide's transform, once no row animation is left. (A
+    // re-render, e.g. on the server's response, can restart a slide after recording stopped.)
+    const settleBy = performance.now() + 2_000
+    const animating = () =>
+      document.getAnimations().some((a) => {
+        const target = (a.effect as KeyframeEffect | null)?.target
+        return target instanceof Element && target.closest('[data-task-row]') !== null
+      })
+    while (animating()) {
+      if (performance.now() >= settleBy) throw new Error('row animations did not settle within 2 s')
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    const after = boxes()
+    const animatedRows = new Set([...seen.values()].map((s) => s.row))
+    const moved: { from: Span; to: Span; animated: boolean }[] = []
+    for (const [row, from] of before) {
+      const to = after.get(row)
+      if (to && (to.top !== from.top || to.bottom !== from.bottom))
+        moved.push({ from, to, animated: animatedRows.has(row) })
+    }
+    const durations = [...seen.values()].map((s) => s.duration)
+    const animated = [...animatedRows].map((row) => ({
+      from: before.get(row) ?? { top: NaN, bottom: NaN },
+      to: after.get(row) ?? { top: NaN, bottom: NaN },
+    }))
+    return { durations, animated, moved, viewport }
   })
+}
+
+/** The durations of the row animations a click on `button` starts (see `rowMotionAfterClick`). */
+async function animationsAfterClick(button: Locator): Promise<number[]> {
+  return (await rowMotionAfterClick(button)).durations
 }
 
 test('motion: tick slides the rows for about 200 ms', async ({ page, seed }) => {
@@ -407,6 +467,30 @@ test('motion: tick slides the rows for about 200 ms', async ({ page, seed }) => 
   expect(durations.length).toBeGreaterThan(0)
   for (const d of durations) expect(d).toBe(200)
   await expect(rowTexts(page)).toHaveText(['two', 'one'])
+})
+
+test('motion: only rows on screen slide', async ({ page, seed }) => {
+  for (let i = 0; i < 40; i += 1) await seed({ text: `task ${i}`, addedAgoMs: (50 - i) * HOUR })
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await expect(rows(page)).toHaveCount(40)
+
+  // The first open row drops to the end of the list and every other row moves up one slot.
+  const { durations, animated, moved, viewport } = await rowMotionAfterClick(tick(page, 'task 0'))
+
+  const onScreen = (s: { top: number; bottom: number }) => s.bottom > 0 && s.top < viewport
+  expect(animated.length).toBeGreaterThan(0)
+  expect(moved).toHaveLength(40)
+  expect(animated.length).toBeLessThan(moved.length)
+  for (const d of durations) expect(d).toBe(200)
+  // Off-screen rows never slide, and every moved row on screen (before or after) does.
+  for (const a of animated) {
+    expect(onScreen(a.from) || onScreen(a.to), JSON.stringify(a)).toBe(true)
+  }
+  for (const m of moved) {
+    if (onScreen(m.from) || onScreen(m.to)) expect(m.animated, JSON.stringify(m)).toBe(true)
+  }
+  await expect(rowTexts(page).last()).toHaveText('task 0')
 })
 
 test.describe('reduced motion', () => {

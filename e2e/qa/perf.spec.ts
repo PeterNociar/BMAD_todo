@@ -21,11 +21,12 @@
  * carry a unique `?qa=<n>` tag and are matched by it, and a traced span that sees an untagged
  * GET it didn't expect is dropped, replaced and counted (`droppedForPoll` in the results).
  *
- * Gate. Targets met today (API, 500-row render, reduced-motion feedback) are asserted, so a
- * regression fails `npm run qa`; the known default-motion feedback miss is a `test.fail()` test.
+ * Gate. Every NFR-2 target (API, 500-row render, and feedback under both motion settings) is
+ * asserted, so a regression fails `npm run qa`. Default-motion feedback met its target once only
+ * rows on screen slide (`lib/motion.ts`).
  *
  * The check runs twice: with the default motion, and with `prefers-reduced-motion: reduce`
- * (rows move with no `animate:flip` transition), which isolates what the row animation costs.
+ * (rows move with no slide), which isolates what the row animation costs.
  * Each run writes `docs/qa-artifacts/perf-results<suffix>.json`, plus one tick trace
  * (`perf-tick-trace<suffix>.json`) and one load trace (`perf-load-trace<suffix>.json`) to open
  * in DevTools › Performance; the suffix is empty for the default run and `-reduced-motion`.
@@ -664,8 +665,8 @@ for (const motion of ['no-preference', 'reduce'] as const) {
       writeFileSync(`${OUT_DIR}perf-results${suffix}.json`, `${JSON.stringify(results, null, 2)}\n`)
       console.log(JSON.stringify({ ...results, samples: undefined }, null, 2))
 
-      // The gate: targets met today must stay met, so a regression fails `npm run qa`. The
-      // feedback targets are checked by the next test (a known miss under default motion).
+      // The gate: a regression fails `npm run qa`. The feedback targets are checked by the
+      // next test.
       for (const [call, samples] of Object.entries(api)) {
         expect(stats(samples).p95, `API ${call} p95`).toBeLessThan(TARGET.api)
       }
@@ -673,13 +674,11 @@ for (const motion of ['no-preference', 'reduce'] as const) {
     })
 
     /**
-     * NFR-2 feedback with 500 rows. Under default motion this is a known miss, reported in
-     * docs/qa-performance.md (the rows' `animate:flip`), so that test is marked `test.fail()`:
-     * it shows as an expected failure, and once the miss is fixed it fails as "expected to fail,
-     * but passed" until the mark is removed. Under reduced motion the target is met and gated.
+     * NFR-2 feedback with 500 rows, gated under both motion settings. Default motion used to miss
+     * it (every moved row ran `animate:flip`); now only rows on screen slide (`lib/motion.ts`), and
+     * docs/qa-performance.md (Issue 1) keeps the before and after figures.
      */
     test(`NFR-2 feedback under 100 ms with 500 rows (motion: ${motion})`, () => {
-      test.fail(motion === 'no-preference', 'known miss: animate:flip on 500 rows')
       const results = JSON.parse(readFileSync(`${OUT_DIR}perf-results${suffix}.json`, 'utf8')) as {
         feedback: Record<string, { traceToPaint: { p95: number } }>
       }
