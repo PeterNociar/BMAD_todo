@@ -253,6 +253,14 @@ The exercise is handed in against [`deliverables.md`](_bmad-output/initiative-to
 - [AI integration log](docs/ai-log.md): one section per ticket, then a summary.
 - QA reports: [coverage](docs/qa-coverage.md), [accessibility](docs/qa-accessibility.md), [security](docs/qa-security.md) and [performance](docs/qa-performance.md).
 
+## MCP servers
+
+`.mcp.json` registers three MCP servers for Claude Code in this project. Claude Code asks you to approve them the first time it starts here.
+
+- `playwright` (`@playwright/mcp`): browser automation, run on the system Chrome with an isolated profile.
+- `chrome-devtools` (`chrome-devtools-mcp`): DevTools inspection and performance traces, on the installed stable Chrome.
+- `postman` (`@postman/postman-mcp-server`): Postman collections and API contract checks. It needs a Postman API key in your shell, `export POSTMAN_API_KEY=...`, before Claude Code starts. Never put the key in `.mcp.json`.
+
 ## Repository layout
 
 ```text
