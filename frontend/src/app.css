@@ -1,5 +1,11 @@
-/* Light-mode tokens (DESIGN.md front matter). Dark mode arrives with epic 3. */
+/*
+ * Colour tokens (DESIGN.md front matter): one variable per light name. The dark theme assigns
+ * each the `-dark` twin's value, in two blocks with identical declarations: an explicit
+ * `data-theme="dark"` (set by public/theme-init.js or lib/theme.svelte.ts), and the OS dark
+ * setting when no theme is stored. tests/theme-surfaces.test.ts keeps the two blocks in step.
+ */
 :root {
+  color-scheme: light;
   --color-bg: #f2f4f7;
   --color-surface: #ffffff;
   --color-hover: #f4f6f9;
@@ -48,6 +54,50 @@
   --font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono:
     'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Dark theme, chosen explicitly. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #0e131a;
+  --color-surface: #151b24;
+  --color-hover: #1b222d;
+  --color-text-primary: #e4e9ef;
+  --color-text-secondary: #aab4c2;
+  --color-text-muted: #8e99a8;
+  --color-divider: #242c37;
+  --color-border: #2e3744;
+  --color-accent: #98acc8;
+  --color-check-ring: #667385;
+  --color-check-fill: #98acc8;
+  --color-delete: #8e99a8;
+  --color-shadow-toast: #00000073;
+  --color-error-bg: #382a30;
+  --color-error-border: #643b3e;
+  --color-error-icon: #f2716a;
+}
+
+/* Dark theme from the OS, when no theme is stored. Same declarations as above. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --color-bg: #0e131a;
+    --color-surface: #151b24;
+    --color-hover: #1b222d;
+    --color-text-primary: #e4e9ef;
+    --color-text-secondary: #aab4c2;
+    --color-text-muted: #8e99a8;
+    --color-divider: #242c37;
+    --color-border: #2e3744;
+    --color-accent: #98acc8;
+    --color-check-ring: #667385;
+    --color-check-fill: #98acc8;
+    --color-delete: #8e99a8;
+    --color-shadow-toast: #00000073;
+    --color-error-bg: #382a30;
+    --color-error-border: #643b3e;
+    --color-error-icon: #f2716a;
+  }
 }
 
 /*

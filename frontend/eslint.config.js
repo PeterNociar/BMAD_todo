@@ -65,6 +65,15 @@ export default ts.config(
     },
   },
   {
+    // AD-19: the pre-paint theme script is a classic script in plain ES5. ES5 has no optional
+    // catch binding, so its unused `catch (e)` is allowed.
+    files: ['public/theme-init.js'],
+    languageOptions: { sourceType: 'script' },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { caughtErrors: 'none' }],
+    },
+  },
+  {
     files: ['**/*.test.ts'],
     rules: {
       'no-restricted-properties': 'off',

@@ -757,3 +757,41 @@ The author didn't record exact timings.
 **What AI decided beyond the plan.** The author ran the commands that expose the app or rebuild the real stack (`docker compose up -d --build`, `tailscale serve`), not the agent.
 
 **Review.** The quick lens made 5 findings. Four were patched: an ambiguous laptop URL under `APP_BIND`, the boot-time bind caveat, the softened sync timing, and the real tailnet names removed from the plan. The fifth (this section was missing) was pending until the device run.
+
+## Ticket 3.4 — Dark theme and pre-paint theme script
+
+**Agents.** The dev persona (bmad-build) wrote the plan for the fourth story of epic-everywhere-and-handed-in. A Claude Code subagent (Claude Opus) implemented it from the plan alone, with the architecture spine as its only `context:` file.
+
+**Prompt that worked.** The same prompt as earlier tickets. The Code Map gave the DESIGN line range for the dark hexes, the clock module as the singleton pattern to copy, the one `'light'` literal in `TaskRow`, and the Vite hook to use (`transformIndexHtml` post, with `ctx.bundle`). The I/O matrix mapped to unit tests for the module and the script, and to E2E tests for paint, tokens and preloads.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
+
+**What was built.**
+- `app.css`: `:root` gets `color-scheme: light`. Two dark blocks, `:root[data-theme='dark']` and `@media (prefers-color-scheme: dark) { :root:not([data-theme]) }`, each set `color-scheme: dark` and the 16 DESIGN `-dark` hexes, written out literally.
+- `public/theme-init.js`: a plain ES5 script. Inside `try/catch` it reads `localStorage.theme` and sets `data-theme` only for `'light'` or `'dark'`. `index.html` loads it with a blocking `<script src>` as the first element after `<meta charset>`.
+- `lib/theme.svelte.ts`: `theme.current` is the painted `data-theme` if valid, otherwise the `prefers-color-scheme` query, followed live; with no `matchMedia` it is light. `theme.set(t)` sets the attribute and `current`, then stores the choice inside `try/catch`. Exports `THEME_STORAGE_KEY`.
+- `TaskRow.svelte`: `ageColour(…, theme.current)`.
+- `vite-plugins/preload-fonts.ts`: a build-only plugin whose post `transformIndexHtml` hook adds three `<link rel="preload" as="font" type="font/woff2" crossorigin>` tags. The pure `preloadTags(fileNames, base)` throws unless each face matches exactly one emitted woff2.
+- Tests:
+  - `theme.svelte.test.ts` loads a fresh module per case under a fake `matchMedia`;
+  - `tests/theme-init.test.ts` runs the real script file under jsdom;
+  - `tests/theme-surfaces.test.ts` adds name parity with `:root` for each dark block, value parity between the two, and `THEME_SURFACES.dark` against both;
+  - `tests/preload-fonts.test.ts` covers the helper;
+  - `TaskRow.test.ts` adds dark cases, including a live recolour on `theme.set`;
+  - `e2e/tests/theme.spec.ts` covers OS dark and OS light, stored light on a dark OS, stored dark recorded at `<body>` insertion, an invalid value, a throwing `getItem`, the script tag's position, and the three preloads (in the HTML and fetched by the browser).
+- **Results:** 422 Vitest tests pass, with coverage at 99.28% statements, 96.43% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green, and `dist/index.html` has 3 preloads. All 87 E2E tests pass.
+
+**What AI decided beyond the plan.**
+- `tests/theme-init.test.ts`, a unit test of the pre-paint script itself, which the plan did not list. It reads the file through `import.meta.dirname`, because under jsdom `import.meta.url` is not a `file:` URL, and it adds `/// <reference lib="dom" />` because `tsconfig.tests.json` has no DOM lib.
+- An ESLint override for `public/theme-init.js` allows an unused `catch (e)`, because ES5 has no optional catch binding. ESLint cannot enforce ES5 here: the typescript-eslint parser ignores `ecmaVersion`, and `espree` is not a direct dependency.
+- `preloadTags` also fails when a face matches more than one woff2, not only when it matches none.
+- E2E: the extra matrix rows (invalid value, throwing `getItem`) run in the browser too, and a `pageerror` listener proves no error escapes.
+
+**Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 18 findings: 13 low and 5 false. Six were patched, one was deferred, and the rest were rejected with evidence.
+- A test now ties `theme-init.js`'s storage key to `THEME_STORAGE_KEY`.
+- The drift test now checks every dark token against DESIGN.md's `-dark` values, not just `surface` and `hover`. It also matches token names whatever their value, so a non-hex token can't slip out of the parity check.
+- `theme.svelte.ts` falls back to `addListener` where `addEventListener` is missing (Safari < 14).
+- The E2E preload test now proves each face is fetched exactly once.
+- A test comment was corrected.
+- Deferred: a `Cache-Control` header for the unhashed `theme-init.js` (nginx sets none today).
+- After the fixes, 427 Vitest tests pass with 99.28% statement coverage, and all 87 E2E tests pass.

@@ -12,6 +12,7 @@
   import { ageColour, ageLabel } from '../lib/age'
   import { clock } from '../lib/clock.svelte'
   import { returnToInput } from '../lib/focus'
+  import { theme } from '../lib/theme.svelte'
   import { tasks, type Row } from '../lib/tasks.svelte'
 
   let { row }: { row: Row } = $props()
@@ -22,9 +23,8 @@
   /** The one `clock.now` snapshot both the label and the colour are derived from. */
   const now = $derived(clock.now)
   const age = $derived(ageLabel(row.completed_at ?? row.added_at, now, done))
-  // Light only: epic-everywhere-and-handed-in switches this argument to 'dark' under the dark
-  // theme (its Notes record the touch point).
-  const colour = $derived(ageColour(row.added_at, now, done, 'light'))
+  // The age gradient of the resolved theme (DESIGN age-*-dark under the dark theme).
+  const colour = $derived(ageColour(row.added_at, now, done, theme.current))
 
   $effect(() => {
     if (bar && colour) bar.style.setProperty('--age-colour', colour)
