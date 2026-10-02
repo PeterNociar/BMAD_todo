@@ -186,6 +186,7 @@ The hand-in QA reports live in `docs/`. Each one starts with its date, the commi
 - [Accessibility](docs/qa-accessibility.md): an axe sweep of every UI state, in light and dark, at 320 and 1280 px.
 - [Security](docs/qa-security.md): findings with evidence, the fixes, probes and dependency audits.
 - [Performance](docs/qa-performance.md): NFR-2 with 500 tasks, measured through the Chrome DevTools Protocol.
+- [MCP passes](docs/qa-mcp.md): the user journeys through Playwright MCP, and traces and a Lighthouse audit through Chrome DevTools MCP.
 
 The accessibility sweep and the performance check are Playwright specs in `e2e/qa/`, with their own config (`e2e/playwright.qa.config.ts`), so `npm test` doesn't run them. Run them against the test profile:
 
@@ -252,6 +253,14 @@ The exercise is handed in against [`deliverables.md`](_bmad-output/initiative-to
 - [How BMad guided the build](docs/bmad-process.md): the planning chain, from the exercise brief to the story plans and their reviews.
 - [AI integration log](docs/ai-log.md): one section per ticket, then a summary.
 - QA reports: [coverage](docs/qa-coverage.md), [accessibility](docs/qa-accessibility.md), [security](docs/qa-security.md) and [performance](docs/qa-performance.md).
+
+## MCP servers
+
+`.mcp.json` registers three MCP servers for Claude Code in this project. Claude Code asks you to approve them the first time it starts here.
+
+- `playwright` (`@playwright/mcp`): browser automation, run on the system Chrome with an isolated profile.
+- `chrome-devtools` (`chrome-devtools-mcp`): DevTools inspection and performance traces, on the installed stable Chrome.
+- `postman` (`@postman/postman-mcp-server`): Postman collections and API contract checks. It needs a Postman API key in your shell, `export POSTMAN_API_KEY=...`, before Claude Code starts. Never put the key in `.mcp.json`.
 
 ## Repository layout
 

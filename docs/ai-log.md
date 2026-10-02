@@ -1208,3 +1208,24 @@ Why: the epic chose the scripted route, and it leaves evidence in the repo that 
 **What AI missed or could not do.**
 
 - The render p95 (190.7 ms, max 201.1 ms) is now the thinnest NFR-2 margin, about 9 ms on an unthrottled machine. It was 164.4 ms in the 3.10 run, and nothing on the render path changed, so the spread between runs is large; this run alone doesn't show what the reorder saved.
+
+## MCP server passes (after the build)
+
+**Agents.** Claude Code (Opus 5.5), in the developer persona, calling the MCP servers in [`.mcp.json`](../.mcp.json) as tools. The user asked for Postman, Playwright and Chrome DevTools MCP after the hand-in cross-check against `docs/bmad_exercise.md` showed none had been used.
+
+**MCP servers.**
+
+- **Playwright MCP** (`@playwright/mcp`, system Chrome). It drove every journey the exercise names on the test stack, all passing: create, complete, untick, delete, reload, a failed save, a failed load with Retry, and the empty state. The accessibility snapshot alone confirmed the row order, spoken ages and button names, without reading the code. `browser_run_code_unsafe` allowed request aborts for the error cases.
+- **Chrome DevTools MCP** (`chrome-devtools-mcp`). A load trace with 500 rows (LCP 152 ms, CLS 0), two tick traces (INP 192 and 194 ms), its DOM-size and forced-reflow insights, and a Lighthouse audit (Accessibility 100, Best Practices 100, SEO 82).
+- **Postman MCP** (`@postman/postman-mcp-server`). Run after a restart with the key exported. It loaded the live OpenAPI spec into Spec Hub, generated a collection from it (all 6 operations), then built and ran a 13-request contract collection against the test stack: 34 of 34 assertions passed. It confirmed the AD-3 and AD-5 contract from outside the codebase, including tick idempotence and the 405 error body.
+
+Full results are in [qa-mcp.md](qa-mcp.md).
+
+**Debugging with AI.** The Postman server first showed only "connection closed". Starting it by hand with the key loaded from `.env` (never printed) showed two causes: the key was not exported into Claude Code's environment, and an earlier `npx` run had left a broken cache entry (`Cannot find module 'ajv'`). Clearing that one cache folder fixed the start.
+
+**What it found that the build missed.** The DevTools INP breakdown showed that a tick at 500 rows takes about 190 ms from input to the frame on screen, and 117 ms of that is presentation delay. The scripted QA check stops at the renderer's paint and reports 56.3 ms. Both numbers are honest, but they measure different things, and NFR-2's "visible feedback" is closer to INP. It is recorded as Issue 4 in `qa-performance.md`, not fixed. This is the clearest case in the project where a different tool's default metric questioned a gate we had designed ourselves.
+
+**Limitations.**
+
+- Two INP samples on a headed window are a lead, not a measurement.
+- The project-scoped servers only load at Claude Code start, after the user approves them, so adding them meant a restart.

@@ -163,6 +163,10 @@ From `GET` resolved to 500 rows painted takes 125 / 191 ms (p50 / p95) with defa
 
 The JS heap snapshots move in both directions between runs. In story 3.8's runs the default-motion heap once rose from 23 to 46 MB over the feedback samples and once fell from 30.0 to 23.9 MB; in story 3.10's run it fell from 69.9 to 23.0 MB, while the reduced-motion heap rose from 42.3 to 64.2 MB. In this run both fell: from 47.3 to 38.2 MB with default motion, and from 61.6 to 23.8 MB with reduced motion. No forced GC or heap snapshot was taken, so these numbers show when garbage collection happened, not a leak. A heap snapshot would be needed to say more.
 
+### 4. Measured as INP, a tick at 500 rows takes about 190 ms (open)
+
+A later Chrome DevTools MCP pass ([qa-mcp.md](qa-mcp.md)) traced single ticks with 500 rows in a headed window: INP was 192 ms and 194 ms. The breakdown of the first was 15 ms input delay, 61 ms processing and 117 ms presentation delay, with 39 ms of forced layout in the row animation's FLIP measure. This report's tick span (p95 56.3 ms) ends when the renderer's `Paint` finishes, so it leaves out input delay and presentation, as "Not measured" below says. Under that wider reading of "visible feedback within 100 ms", NFR-2 is missed for a tick. Two samples are not a measurement; adding a presentation-inclusive figure (for example the Event Timing API's `duration`) to the scripted check is the follow-up. Not fixed.
+
 ## Not measured
 
 - CPU or network throttling, phones, and browsers other than Chrome.

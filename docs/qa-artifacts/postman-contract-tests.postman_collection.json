@@ -1,0 +1,331 @@
+{
+  "info": {
+    "name": "Todo API contract tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Contract checks for the BMAD Todo API against its OpenAPI spec. Run in order against the compose test profile on 127.0.0.1:8082 (Postman, or `npx newman run`). The run is recorded in docs/qa-mcp.md."
+  },
+  "item": [
+    {
+      "name": "Health: GET /health is 200 {status: ok}",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('status ok', () => pm.expect(pm.response.json()).to.eql({ status: 'ok' }));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "List: GET /tasks is 200 TaskRead[]",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('array of TaskRead', () => pm.response.to.have.jsonSchema({ type: 'array', items: JSON.parse(pm.collectionVariables.get('taskSchema')) }));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/tasks"
+      }
+    },
+    {
+      "name": "Add: POST /tasks trims text, 201 TaskRead",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201', () => pm.response.to.have.status(201));",
+              "pm.test('TaskRead', () => pm.response.to.have.jsonSchema(JSON.parse(pm.collectionVariables.get('taskSchema'))));",
+              "const t = pm.response.json();",
+              "pm.test('text trimmed (AD-12)', () => pm.expect(t.text).to.eql('postman contract check'));",
+              "pm.test('open on create', () => pm.expect(t.completed_at).to.eql(null));",
+              "pm.collectionVariables.set('taskId', t.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tasks",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"text\": \"   postman contract check   \"}"
+        }
+      }
+    },
+    {
+      "name": "Add: blank text is 422 validation_error",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('422', () => pm.response.to.have.status(422));",
+              "pm.test('ErrorResponse', () => pm.response.to.have.jsonSchema(JSON.parse(pm.collectionVariables.get('errorSchema'))));",
+              "pm.test('code validation_error', () => pm.expect(pm.response.json().code).to.eql('validation_error'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tasks",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"text\": \"   \"}"
+        }
+      }
+    },
+    {
+      "name": "Add: 2001 characters is 422 text_too_long",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('longText', 'x'.repeat(2001));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('422', () => pm.response.to.have.status(422));",
+              "pm.test('ErrorResponse', () => pm.response.to.have.jsonSchema(JSON.parse(pm.collectionVariables.get('errorSchema'))));",
+              "pm.test('code text_too_long', () => pm.expect(pm.response.json().code).to.eql('text_too_long'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/tasks",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"text\": \"{{longText}}\"}"
+        }
+      }
+    },
+    {
+      "name": "Tick: PUT /tasks/{id}/tick is 200, completed",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('TaskRead', () => pm.response.to.have.jsonSchema(JSON.parse(pm.collectionVariables.get('taskSchema'))));",
+              "const t = pm.response.json();",
+              "pm.test('completed_at set', () => pm.expect(t.completed_at).to.be.a('string'));",
+              "pm.collectionVariables.set('completedAt', t.completed_at);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/{{taskId}}/tick"
+      }
+    },
+    {
+      "name": "Tick again is idempotent (completed_at unchanged)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('completed_at unchanged', () => pm.expect(pm.response.json().completed_at).to.eql(pm.collectionVariables.get('completedAt')));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/{{taskId}}/tick"
+      }
+    },
+    {
+      "name": "Untick: PUT /tasks/{id}/untick is 200, open",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('TaskRead', () => pm.response.to.have.jsonSchema(JSON.parse(pm.collectionVariables.get('taskSchema'))));",
+              "pm.test('completed_at null', () => pm.expect(pm.response.json().completed_at).to.eql(null));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/{{taskId}}/untick"
+      }
+    },
+    {
+      "name": "Tick unknown id is 404 task_not_found",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('404', () => pm.response.to.have.status(404));",
+              "pm.test('ErrorResponse', () => pm.response.to.have.jsonSchema(JSON.parse(pm.collectionVariables.get('errorSchema'))));",
+              "pm.test('code task_not_found', () => pm.expect(pm.response.json().code).to.eql('task_not_found'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/00000000-0000-4000-8000-000000000000/tick"
+      }
+    },
+    {
+      "name": "Tick malformed id is 404 task_not_found",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('404', () => pm.response.to.have.status(404));",
+              "pm.test('code task_not_found', () => pm.expect(pm.response.json().code).to.eql('task_not_found'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/not-a-uuid/tick"
+      }
+    },
+    {
+      "name": "Delete: DELETE /tasks/{id} is 204, empty body",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('204', () => pm.response.to.have.status(204));",
+              "pm.test('empty body', () => pm.expect(pm.response.text()).to.eql(''));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/{{taskId}}"
+      }
+    },
+    {
+      "name": "Delete again is 404 task_not_found",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('404', () => pm.response.to.have.status(404));",
+              "pm.test('code task_not_found', () => pm.expect(pm.response.json().code).to.eql('task_not_found'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/{{taskId}}"
+      }
+    },
+    {
+      "name": "Unknown route and method use the AD-5 error body",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('405', () => pm.response.to.have.status(405));",
+              "pm.test('ErrorResponse', () => pm.response.to.have.jsonSchema(JSON.parse(pm.collectionVariables.get('errorSchema'))));",
+              "pm.test('code method_not_allowed', () => pm.expect(pm.response.json().code).to.eql('method_not_allowed'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": "{{baseUrl}}/tasks/00000000-0000-4000-8000-000000000000"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8082/api"
+    },
+    {
+      "key": "taskSchema",
+      "value": "{\"type\":\"object\",\"required\":[\"id\",\"text\",\"added_at\",\"completed_at\"],\"properties\":{\"id\":{\"type\":\"string\",\"format\":\"uuid\"},\"text\":{\"type\":\"string\"},\"added_at\":{\"type\":\"string\"},\"completed_at\":{\"type\":[\"string\",\"null\"]}}}"
+    },
+    {
+      "key": "errorSchema",
+      "value": "{\"type\":\"object\",\"required\":[\"detail\",\"code\"],\"properties\":{\"detail\":{\"type\":\"string\"},\"code\":{\"enum\":[\"text_too_long\",\"validation_error\",\"task_not_found\",\"not_found\",\"method_not_allowed\",\"service_unavailable\",\"internal_error\"]}}}"
+    }
+  ]
+}
