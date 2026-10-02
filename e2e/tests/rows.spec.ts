@@ -2,7 +2,7 @@
  * List rows (story 1.10): tick, untick and delete, one test per row of its E2E matrix, against
  * the test profile. CSP-clean is checked by the fixture at teardown for every test (AD-19).
  */
-import { expect, expectNoA11yViolations, failApi, test, type Seed } from '../fixtures.ts'
+import { expect, expectNoA11yViolations, failApi, settled, test, type Seed } from '../fixtures.ts'
 import type { Locator, Page } from '@playwright/test'
 
 const ACTION_FAILED = "Couldn't update that task. It's back as it was."
@@ -29,13 +29,6 @@ async function seedList(seed: Seed): Promise<void> {
   await seed({ text: 'two', addedAgoMs: 3 * HOUR })
   await seed({ text: 'three', addedAgoMs: 2 * HOUR })
   await seed({ text: 'old done', addedAgoMs: 5 * HOUR, completedAgoMs: HOUR })
-}
-
-/** Waits for the response to the first request matching `method` and `path` (any status). */
-function settled(page: Page, method: string, path: RegExp) {
-  return page.waitForResponse(
-    (r) => r.request().method() === method && path.test(new URL(r.url()).pathname),
-  )
 }
 
 test('tick: the row moves to the top of the completed tasks, filled and muted, focus on the input', async ({

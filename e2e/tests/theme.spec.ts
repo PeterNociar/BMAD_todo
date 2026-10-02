@@ -4,8 +4,8 @@
  * by an init script, which runs before the page's own scripts, so public/theme-init.js finds
  * it. CSP-clean is checked by the fixture at teardown for every test (AD-19).
  */
-import { expect, recordThemeAtBody, test, themeAtBody } from '../fixtures.ts'
-import type { Locator, Page } from '@playwright/test'
+import { expect, expectBarColour, recordThemeAtBody, test, themeAtBody } from '../fixtures.ts'
+import type { Page } from '@playwright/test'
 
 const HOUR = 3_600_000
 /** DESIGN bg-dark `#0E131A` and bg `#F2F4F7`, as computed CSS colours. */
@@ -16,34 +16,8 @@ const TEXT_DARK = 'rgb(228, 233, 239)'
 /** `ageColour(…, 'dark')` and `ageColour(…, 'light')` for a 1 h task: DESIGN age-1h-dark and age-1h. */
 const FRESH_DARK = 'rgb(85, 196, 131)'
 const FRESH_LIGHT = 'rgb(36, 144, 87)'
-/** Per-channel tolerance: the colour moves continuously with real time between seed and read. */
-const CHANNEL_TOLERANCE = 2
-
 const rows = (page: Page) => page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')
 const bar = (page: Page) => rows(page).first().locator('[data-age-bar]')
-
-function channels(rgb: string): number[] {
-  const match = /^rgba?\((\d+), (\d+), (\d+)/.exec(rgb)
-  if (!match) throw new Error(`Not an rgb() colour: ${rgb}`)
-  return match.slice(1, 4).map(Number)
-}
-
-/** True when every channel of `actual` is within ±2 of `expected`. */
-function near(actual: string | null, expected: string): boolean {
-  if (actual === null || !/^rgba?\(/.test(actual)) return false
-  const [a, e] = [channels(actual), channels(expected)]
-  return a.every((v, i) => Math.abs(v - e[i]) <= CHANNEL_TOLERANCE)
-}
-
-/** Polls the bar's computed background until each channel is within ±2 of `expected`. */
-async function expectBarColour(el: Locator, expected: string): Promise<void> {
-  await expect
-    .poll(async () => {
-      const actual = await el.evaluate((e) => getComputedStyle(e).backgroundColor)
-      return near(actual, expected) ? expected : actual
-    })
-    .toBe(expected)
-}
 
 const bodyBackground = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor)

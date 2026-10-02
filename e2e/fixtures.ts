@@ -20,9 +20,11 @@
  *   and returns a function that clears that failure (unroutes it), e.g. before a Retry.
  * - `recordThemeAtBody(page)` records `data-theme` on `<html>` at the moment `<body>` is
  *   inserted, on every navigation; `themeAtBody(page)` reads it (stories 3.4 and 3.5).
+ * - Shared spec helpers: `near`/`expectBarColour` (bar colours, ±2 per channel), `settled`
+ *   (wait for an API response), `stillHeld` (the 3 s hold guard) and `nextPoll` (one 30 s poll).
  */
 import { AxeBuilder } from '@axe-core/playwright'
-import { test as base, expect, type Page, type Route } from '@playwright/test'
+import { test as base, expect, type Locator, type Page, type Route } from '@playwright/test'
 
 export { expect }
 
@@ -257,4 +259,67 @@ export async function themeAtBody(page: Page): Promise<string | null | undefined
   }))
   if (!installed) throw new Error('themeAtBody: call recordThemeAtBody(page) before goto')
   return value
+}
+
+/** Per-channel tolerance: the colour moves continuously with real time between seed and read. */
+const CHANNEL_TOLERANCE = 2
+
+function channels(rgb: string): number[] {
+  const match = /^rgba?\((\d+), (\d+), (\d+)/.exec(rgb)
+  if (!match) throw new Error(`Not an rgb() colour: ${rgb}`)
+  return match.slice(1, 4).map(Number)
+}
+
+/** True when every channel of `actual` is within ±2 of `expected`. */
+export function near(actual: string | null, expected: string): boolean {
+  if (actual === null || !/^rgba?\(/.test(actual)) return false
+  const [a, e] = [channels(actual), channels(expected)]
+  return a.every((v, i) => Math.abs(v - e[i]) <= CHANNEL_TOLERANCE)
+}
+
+/** Polls the bar's computed background until each channel is within ±2 of `expected`. */
+export async function expectBarColour(el: Locator, expected: string): Promise<void> {
+  await expect
+    .poll(async () => {
+      const actual = await el.evaluate((e) => getComputedStyle(e).backgroundColor)
+      return near(actual, expected) ? expected : actual
+    })
+    .toBe(expected)
+}
+
+/** Waits for the response to the first request matching `method` and `path` (any status). */
+export function settled(page: Page, method: string, path: RegExp) {
+  return page.waitForResponse(
+    (r) => r.request().method() === method && path.test(new URL(r.url()).pathname),
+  )
+}
+
+/** The store's hold on a newly added row (story 2.5). */
+export const HOLD_MS = 3_000
+
+/**
+ * Asserts there is exactly one held row (`li.held`) and that it holds `text`, and returns it.
+ * The page clock also flows in real time, so the hold can end mid-test on a slow run; call this
+ * before every `runFor(HOLD_MS)` and around every hold-time measurement, so neither silently
+ * reads a settled row. A short timeout: a held row never comes back.
+ */
+export async function stillHeld(page: Page, text: string): Promise<Locator> {
+  const message = `no single held row for "${text}" — the ${HOLD_MS / 1000} s hold may have ended (slow run; AD-8 forbids pausing the page clock)`
+  const held = page.getByRole('list', { name: 'Tasks' }).locator('li.held')
+  await expect(held, message).toHaveCount(1, { timeout: 500 })
+  const row = held.filter({
+    has: page.getByRole('button', { name: `Delete "${text}"`, exact: true }),
+  })
+  await expect(row, message).toHaveCount(1, { timeout: 500 })
+  return row
+}
+
+/** The background poll's cadence (AD-10). */
+export const POLL_MS = 30_000
+
+/** Moves both clocks one poll interval on and waits for the poll's `GET /api/tasks` to answer. */
+export async function nextPoll(page: Page, advance: Advance): Promise<void> {
+  const polled = settled(page, 'GET', /^\/api\/tasks$/)
+  await advance(POLL_MS)
+  expect((await polled).status()).toBe(200)
 }
