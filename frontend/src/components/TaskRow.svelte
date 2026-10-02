@@ -1,6 +1,6 @@
 <script lang="ts">
   // One Ledger row (DESIGN task-row): tick ring, task text, age label, delete ×. The keyed
-  // `<li data-task-row>` lives in App, because `animate:flip` must sit on the each block's
+  // `<li data-task-row>` lives in App, because `animate:slideRow` must sit on the each block's
   // direct child; this component fills it. The store announces and toasts (AD-17); focus moves
   // only through lib/focus.ts (AD-18). The age is recomputed from `clock.now` (AD-8): the
   // visible label is aria-hidden, and a visually hidden span speaks it in words right after the

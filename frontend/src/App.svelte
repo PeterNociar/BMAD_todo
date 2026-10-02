@@ -3,8 +3,6 @@
   // live regions. Task state and all I/O live in the store (AD-9); focus moves only through
   // lib/focus.ts (AD-18).
   import { onMount, untrack } from 'svelte'
-  import { flip } from 'svelte/animate'
-  import { cubicOut } from 'svelte/easing'
   import LiveRegions from './components/LiveRegions.svelte'
   import TaskRow from './components/TaskRow.svelte'
   import ThemeToggle from './components/ThemeToggle.svelte'
@@ -18,21 +16,12 @@
     registerInput,
     returnToInput,
   } from './lib/focus'
+  import { slideRow } from './lib/motion'
   import { tasks } from './lib/tasks.svelte'
   import { COPY } from './lib/toasts.svelte'
 
   /** EXPERIENCE: the skeleton shows only once loading lasts longer than this, to avoid a flash. */
   const SKELETON_DELAY_MS = 300
-  /** EXPERIENCE › Motion: rows slide in about 200 ms, ease-out. */
-  const SLIDE_MS = 200
-
-  /** Read when each animation runs, so a live change to the setting applies at once. */
-  function reducedMotion(): boolean {
-    return (
-      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-    )
-  }
-  const slide = { duration: () => (reducedMotion() ? 0 : SLIDE_MS), easing: cubicOut }
 
   let input: HTMLInputElement | undefined = $state()
   let page: HTMLDivElement | undefined = $state()
@@ -231,7 +220,7 @@
                 class="task"
                 class:held={row.key === tasks.heldKey}
                 data-task-row
-                animate:flip={slide}
+                animate:slideRow
               >
                 <TaskRow {row} />
               </li>

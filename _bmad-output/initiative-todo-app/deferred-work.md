@@ -94,3 +94,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-qa-reports-plan.md`
   summary: `frontend/tests/dockerignore.test.ts` checks the `.env` exclusion by the file's wording, not by what Docker actually sends in the build context.
   evidence: a re-include line or a moved build context would leak `.env` with the test green; a real check needs a `docker build` of the context with a dummy `.env`, which no suite runs (verification-gap lens, 3.8).
+- source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-row-motion-within-nfr-2-at-500-rows-plan.md`
+  summary: Explain the JS heap figures in docs/qa-performance.md (default 69.9 MB before the feedback set; reduced motion rising 42.3 → 64.2 MB) or rule out a leak.
+  evidence: Unverified (maybe-false, medium if a leak). No forced GC or heap snapshot was taken; a heap snapshot before and after the feedback set, with a forced GC, would settle it.
