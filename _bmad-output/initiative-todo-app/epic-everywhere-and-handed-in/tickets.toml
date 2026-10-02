@@ -96,13 +96,25 @@ risk = "medium"
 references = ["spec-todo-app/deliverables.md"]
 
 [[entry]]
+id = 10
+type = "story"
+title = "Row motion within NFR-2 at 500 rows"
+description = "Brings action feedback with 500 rows under default motion inside NFR-2. Entry 8's performance check (docs/qa-performance.md) measured p95 Enter 202, tick 119 and delete 168 ms against 100 ms, caused by the rows' FLIP animation forcing hundreds of layouts per action; reduced motion already passes. Keeps EXPERIENCE › Motion (rows slide about 200 ms, ease-out; none under reduced motion) for the rows a person can see, and removes the feedback gate's expected-failure mark."
+verify = "npm run qa passes with the default-motion feedback gate as a plain test (no test.fail); docs/qa-performance.md is updated from that run; every other suite stays green, including the motion and reduced-motion E2E tests."
+covers = []
+after = [8]
+hitl = false
+risk = "medium"
+references = ["prd-todo-app/prd-todo-app.md#nfr-2", "ux-todo-app/EXPERIENCE.md#motion"]
+
+[[entry]]
 id = 9
 type = "story"
 title = "Hand-in documentation"
 description = "Completes the README (setup, tests, profiles, Tailscale from entry 3), confirms docker compose up on a clean checkout gives a working app, writes docs/bmad-process.md recording how BMad guided the build (brief to PRD to UX to spine to epics to stories, with links), completes docs/ai-log.md with the epic summaries and where human expertise was critical, and adds docs/hand-in-checklist.md ticking every deliverables.md item with a link."
 verify = "A fresh reader can set up, run every test suite and reach the phone from the README alone; a clean-checkout docker compose up serves the app; docs/ has the BMad record, a complete AI log and the hand-in checklist."
 covers = []
-after = [8]
+after = [10]
 hitl = false
 risk = "low"
 references = ["spec-todo-app/deliverables.md"]
