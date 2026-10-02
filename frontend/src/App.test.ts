@@ -116,6 +116,18 @@ describe('App: page', () => {
     expect(input).toHaveAttribute('enterkeyhint', 'enter')
   })
 
+  it('puts the theme toggle in the header after the wordmark and before the input', async () => {
+    api.listTasks.mockReturnValue(new Promise(() => {}))
+    render(App)
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Todo' })
+    const toggle = screen.getByRole('button', { name: 'Switch to dark theme' })
+    const input = screen.getByLabelText('New task')
+    expect(toggle.closest('header')).toBe(input.closest('header'))
+    expect(heading.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(toggle.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('renders both live regions, empty, at first paint', async () => {
     api.listTasks.mockReturnValue(new Promise(() => {}))
     render(App)

@@ -58,3 +58,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-dark-theme-and-pre-paint-theme-script-plan.md`
   summary: `public/theme-init.js` is a render-blocking script at a fixed, unhashed URL, and nginx sends no `Cache-Control` for it, so after a change a browser may run a heuristically cached old copy.
   evidence: `frontend/nginx/default.conf.template` sets no cache headers. Add `Cache-Control: no-cache` for `/theme-init.js` (and `immutable` for the hashed `/assets/`); fits the performance report in entry 8 or the sweep in entry 6. Low until the script changes.
+- source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-theme-toggle-plan.md`
+  summary: Nothing tests forced-colors styling: the theme toggle's active-segment `CanvasText` outline (the only state marker once fills drop) and App's forced-colors focus ring can be deleted or misspelled with every test green.
+  evidence: No spec sets `forcedColors: 'active'`; jsdom ignores media queries. One forced-colors E2E describe (computed `outline` on `.seg.on` and not on the other segment, plus the focus ring) would pin both; fits the accessibility report in entry 8 (verification-gap lens, story 3.5).

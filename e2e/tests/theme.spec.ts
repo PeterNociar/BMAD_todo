@@ -4,7 +4,7 @@
  * by an init script, which runs before the page's own scripts, so public/theme-init.js finds
  * it. CSP-clean is checked by the fixture at teardown for every test (AD-19).
  */
-import { expect, test } from '../fixtures.ts'
+import { expect, recordThemeAtBody, test, themeAtBody } from '../fixtures.ts'
 import type { Locator, Page } from '@playwright/test'
 
 const HOUR = 3_600_000
@@ -54,7 +54,7 @@ const dataTheme = (page: Page) =>
 
 /**
  * Stores `value` under the `'theme'` key before the page's scripts run, and records `data-theme`
- * on `<html>` at the moment `<body>` is inserted (`window.__themeAtBody`).
+ * on `<html>` at the moment `<body>` is inserted (`themeAtBody`).
  */
 async function storeThemeBeforeLoad(page: Page, value: string): Promise<void> {
   await page.addInitScript((stored) => {
@@ -63,18 +63,9 @@ async function storeThemeBeforeLoad(page: Page, value: string): Promise<void> {
     } catch {
       // about:blank and other opaque origins have no storage.
     }
-    const w = window as unknown as { __themeAtBody?: string | null }
-    const observer = new MutationObserver(() => {
-      if (!document.body) return
-      w.__themeAtBody = document.documentElement.getAttribute('data-theme')
-      observer.disconnect()
-    })
-    observer.observe(document, { childList: true, subtree: true })
   }, value)
+  await recordThemeAtBody(page)
 }
-
-const themeAtBody = (page: Page) =>
-  page.evaluate(() => (window as unknown as { __themeAtBody?: string | null }).__themeAtBody)
 
 test.describe('on a dark OS', () => {
   test.use({ colorScheme: 'dark' })

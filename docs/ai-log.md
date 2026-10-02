@@ -795,3 +795,36 @@ The author didn't record exact timings.
 - A test comment was corrected.
 - Deferred: a `Cache-Control` header for the unhashed `theme-init.js` (nginx sets none today).
 - After the fixes, 427 Vitest tests pass with 99.28% statement coverage, and all 87 E2E tests pass.
+
+## Ticket 3.5 — Theme toggle
+
+**Agents.** The dev persona (bmad-build) wrote the plan for the fifth story of epic-everywhere-and-handed-in. A Claude Code subagent (Claude Opus) implemented it from the plan alone; the plan's `context:` list was empty, so the Code Map's files (DESIGN and EXPERIENCE sections, the laptop mockup, `TaskRow`, `theme.svelte.ts`, `focus.ts`, `theme.spec.ts`, `fixtures.ts`) were the only inputs.
+
+**Prompt that worked.** The same prompt as earlier tickets. The Code Map pointed at `TaskRow` as the pattern for `returnToInput` and the focus ring, at the mockup for the SVG paths and `.toggle`/`.seg` CSS, and at the 3.4 E2E helpers to reuse. The I/O matrix mapped one-to-one to E2E tests.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
+
+**What was built.**
+- `components/ThemeToggle.svelte`: one `<button type="button">` with two `aria-hidden` segments (sun, then moon), each a 16 px stroke SVG copied from the laptop mockup. `aria-label` is "Switch to dark theme" or "Switch to light theme" from `theme.current`; no `aria-pressed`. A click calls `theme.set` with the other mode, then `returnToInput()` only when `event.detail > 0`, so Enter or Space leave focus on the toggle. CSS per DESIGN `theme-toggle`: a divider pill with `--space-1` padding, 22×18 border-box segments with `1px 3px` padding and no gap, the active segment filled `--color-surface` with an inset divider hairline and a primary icon, the other icon muted. No hover state; a `:focus-visible` accent outline as in `TaskRow`; a `1px solid CanvasText` outline on the active segment under `forced-colors: active`. No inline styles.
+- `App.svelte`: `<ThemeToggle />` after the wordmark in `.header`, which already spaces them apart, so the toggle comes before the input in the DOM.
+- Tests:
+  - `ThemeToggle.test.ts` (7 tests): the markup, the name and active segment per theme, `set` with the other mode and the UI following it, `returnToInput` after `set` only for `detail > 0`, focus kept for `detail === 0`, and a throwing `setItem`.
+  - `App.test.ts`: the toggle is in the header, after the wordmark and before the input.
+  - `e2e/tests/theme-toggle.spec.ts` (13 tests): one per matrix row ("no way back" runs twice, stored dark and stored light), with a11y at 320 and 1280 px under each theme.
+  - The `<body>`-insertion `MutationObserver` moved from `theme.spec.ts` to `fixtures.ts` as `recordThemeAtBody` / `themeAtBody`, since both specs need it.
+- **Results:** 435 Vitest tests pass, with coverage at 99.29% statements, 96.53% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green. All 99 E2E tests passed before the review fixes, the layout specs included (87 earlier plus 12 new). The fixes brought the toggle spec to 13 tests.
+
+**What AI decided beyond the plan.**
+- Each segment carries `data-segment="light|dark"`, so the tests can name the active segment without depending on order.
+- The storage-blocked matrix row is also covered by a unit test, not only E2E.
+- The "no way back" E2E test stores the choice with a click, flips the emulated OS so it ends up differing from the stored theme (waiting until `matchMedia` reports each scheme), and checks the name, the active segment and the background stay on the stored theme.
+- `themeAtBody` throws when `recordThemeAtBody` was never installed, so a missing set-up never reads as "no data-theme".
+
+**Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 14 findings: 1 medium, 12 low, 1 false. Five were patched, one was deferred, and the rest were rejected with evidence.
+- The "no way back" E2E could not fail. It now waits for each emulated OS change, and ends with the stored theme differing from the OS, in both directions.
+- `expectTheme` now retries its checks.
+- A unit-test assertion that could never fail was dropped.
+- The icon is sized in px to match its px segment.
+- `themeAtBody` now throws if its recorder was never installed.
+- Deferred: an E2E pass under forced colours (the active segment's `CanvasText` outline, and App's focus ring).
+- After the fixes, 435 Vitest tests pass with 99.29% statement coverage, and all 100 E2E tests pass.
