@@ -12,3 +12,6 @@ dist/
 .env
 docs/qa-artifacts/*-trace*.json
 docs/qa-artifacts/a11y/
+
+# Playwright MCP scratch output (snapshots, console logs)
+.playwright-mcp/
