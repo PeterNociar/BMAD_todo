@@ -1,7 +1,7 @@
 # QA report: accessibility
 
 - **Date:** 2026-10-02
-- **Commit measured:** the commit that adds this report (story 3.8, on top of `a1953b8`), with the test stack rebuilt from that tree.
+- **Commit measured:** `7ae9b39` (story 3.10), re-run for story 3.9 against the test stack built from that tree (its served bundle, `index-BubATeCA.js`, matches a fresh `npm run build`). The report was first written in story 3.8 (on top of `a1953b8`); story 3.10 changed only the row motion, and the sweep gave the same result on both.
 - **Tool:** axe-core through `@axe-core/playwright` 4.13, with the tags `wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa` (the same tags as the suite's `expectNoA11yViolations`). Run in Google Chrome 154.0.8037.57 against the test profile's production build on `:8082`.
 - **Gate:** zero critical violations (deliverables, PRD NFR-1). **Result: pass.** Across all 36 cells there are zero violations of any impact, not only zero critical ones.
 
@@ -14,7 +14,7 @@ E2E_BROWSER_CHANNEL=chrome npm run qa              # both QA specs; or, for this
 E2E_BROWSER_CHANNEL=chrome npx playwright test -c playwright.qa.config.ts qa/a11y.spec.ts
 ```
 
-The sweep is `e2e/qa/a11y.spec.ts`. Each cell writes `docs/qa-artifacts/a11y/<theme>-<width>-<state>.json`, and the run combines them into `docs/qa-artifacts/a11y-summary.json`. That summary is committed; the per-cell files are gitignored. Each cell carries the run's id (`QA_RUN_ID`, set once per run in `playwright.qa.config.ts`), and the summary counts only cells from the current run, so stale files from an earlier or partial run are never folded in. The figures below come from the run of `npm run qa`: `40 passed (6.7m)`, of which 36 are this sweep, logging `a11y sweep: 36 cells, violations by impact {"critical":0,"serious":0,"moderate":0,"minor":0}`.
+The sweep is `e2e/qa/a11y.spec.ts`. Each cell writes `docs/qa-artifacts/a11y/<theme>-<width>-<state>.json`, and the run combines them into `docs/qa-artifacts/a11y-summary.json`. That summary is committed; the per-cell files are gitignored. Each cell carries the run's id (`QA_RUN_ID`, set once per run in `playwright.qa.config.ts`), and the summary counts only cells from the current run, so stale files from an earlier or partial run are never folded in. The figures below come from the story 3.9 run of this spec alone (`npx playwright test -c playwright.qa.config.ts qa/a11y.spec.ts`, run id `2026-10-02T12:21:04.305Z` in `a11y-summary.json`): `36 passed (1.1m)`, logging `a11y sweep: 36 cells, violations by impact {"critical":0,"serious":0,"moderate":0,"minor":0}`. Its 22 "needs review" nodes and the computed toast contrasts are the same as in the story 3.8 run.
 
 ## The grid
 
@@ -64,10 +64,10 @@ Contrast computed by the sweep (recorded per cell in `manualContrast`), in every
 
 ## What axe can't check
 
-Axe can't see motion, forced colours or keyboard flow. These are covered by E2E tests in the regular suite, and all of them passed in the same session (`E2E_BROWSER_CHANNEL=chrome npm test`: `114 passed`).
+Axe can't see motion, forced colours or keyboard flow. These are covered by E2E tests in the regular suite, and all of them passed on the same commit (`7ae9b39`) (`E2E_BROWSER_CHANNEL=chrome npm test`: `115 passed`).
 
 - **Forced colours (story 3.6):** `e2e/tests/theme-toggle.spec.ts` › "under forced colours" runs with `forcedColors: 'active'`. In it, the active theme segment keeps a 1 px solid `CanvasText` outline while the other segment has none, and the focused input keeps App's own `solid` outline (Chrome's default ring is `auto`), with a non-zero width. Fills and box-shadows drop in forced colours, so outlines carry the state.
-- **`prefers-reduced-motion`:** the only motion in the app is the rows' `animate:flip` slide. Its duration is read when each animation runs (`frontend/src/App.svelte:30-35`), and it is 0 under `reduce`. Toasts have no transition. `e2e/tests/rows.spec.ts` › "reduced motion: rows move with no transition" and "a change after load applies to the next tick", and `e2e/tests/hold.spec.ts` › "reduced motion: the settle has no row animations", assert that no row animation runs. They also check that a live change to the setting applies at the next tick.
+- **`prefers-reduced-motion`:** the only motion in the app is the rows' slide, `animate:slideRow` (story 3.10). Reduced motion is read when each animation runs (`frontend/src/lib/motion.ts:13-15`), and the duration is 0 under `reduce` (`motion.ts:30`). Toasts have no transition. `e2e/tests/rows.spec.ts` › "reduced motion: rows move with no transition" and "a change after load applies to the next tick", and `e2e/tests/hold.spec.ts` › "reduced motion: the settle has no row animations", assert that no row animation runs. They also check that a live change to the setting applies at the next tick.
 - **Keyboard-only use:** `e2e/tests/journeys.spec.ts` UJ-1 (story 3.7) captures, re-sends after a failure, and settles using only the keyboard: type, Enter, and focus that stays in the input. `e2e/tests/rows.spec.ts` › "keyboard only: Tab + Space ticks, Down moves rows, Tab + Enter deletes; focus returns" and "arrows: Down, Down, Up, Up on row 1, then Esc from a row" cover tick, untick, delete and row navigation without a pointer. Focus visibility under the sticky header (SC 2.4.11) is covered by `rows.spec.ts` › "sticky clearance" and `hold.spec.ts` › "clearance".
 
 ## Type-to-focus and WCAG 2.1.4 (Character Key Shortcuts)

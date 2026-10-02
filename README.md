@@ -8,14 +8,19 @@ browser ──> frontend (nginx, host :8081, static SPA + /api proxy) ──> ba
 
 ## Prerequisites
 
-- Docker Engine with the Compose v2 plugin (`docker compose`)
-- [uv](https://docs.astral.sh/uv/) 0.12 or newer, for backend development (`uv self update` upgrades it). uv installs Python 3.14 itself.
-- Node.js 24 LTS and npm, for frontend and E2E development
+- Docker Engine with the Compose v2 plugin (`docker compose`). The old standalone `docker-compose` (v1) is not supported.
+- git, to clone the repository.
+- Node.js 24 LTS and npm, for frontend and E2E development.
+- [uv](https://docs.astral.sh/uv/) 0.12 or newer, to run the backend tests and lint outside Docker (`uv self update` upgrades it). uv installs Python 3.14 itself.
+- Google Chrome, for the E2E suite when Playwright's Chromium download fails, and for `npm run qa`, which runs with `E2E_BROWSER_CHANNEL=chrome`.
+- [Tailscale](https://tailscale.com), only for phone access.
+
+Running the app needs only Docker and git. The other tools are for the test suites and phone access.
 
 ## Setup
 
 ```sh
-git clone <this repo> && cd BMAD_todo
+git clone https://github.com/PeterNociar/BMAD_todo.git && cd BMAD_todo
 cp .env.example .env   # required: .env is not committed
 ```
 
@@ -28,7 +33,7 @@ docker compose up -d
 docker compose ps        # db, backend and frontend should all be "healthy"
 ```
 
-Open <http://127.0.0.1:8081>. `docker compose up` is the Compose v2 form of `docker-compose up`, and either works if you have both installed.
+Open <http://127.0.0.1:8081>. This is the exercise's `docker-compose up`, in its Compose v2 form: only `docker compose` (v2) is supported. On a clean checkout the path is `git clone`, then `cp .env.example .env`, then `docker compose up` (AD-16).
 
 - After code changes or a `git pull`, rebuild the images with `docker compose up -d --build`.
 - The backend runs `alembic upgrade head` on every start, then starts uvicorn.
@@ -146,6 +151,7 @@ npm run test:coverage    # coverage-v8, thresholds 70% over src/lib and src/comp
 npm run check            # svelte-check + tsc
 npm run lint             # ESLint; {@html} is an error
 npm run format           # Prettier (format:check to verify only)
+npm run build            # production build into dist/ (what the Docker image serves)
 npm run docs:format:check  # Prettier over ../docs with this config (docs:format to fix; format:check runs it too)
 npm run dev              # Vite dev server on :5173, proxies /api to $API_UPSTREAM or localhost:8000
                          # (or run it in Docker: the dev profile above)
@@ -161,6 +167,7 @@ cd e2e
 npm ci
 npm run install:browsers    # first time only: downloads Chromium
 npm run typecheck           # type-check the specs and the harness
+npm run format:check        # Prettier (format to fix)
 npm test
 ```
 
@@ -185,10 +192,25 @@ The accessibility sweep and the performance check are Playwright specs in `e2e/q
 ```sh
 COMPOSE_PROFILES=test docker compose up -d --build --wait
 cd e2e
-E2E_BROWSER_CHANNEL=chrome npm run qa    # about 5 minutes
+E2E_BROWSER_CHANNEL=chrome npm run qa    # about 6 minutes
 ```
 
 They write their output to `docs/qa-artifacts/`. The summary JSONs the reports quote (`a11y-summary.json`, `perf-results*.json`) are committed. The bulky DevTools traces and the per-cell accessibility files are gitignored. `npm run qa` fails if any NFR-2 target regresses, including feedback with 500 rows under both motion settings.
+
+## Verify everything
+
+Every suite, from the repo root (after Setup). Run the lines one at a time, in order, and stop at the first one that fails: they are not chained, so a later line would scroll a failure out of sight. They repeat the commands from the sections above; `npm ci` and `uv sync` are needed only the first time.
+
+```sh
+COMPOSE_PROFILES=test docker compose up -d --build --wait
+(cd backend && uv sync && uv run pytest && uv run ruff check . && uv run ruff format --check .)
+(cd frontend && npm ci && npm run check && npm run lint && npm run format:check && npm run test:coverage && npm run build)
+(cd e2e && npm ci && npm run typecheck && npm run format:check && E2E_BROWSER_CHANNEL=chrome npm test)
+(cd e2e && E2E_BROWSER_CHANNEL=chrome npm run qa)    # optional, about 6 minutes; rewrites docs/qa-artifacts/
+scripts/check-infra.sh                                # optional; needs host ports 8000 and 5173 free
+```
+
+For `npm test` you can drop `E2E_BROWSER_CHANNEL=chrome` if `npm run install:browsers` worked. `npm run qa` keeps it: the QA reports are measured on Chrome. `npm run qa` regenerates the committed summary JSONs, so expect a diff in `docs/qa-artifacts/` afterwards. `check-infra.sh` starts the dev profile against the app's `db`, so `backend-dev` runs `alembic upgrade head` on the app's database (see Infra smoke checks). Don't run it during an E2E run: it resets the test stack's data.
 
 ## Phone access
 
@@ -211,7 +233,8 @@ Tailscale Serve gives you HTTPS, and only devices on your tailnet can reach the 
 2. Run `docker compose up -d`.
 3. On the phone, open `http://<that IP>:8081`.
 
-Be aware of three side effects:
+Be aware of three side effects and one warning:
+
 - The port then listens only on that IP, so <http://127.0.0.1:8081> stops working on the laptop too. Use `http://<that IP>:8081` there as well. Tailscale Serve also stops working, because it forwards to `127.0.0.1:8081`.
 - After a reboot, if Docker starts the containers before Tailscale has its IP, the frontend fails to bind and the app is down. Run `docker compose up -d` again once Tailscale is up.
 - The connection is plain HTTP. The tailnet encrypts the traffic, but the browser doesn't treat the page as a secure context.
@@ -221,13 +244,25 @@ Be aware of three side effects:
 
 Each open tab re-reads the list every 30 s while it is visible, and straight away when you switch back to it. So a task added on the phone usually shows up in an idle laptop tab within 30 s, without a reload. A poll is skipped while that tab is saving a task of its own, so it can take up to a minute.
 
+## Hand-in
+
+The exercise is handed in against [`deliverables.md`](_bmad-output/initiative-todo-app/spec-todo-app/deliverables.md):
+
+- [Hand-in checklist](docs/hand-in-checklist.md): each deliverable, its status and links to the evidence.
+- [How BMad guided the build](docs/bmad-process.md): the planning chain, from the exercise brief to the story plans and their reviews.
+- [AI integration log](docs/ai-log.md): one section per ticket, then a summary.
+- QA reports: [coverage](docs/qa-coverage.md), [accessibility](docs/qa-accessibility.md), [security](docs/qa-security.md) and [performance](docs/qa-performance.md).
+
 ## Repository layout
 
 ```text
 backend/    FastAPI app (app/), Alembic migrations, pytest suite, Dockerfile
 frontend/   Svelte 5 + Vite SPA, Vitest suite, nginx template, Dockerfile
 db-test/    init script that creates the todo_e2e database
-e2e/        Playwright package
-docs/       Exercise, original PRD, AI integration log, QA reports
+e2e/        Playwright package (tests/ for the suite, qa/ for the QA specs)
+contracts/  ordering-cases.json, the FR-6 order fixtures shared by pytest and Vitest
+scripts/    check-infra.sh, the compose profile and stale-IP smoke checks
+docs/       Exercise, original PRD, AI integration log, QA reports,
+            bmad-process.md (how BMad guided the build) and hand-in-checklist.md
 _bmad-output/  BMad planning artifacts and ticket plans
 ```

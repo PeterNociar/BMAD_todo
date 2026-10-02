@@ -119,7 +119,7 @@ Tailscale Serve, the README's recommended way to reach the app from the phone, i
 
 ### S-7. No rate limiting; unpaginated list (Info, accepted)
 
-There is no rate limiting, and `GET /api/tasks` returns every task. **Accepted:** there is one local user and no public exposure (NFR-5). Pagination is deferred by the architecture. With 500 tasks, the `GET` takes 46.5 ms at p95 ([qa-performance.md](qa-performance.md)).
+There is no rate limiting, and `GET /api/tasks` returns every task. **Accepted:** there is one local user and no public exposure (NFR-5). Pagination is deferred by the architecture. With 500 tasks, the `GET` takes 37.7 ms at p95 (default motion, the story 3.10 run in [qa-performance.md](qa-performance.md)).
 
 ## Areas reviewed with no finding
 
