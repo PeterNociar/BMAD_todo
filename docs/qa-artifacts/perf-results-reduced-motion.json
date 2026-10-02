@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-02T11:49:10.347Z",
+  "measuredAt": "2026-10-02T13:12:54.454Z",
   "reducedMotion": "reduce",
   "baseURL": "http://127.0.0.1:8082",
   "machine": {
@@ -17,80 +17,80 @@
     "longTextCompleted": 10
   },
   "metricsAfterLoad": {
-    "JSHeapUsedSize": 79412180,
+    "JSHeapUsedSize": 76761488,
     "LayoutCount": 2,
     "RecalcStyleCount": 7,
-    "ScriptDuration": 0.047894
+    "ScriptDuration": 0.04899
   },
   "metricsAroundFeedback": {
     "before": {
-      "JSHeapUsedSize": 42330536,
+      "JSHeapUsedSize": 61617444,
       "LayoutCount": 2,
-      "RecalcStyleCount": 8,
-      "ScriptDuration": 0.061334
+      "RecalcStyleCount": 7,
+      "ScriptDuration": 0.052034
     },
     "after": {
-      "JSHeapUsedSize": 64179752,
+      "JSHeapUsedSize": 23830380,
       "LayoutCount": 315,
-      "RecalcStyleCount": 532,
-      "ScriptDuration": 3.026097
+      "RecalcStyleCount": 530,
+      "ScriptDuration": 2.290336
     },
     "delta": {
-      "JSHeapUsedSize": 21849216,
+      "JSHeapUsedSize": -37787064,
       "LayoutCount": 313,
-      "RecalcStyleCount": 524,
-      "ScriptDuration": 2.964763
+      "RecalcStyleCount": 523,
+      "ScriptDuration": 2.238302
     },
     "actions": 62
   },
   "api": {
     "GET": {
       "n": 25,
-      "p50": 20.1,
-      "p95": 33.2,
-      "min": 18.3,
-      "max": 34.2,
-      "mean": 21.3,
+      "p50": 19.4,
+      "p95": 35.1,
+      "min": 18,
+      "max": 36.2,
+      "mean": 20.7,
       "target": 300,
       "pass": true
     },
     "POST": {
       "n": 25,
-      "p50": 9.6,
-      "p95": 12.1,
-      "min": 8.8,
+      "p50": 10.4,
+      "p95": 12.7,
+      "min": 9.1,
       "max": 18.7,
-      "mean": 10.2,
+      "mean": 10.8,
       "target": 300,
       "pass": true
     },
     "PUT tick": {
       "n": 25,
-      "p50": 10.7,
-      "p95": 13,
-      "min": 9.5,
-      "max": 27.7,
-      "mean": 11.5,
+      "p50": 10.4,
+      "p95": 13.5,
+      "min": 9.7,
+      "max": 20.8,
+      "mean": 11,
       "target": 300,
       "pass": true
     },
     "PUT untick": {
       "n": 25,
-      "p50": 10.2,
-      "p95": 11.4,
-      "min": 9,
-      "max": 11.8,
-      "mean": 10.2,
+      "p50": 10.6,
+      "p95": 14.3,
+      "min": 9.2,
+      "max": 30.1,
+      "mean": 11.5,
       "target": 300,
       "pass": true
     },
     "DELETE": {
       "n": 25,
-      "p50": 8.5,
-      "p95": 12.4,
-      "min": 7.8,
-      "max": 16.3,
-      "mean": 9.4,
+      "p50": 9.1,
+      "p95": 10.7,
+      "min": 8,
+      "max": 11.8,
+      "mean": 9.2,
       "target": 300,
       "pass": true
     }
@@ -98,178 +98,178 @@
   "render": {
     "inPage": {
       "n": 20,
-      "p50": 120,
-      "p95": 154,
-      "min": 101,
-      "max": 219,
-      "mean": 126.8
+      "p50": 106,
+      "p95": 136,
+      "min": 94,
+      "max": 140,
+      "mean": 108.8
     },
     "traceToDom": {
       "n": 20,
-      "p50": 120.2,
-      "p95": 154.2,
-      "min": 101,
-      "max": 218.8,
-      "mean": 126.8
+      "p50": 106.6,
+      "p95": 135.7,
+      "min": 93.4,
+      "max": 140.5,
+      "mean": 108.6
     },
     "traceToPaint": {
       "n": 20,
-      "p50": 142,
-      "p95": 180.2,
-      "min": 121.7,
-      "max": 253.2,
-      "mean": 149.6,
+      "p50": 124.1,
+      "p95": 158.9,
+      "min": 110.3,
+      "max": 159.5,
+      "mean": 128.6,
       "target": 200,
       "pass": true
     },
     "longestTask": {
       "n": 20,
-      "p50": 117,
-      "p95": 153.7,
-      "min": 91.2,
-      "max": 213.1,
-      "mean": 121.6
+      "p50": 104.8,
+      "p95": 133.8,
+      "min": 91,
+      "max": 139.4,
+      "mean": 106.2
     },
     "longestTaskAfterPaint": {
       "n": 20,
-      "p50": 102.3,
-      "p95": 163.2,
-      "min": 95.9,
-      "max": 199,
-      "mean": 115.8
+      "p50": 93.4,
+      "p95": 142.4,
+      "min": 85.4,
+      "max": 158.8,
+      "mean": 102.5
     }
   },
   "feedback": {
     "enterToHeldRow": {
       "inPage": {
         "n": 20,
-        "p50": 46,
-        "p95": 60,
-        "min": 42,
-        "max": 66,
-        "mean": 48.9
+        "p50": 40,
+        "p95": 64,
+        "min": 37,
+        "max": 73,
+        "mean": 44.9
       },
       "traceToDom": {
         "n": 20,
-        "p50": 46.6,
-        "p95": 60.4,
-        "min": 42.2,
-        "max": 66.4,
-        "mean": 48.9
+        "p50": 40.1,
+        "p95": 64,
+        "min": 37.3,
+        "max": 72.9,
+        "mean": 44.8
       },
       "traceToPaint": {
         "n": 20,
-        "p50": 70.9,
-        "p95": 87.7,
-        "min": 65.4,
-        "max": 96,
-        "mean": 74.3,
+        "p50": 59.7,
+        "p95": 87.4,
+        "min": 54.6,
+        "max": 98.5,
+        "mean": 65,
         "target": 100,
         "pass": true
       },
       "longestTask": {
         "n": 20,
-        "p50": 29,
-        "p95": 38.7,
-        "min": 21.6,
-        "max": 54.3,
-        "mean": 30.2
+        "p50": 22.8,
+        "p95": 29.7,
+        "min": 16.6,
+        "max": 34.6,
+        "mean": 24.4
       },
       "longestTaskAfterPaint": {
         "n": 20,
-        "p50": 29.9,
-        "p95": 65.6,
-        "min": 21.2,
-        "max": 65.9,
-        "mean": 36.1
+        "p50": 38,
+        "p95": 42.9,
+        "min": 18.9,
+        "max": 45.8,
+        "mean": 35.2
       }
     },
     "tickToDone": {
       "inPage": {
         "n": 20,
-        "p50": 26,
-        "p95": 32,
-        "min": 21,
-        "max": 33,
-        "mean": 26
+        "p50": 19,
+        "p95": 23,
+        "min": 17,
+        "max": 36,
+        "mean": 20.2
       },
       "traceToDom": {
         "n": 20,
-        "p50": 26,
-        "p95": 32.8,
-        "min": 21.1,
-        "max": 33.5,
-        "mean": 26.2
+        "p50": 19.1,
+        "p95": 23.2,
+        "min": 17,
+        "max": 36.1,
+        "mean": 20.3
       },
       "traceToPaint": {
         "n": 20,
-        "p50": 42.8,
-        "p95": 57.5,
-        "min": 34.8,
-        "max": 57.7,
-        "mean": 44.3,
+        "p50": 33.4,
+        "p95": 41.1,
+        "min": 24.8,
+        "max": 46.9,
+        "mean": 33.9,
         "target": 100,
         "pass": true
       },
       "longestTask": {
         "n": 20,
-        "p50": 12.4,
-        "p95": 24.7,
-        "min": 7.5,
-        "max": 32.5,
-        "mean": 14.4
+        "p50": 10.2,
+        "p95": 26.9,
+        "min": 7,
+        "max": 28,
+        "mean": 12.7
       },
       "longestTaskAfterPaint": {
         "n": 20,
-        "p50": 39,
-        "p95": 46.1,
-        "min": 22.4,
-        "max": 54.3,
-        "mean": 35.6
+        "p50": 30.1,
+        "p95": 47.1,
+        "min": 18.8,
+        "max": 47.6,
+        "mean": 31.5
       }
     },
     "deleteToGone": {
       "inPage": {
         "n": 20,
-        "p50": 26,
-        "p95": 35,
-        "min": 21,
-        "max": 36,
-        "mean": 26.6
+        "p50": 19,
+        "p95": 37,
+        "min": 17,
+        "max": 38,
+        "mean": 21.3
       },
       "traceToDom": {
         "n": 20,
-        "p50": 25.9,
-        "p95": 34.9,
-        "min": 20.8,
-        "max": 35.6,
-        "mean": 26.6
+        "p50": 19.2,
+        "p95": 37.5,
+        "min": 17.1,
+        "max": 38,
+        "mean": 21.1
       },
       "traceToPaint": {
         "n": 20,
-        "p50": 46.9,
-        "p95": 63.6,
-        "min": 36,
-        "max": 68.4,
-        "mean": 48.6,
+        "p50": 36.5,
+        "p95": 56.4,
+        "min": 29.2,
+        "max": 58.1,
+        "mean": 39.2,
         "target": 100,
         "pass": true
       },
       "longestTask": {
         "n": 20,
-        "p50": 13.3,
-        "p95": 21.2,
+        "p50": 10.1,
+        "p95": 45.4,
         "min": 0,
-        "max": 28.5,
-        "mean": 13.6
+        "max": 47.7,
+        "mean": 15.5
       },
       "longestTaskAfterPaint": {
         "n": 20,
-        "p50": 33.2,
-        "p95": 43.6,
-        "min": 23.4,
-        "max": 53.7,
-        "mean": 34.4
+        "p50": 26.5,
+        "p95": 41.3,
+        "min": 18.4,
+        "max": 42,
+        "mean": 29.3
       }
     }
   },
@@ -286,707 +286,707 @@
   "samples": {
     "api": {
       "GET": [
-        22.096,
-        25.157,
-        20.369,
-        20.374,
-        21.806,
-        20.955,
-        24.231,
-        19.823,
-        20.702,
-        21.41,
-        33.152,
-        18.921,
-        18.637,
-        18.771,
-        21.922,
-        18.792,
-        18.418,
-        34.229,
-        19.752,
-        18.884,
-        20.095,
-        18.508,
-        18.41,
+        18.481,
+        18.722,
+        19.549,
+        24.387,
+        18.562,
+        18.42,
+        18.585,
+        19.463,
+        36.194,
+        19.078,
+        18.469,
+        19.476,
+        19.826,
+        19.716,
+        35.086,
+        18.137,
+        18.046,
         18.49,
-        18.252
+        18.693,
+        20.492,
+        19.444,
+        18.493,
+        19.423,
+        21.907,
+        19.89
       ],
       "POST": [
-        18.669,
-        9.89,
-        10.12,
-        9.472,
-        12.067,
-        9.387,
-        8.968,
-        9.286,
-        9.747,
-        9.9,
-        9.736,
-        9.36,
-        9.539,
-        11.74,
-        9.119,
-        9.562,
-        9.34,
-        9.303,
-        9.396,
-        8.788,
-        10.868,
-        10.229,
-        9.951,
-        10.523,
-        9.458
+        18.666,
+        10.539,
+        10.425,
+        10.035,
+        9.401,
+        12.137,
+        9.609,
+        9.825,
+        10.814,
+        12.045,
+        12.653,
+        9.354,
+        9.69,
+        10.687,
+        10.371,
+        10.685,
+        10.301,
+        11.093,
+        10.297,
+        11.02,
+        10.356,
+        9.087,
+        9.545,
+        9.653,
+        11.417
       ],
       "PUT tick": [
-        10.532,
-        10.493,
-        12.234,
-        10.822,
-        11.196,
-        10.963,
-        10.538,
-        10.436,
-        11.031,
-        10.544,
-        10.739,
-        9.495,
+        20.832,
+        10.766,
+        11.028,
+        10.46,
         10.402,
-        10.535,
-        10.67,
-        12.849,
-        11.513,
-        27.679,
-        11.195,
-        12.958,
-        9.575,
-        10.16,
-        10.197,
-        10.729,
-        9.778
+        11.078,
+        10.391,
+        9.748,
+        10.551,
+        13.483,
+        9.913,
+        10.008,
+        10.347,
+        9.791,
+        10.202,
+        10.269,
+        10.231,
+        10.318,
+        10.146,
+        10.452,
+        10.436,
+        10.148,
+        13.034,
+        10.038,
+        10.627
       ],
       "PUT untick": [
-        10.562,
-        10.524,
-        11.005,
-        11.362,
-        10.343,
-        11.811,
-        9.627,
-        10.311,
-        8.967,
-        9.874,
-        9.562,
-        10.658,
-        10.127,
-        10.153,
-        9.978,
         10.211,
-        9.874,
-        9.934,
-        9.591,
-        10.473,
-        9.87,
-        10.421,
-        9.633,
-        11.3,
-        10.034
+        10.135,
+        12.849,
+        9.919,
+        10.604,
+        10.268,
+        11.392,
+        9.211,
+        9.35,
+        14.309,
+        10.947,
+        10.559,
+        11.495,
+        30.054,
+        11.719,
+        10.933,
+        9.745,
+        10.716,
+        10.318,
+        10.076,
+        10.382,
+        10.567,
+        10.481,
+        10.288,
+        10.855
       ],
       "DELETE": [
-        8.486,
-        8.196,
-        8.474,
-        11.017,
-        8.899,
-        10.521,
-        8.506,
-        10.074,
-        8.316,
-        8.001,
-        8.008,
-        8.792,
-        7.774,
-        8.419,
-        7.841,
-        8.116,
-        8.205,
-        8.053,
-        7.971,
-        9,
-        11.845,
-        12.352,
-        16.253,
-        10.42,
-        10.458
+        8.104,
+        8.266,
+        7.998,
+        8.919,
+        8.838,
+        8.685,
+        8.233,
+        10.298,
+        8.352,
+        10.15,
+        9.175,
+        8.841,
+        8.983,
+        9.443,
+        10.733,
+        9.218,
+        8.399,
+        10.329,
+        9.883,
+        9.149,
+        9.346,
+        10.135,
+        8.146,
+        9.178,
+        11.801
       ]
     },
     "loads": [
       {
-        "inPageMs": 219,
-        "domMs": 218.8,
-        "paintMs": 253.2,
-        "longestTaskMs": 213.1,
-        "longestTaskAfterPaintMs": 127.4
+        "inPageMs": 140,
+        "domMs": 140.5,
+        "paintMs": 158.9,
+        "longestTaskMs": 139.4,
+        "longestTaskAfterPaintMs": 94.2
       },
       {
-        "inPageMs": 123,
-        "domMs": 122.9,
-        "paintMs": 145.6,
-        "longestTaskMs": 122.3,
-        "longestTaskAfterPaintMs": 132.5
+        "inPageMs": 112,
+        "domMs": 111.8,
+        "paintMs": 132.4,
+        "longestTaskMs": 111.2,
+        "longestTaskAfterPaintMs": 142.4
       },
       {
-        "inPageMs": 132,
-        "domMs": 132.2,
-        "paintMs": 158.1,
-        "longestTaskMs": 130.4,
-        "longestTaskAfterPaintMs": 104.4
-      },
-      {
-        "inPageMs": 129,
-        "domMs": 129.3,
-        "paintMs": 151.6,
-        "longestTaskMs": 128.9,
-        "longestTaskAfterPaintMs": 98
-      },
-      {
-        "inPageMs": 130,
-        "domMs": 129.4,
-        "paintMs": 154.1,
-        "longestTaskMs": 126.8,
-        "longestTaskAfterPaintMs": 153.6
-      },
-      {
-        "inPageMs": 118,
-        "domMs": 117.1,
-        "paintMs": 136.8,
-        "longestTaskMs": 102.6,
-        "longestTaskAfterPaintMs": 95.9
-      },
-      {
-        "inPageMs": 154,
-        "domMs": 154.2,
-        "paintMs": 180.2,
-        "longestTaskMs": 153.7,
-        "longestTaskAfterPaintMs": 98.3
-      },
-      {
-        "inPageMs": 117,
-        "domMs": 117.4,
-        "paintMs": 139.1,
-        "longestTaskMs": 113.9,
-        "longestTaskAfterPaintMs": 102.2
-      },
-      {
-        "inPageMs": 120,
-        "domMs": 120.2,
-        "paintMs": 140.3,
-        "longestTaskMs": 119.3,
-        "longestTaskAfterPaintMs": 102
-      },
-      {
-        "inPageMs": 128,
-        "domMs": 128.6,
-        "paintMs": 149.5,
-        "longestTaskMs": 128,
-        "longestTaskAfterPaintMs": 100.8
-      },
-      {
-        "inPageMs": 139,
-        "domMs": 139,
-        "paintMs": 161.3,
-        "longestTaskMs": 123.9,
-        "longestTaskAfterPaintMs": 104.1
+        "inPageMs": 109,
+        "domMs": 108.8,
+        "paintMs": 130.7,
+        "longestTaskMs": 108.1,
+        "longestTaskAfterPaintMs": 97.7
       },
       {
         "inPageMs": 121,
         "domMs": 121.2,
-        "paintMs": 142.6,
-        "longestTaskMs": 103,
-        "longestTaskAfterPaintMs": 101.6
+        "paintMs": 139,
+        "longestTaskMs": 108.8,
+        "longestTaskAfterPaintMs": 92.2
       },
       {
-        "inPageMs": 130,
-        "domMs": 130.6,
-        "paintMs": 154.2,
-        "longestTaskMs": 130.3,
-        "longestTaskAfterPaintMs": 102.8
+        "inPageMs": 110,
+        "domMs": 109.8,
+        "paintMs": 149.8,
+        "longestTaskMs": 109.5,
+        "longestTaskAfterPaintMs": 94.2
       },
       {
-        "inPageMs": 101,
-        "domMs": 101,
-        "paintMs": 125,
-        "longestTaskMs": 99.7,
-        "longestTaskAfterPaintMs": 163.2
+        "inPageMs": 109,
+        "domMs": 108.9,
+        "paintMs": 128.6,
+        "longestTaskMs": 106.2,
+        "longestTaskAfterPaintMs": 87.6
       },
       {
-        "inPageMs": 117,
-        "domMs": 117.4,
-        "paintMs": 139.5,
-        "longestTaskMs": 98.8,
-        "longestTaskAfterPaintMs": 96
-      },
-      {
-        "inPageMs": 106,
-        "domMs": 105.8,
-        "paintMs": 126.3,
-        "longestTaskMs": 105.3,
-        "longestTaskAfterPaintMs": 103.8
-      },
-      {
-        "inPageMs": 116,
-        "domMs": 116.5,
-        "paintMs": 137.8,
-        "longestTaskMs": 115.7,
-        "longestTaskAfterPaintMs": 97.2
-      },
-      {
-        "inPageMs": 111,
-        "domMs": 111.2,
-        "paintMs": 132.5,
-        "longestTaskMs": 108.5,
-        "longestTaskAfterPaintMs": 130.5
-      },
-      {
-        "inPageMs": 119,
-        "domMs": 119.1,
-        "paintMs": 142,
-        "longestTaskMs": 117,
-        "longestTaskAfterPaintMs": 102.3
+        "inPageMs": 95,
+        "domMs": 94.2,
+        "paintMs": 120.8,
+        "longestTaskMs": 91.2,
+        "longestTaskAfterPaintMs": 96.5
       },
       {
         "inPageMs": 105,
-        "domMs": 104.6,
-        "paintMs": 121.7,
-        "longestTaskMs": 91.2,
-        "longestTaskAfterPaintMs": 199
+        "domMs": 105.2,
+        "paintMs": 123.4,
+        "longestTaskMs": 104.8,
+        "longestTaskAfterPaintMs": 86.7
+      },
+      {
+        "inPageMs": 94,
+        "domMs": 93.4,
+        "paintMs": 110.3,
+        "longestTaskMs": 93,
+        "longestTaskAfterPaintMs": 87.3
+      },
+      {
+        "inPageMs": 100,
+        "domMs": 100.1,
+        "paintMs": 116.7,
+        "longestTaskMs": 99.6,
+        "longestTaskAfterPaintMs": 89.2
+      },
+      {
+        "inPageMs": 96,
+        "domMs": 95.9,
+        "paintMs": 113.8,
+        "longestTaskMs": 95.3,
+        "longestTaskAfterPaintMs": 135.2
+      },
+      {
+        "inPageMs": 94,
+        "domMs": 93.5,
+        "paintMs": 110.9,
+        "longestTaskMs": 91,
+        "longestTaskAfterPaintMs": 86.3
+      },
+      {
+        "inPageMs": 114,
+        "domMs": 113.2,
+        "paintMs": 130.4,
+        "longestTaskMs": 110.5,
+        "longestTaskAfterPaintMs": 93.4
+      },
+      {
+        "inPageMs": 107,
+        "domMs": 106.6,
+        "paintMs": 124.1,
+        "longestTaskMs": 105.9,
+        "longestTaskAfterPaintMs": 90.4
+      },
+      {
+        "inPageMs": 106,
+        "domMs": 106.7,
+        "paintMs": 125.4,
+        "longestTaskMs": 103.6,
+        "longestTaskAfterPaintMs": 126.3
+      },
+      {
+        "inPageMs": 136,
+        "domMs": 135.7,
+        "paintMs": 159.5,
+        "longestTaskMs": 122,
+        "longestTaskAfterPaintMs": 99.5
+      },
+      {
+        "inPageMs": 102,
+        "domMs": 101.7,
+        "paintMs": 118.7,
+        "longestTaskMs": 101.2,
+        "longestTaskAfterPaintMs": 158.8
+      },
+      {
+        "inPageMs": 95,
+        "domMs": 95.1,
+        "paintMs": 112.8,
+        "longestTaskMs": 94.5,
+        "longestTaskAfterPaintMs": 85.4
+      },
+      {
+        "inPageMs": 97,
+        "domMs": 96.2,
+        "paintMs": 114.1,
+        "longestTaskMs": 94.1,
+        "longestTaskAfterPaintMs": 118.1
+      },
+      {
+        "inPageMs": 134,
+        "domMs": 134.2,
+        "paintMs": 151.9,
+        "longestTaskMs": 133.8,
+        "longestTaskAfterPaintMs": 89.1
       }
     ],
     "enter": [
       {
-        "inPageMs": 60,
-        "domMs": 60.4,
-        "paintMs": 85,
-        "longestTaskMs": 22.6,
-        "longestTaskAfterPaintMs": 65.6
-      },
-      {
-        "inPageMs": 51,
-        "domMs": 51.1,
-        "paintMs": 73.3,
-        "longestTaskMs": 21.6,
-        "longestTaskAfterPaintMs": 21.7
-      },
-      {
         "inPageMs": 47,
-        "domMs": 46.7,
-        "paintMs": 75.4,
-        "longestTaskMs": 26.7,
-        "longestTaskAfterPaintMs": 21.2
+        "domMs": 46.8,
+        "paintMs": 64.9,
+        "longestTaskMs": 16.6,
+        "longestTaskAfterPaintMs": 38.5
       },
       {
-        "inPageMs": 50,
-        "domMs": 49.8,
-        "paintMs": 70.9,
-        "longestTaskMs": 28.7,
-        "longestTaskAfterPaintMs": 65.9
+        "inPageMs": 64,
+        "domMs": 64,
+        "paintMs": 87.4,
+        "longestTaskMs": 21.9,
+        "longestTaskAfterPaintMs": 20.6
+      },
+      {
+        "inPageMs": 73,
+        "domMs": 72.9,
+        "paintMs": 98.5,
+        "longestTaskMs": 22.7,
+        "longestTaskAfterPaintMs": 36.6
+      },
+      {
+        "inPageMs": 39,
+        "domMs": 39.5,
+        "paintMs": 61.4,
+        "longestTaskMs": 28.6,
+        "longestTaskAfterPaintMs": 41.6
+      },
+      {
+        "inPageMs": 52,
+        "domMs": 51.6,
+        "paintMs": 75.4,
+        "longestTaskMs": 29.7,
+        "longestTaskAfterPaintMs": 39.2
       },
       {
         "inPageMs": 54,
-        "domMs": 53.9,
-        "paintMs": 78.4,
-        "longestTaskMs": 23.9,
-        "longestTaskAfterPaintMs": 25.1
+        "domMs": 53.8,
+        "paintMs": 80,
+        "longestTaskMs": 34.6,
+        "longestTaskAfterPaintMs": 45.8
       },
       {
-        "inPageMs": 45,
-        "domMs": 45.6,
-        "paintMs": 68.3,
-        "longestTaskMs": 29.4,
-        "longestTaskAfterPaintMs": 41.5
+        "inPageMs": 39,
+        "domMs": 38.7,
+        "paintMs": 57.1,
+        "longestTaskMs": 23.6,
+        "longestTaskAfterPaintMs": 18.9
       },
       {
-        "inPageMs": 44,
-        "domMs": 43.8,
-        "paintMs": 70.8,
-        "longestTaskMs": 38.7,
-        "longestTaskAfterPaintMs": 46.4
-      },
-      {
-        "inPageMs": 66,
-        "domMs": 66.4,
-        "paintMs": 87.7,
-        "longestTaskMs": 26.6,
-        "longestTaskAfterPaintMs": 29.9
-      },
-      {
-        "inPageMs": 44,
-        "domMs": 44,
-        "paintMs": 67.9,
-        "longestTaskMs": 27.9,
-        "longestTaskAfterPaintMs": 24.2
-      },
-      {
-        "inPageMs": 42,
-        "domMs": 42.2,
-        "paintMs": 66.3,
-        "longestTaskMs": 30.2,
-        "longestTaskAfterPaintMs": 28.3
-      },
-      {
-        "inPageMs": 46,
-        "domMs": 46.6,
-        "paintMs": 96,
-        "longestTaskMs": 54.3,
-        "longestTaskAfterPaintMs": 59.6
-      },
-      {
-        "inPageMs": 43,
-        "domMs": 42.4,
-        "paintMs": 65.4,
-        "longestTaskMs": 33.6,
-        "longestTaskAfterPaintMs": 21.8
+        "inPageMs": 38,
+        "domMs": 37.9,
+        "paintMs": 55.3,
+        "longestTaskMs": 21.8,
+        "longestTaskAfterPaintMs": 39.7
       },
       {
         "inPageMs": 46,
         "domMs": 45.5,
-        "paintMs": 66.7,
-        "longestTaskMs": 26.4,
-        "longestTaskAfterPaintMs": 24.3
+        "paintMs": 66.3,
+        "longestTaskMs": 27.9,
+        "longestTaskAfterPaintMs": 27.2
       },
       {
-        "inPageMs": 50,
-        "domMs": 49.8,
-        "paintMs": 77.7,
-        "longestTaskMs": 35,
-        "longestTaskAfterPaintMs": 41.9
+        "inPageMs": 37,
+        "domMs": 37.3,
+        "paintMs": 54.6,
+        "longestTaskMs": 22.2,
+        "longestTaskAfterPaintMs": 42.9
       },
       {
-        "inPageMs": 56,
-        "domMs": 55.6,
-        "paintMs": 79.5,
-        "longestTaskMs": 31.2,
-        "longestTaskAfterPaintMs": 26.7
+        "inPageMs": 38,
+        "domMs": 38.7,
+        "paintMs": 56,
+        "longestTaskMs": 21.9,
+        "longestTaskAfterPaintMs": 38
       },
       {
-        "inPageMs": 45,
-        "domMs": 45,
-        "paintMs": 70.7,
-        "longestTaskMs": 34.2,
-        "longestTaskAfterPaintMs": 40.9
+        "inPageMs": 39,
+        "domMs": 39,
+        "paintMs": 57.3,
+        "longestTaskMs": 24.9,
+        "longestTaskAfterPaintMs": 38.7
+      },
+      {
+        "inPageMs": 47,
+        "domMs": 47.1,
+        "paintMs": 69.1,
+        "longestTaskMs": 26.8,
+        "longestTaskAfterPaintMs": 42.2
       },
       {
         "inPageMs": 48,
-        "domMs": 48.5,
-        "paintMs": 73.8,
-        "longestTaskMs": 29.7,
-        "longestTaskAfterPaintMs": 35.9
+        "domMs": 47.7,
+        "paintMs": 70.2,
+        "longestTaskMs": 27.1,
+        "longestTaskAfterPaintMs": 33.5
       },
       {
-        "inPageMs": 44,
-        "domMs": 44.3,
-        "paintMs": 66.9,
-        "longestTaskMs": 30.5,
-        "longestTaskAfterPaintMs": 42.6
+        "inPageMs": 40,
+        "domMs": 40.1,
+        "paintMs": 57.6,
+        "longestTaskMs": 22.5,
+        "longestTaskAfterPaintMs": 40.1
       },
       {
-        "inPageMs": 51,
-        "domMs": 51.6,
-        "paintMs": 75.5,
-        "longestTaskMs": 23.7,
-        "longestTaskAfterPaintMs": 28
+        "inPageMs": 39,
+        "domMs": 38.2,
+        "paintMs": 56.1,
+        "longestTaskMs": 22.8,
+        "longestTaskAfterPaintMs": 28.7
       },
       {
-        "inPageMs": 46,
-        "domMs": 45.6,
-        "paintMs": 69,
-        "longestTaskMs": 29,
-        "longestTaskAfterPaintMs": 30.3
+        "inPageMs": 41,
+        "domMs": 41,
+        "paintMs": 61.6,
+        "longestTaskMs": 24.3,
+        "longestTaskAfterPaintMs": 25.5
+      },
+      {
+        "inPageMs": 40,
+        "domMs": 40.4,
+        "paintMs": 59.7,
+        "longestTaskMs": 24.7,
+        "longestTaskAfterPaintMs": 37.4
+      },
+      {
+        "inPageMs": 38,
+        "domMs": 38,
+        "paintMs": 56,
+        "longestTaskMs": 22.3,
+        "longestTaskAfterPaintMs": 28.7
+      },
+      {
+        "inPageMs": 38,
+        "domMs": 38,
+        "paintMs": 55.3,
+        "longestTaskMs": 21.7,
+        "longestTaskAfterPaintMs": 39.3
       }
     ],
     "tick": [
       {
-        "inPageMs": 29,
-        "domMs": 28.6,
-        "paintMs": 36.5,
-        "longestTaskMs": 8.2,
-        "longestTaskAfterPaintMs": 54.3
+        "inPageMs": 20,
+        "domMs": 20.7,
+        "paintMs": 28.1,
+        "longestTaskMs": 8.1,
+        "longestTaskAfterPaintMs": 21
       },
       {
-        "inPageMs": 32,
-        "domMs": 32.8,
-        "paintMs": 57.7,
-        "longestTaskMs": 16.7,
-        "longestTaskAfterPaintMs": 26.2
-      },
-      {
-        "inPageMs": 30,
-        "domMs": 29.5,
-        "paintMs": 50.6,
-        "longestTaskMs": 15.4,
-        "longestTaskAfterPaintMs": 23.3
-      },
-      {
-        "inPageMs": 27,
-        "domMs": 27.4,
-        "paintMs": 44.8,
-        "longestTaskMs": 12.4,
-        "longestTaskAfterPaintMs": 24.3
-      },
-      {
-        "inPageMs": 27,
-        "domMs": 27.7,
-        "paintMs": 40.3,
-        "longestTaskMs": 9.3,
-        "longestTaskAfterPaintMs": 31.8
-      },
-      {
-        "inPageMs": 26,
-        "domMs": 26.3,
-        "paintMs": 49.5,
-        "longestTaskMs": 13.3,
-        "longestTaskAfterPaintMs": 27.4
-      },
-      {
-        "inPageMs": 26,
-        "domMs": 26,
-        "paintMs": 49.2,
-        "longestTaskMs": 32.5,
-        "longestTaskAfterPaintMs": 41.6
-      },
-      {
-        "inPageMs": 23,
-        "domMs": 22.2,
-        "paintMs": 42.8,
-        "longestTaskMs": 11.3,
-        "longestTaskAfterPaintMs": 27.1
-      },
-      {
-        "inPageMs": 21,
-        "domMs": 21.3,
-        "paintMs": 36.9,
-        "longestTaskMs": 24.7,
-        "longestTaskAfterPaintMs": 39.2
-      },
-      {
-        "inPageMs": 21,
-        "domMs": 21.1,
-        "paintMs": 34.8,
-        "longestTaskMs": 10.5,
-        "longestTaskAfterPaintMs": 43.8
-      },
-      {
-        "inPageMs": 24,
-        "domMs": 24.2,
-        "paintMs": 46.5,
-        "longestTaskMs": 12.2,
-        "longestTaskAfterPaintMs": 43.9
-      },
-      {
-        "inPageMs": 28,
-        "domMs": 28.6,
-        "paintMs": 49.8,
-        "longestTaskMs": 24,
-        "longestTaskAfterPaintMs": 39
-      },
-      {
-        "inPageMs": 21,
-        "domMs": 21.2,
-        "paintMs": 37.3,
-        "longestTaskMs": 12.5,
-        "longestTaskAfterPaintMs": 40.3
-      },
-      {
-        "inPageMs": 30,
-        "domMs": 29.7,
-        "paintMs": 40,
-        "longestTaskMs": 7.5,
-        "longestTaskAfterPaintMs": 29.6
-      },
-      {
-        "inPageMs": 26,
-        "domMs": 26,
-        "paintMs": 49.9,
-        "longestTaskMs": 14.1,
-        "longestTaskAfterPaintMs": 22.4
-      },
-      {
-        "inPageMs": 25,
-        "domMs": 25.5,
-        "paintMs": 47.1,
-        "longestTaskMs": 16,
-        "longestTaskAfterPaintMs": 46.1
-      },
-      {
-        "inPageMs": 22,
-        "domMs": 22.3,
-        "paintMs": 40.5,
-        "longestTaskMs": 11.9,
-        "longestTaskAfterPaintMs": 44.1
-      },
-      {
-        "inPageMs": 24,
-        "domMs": 24.1,
-        "paintMs": 38.6,
-        "longestTaskMs": 11.9,
-        "longestTaskAfterPaintMs": 41
-      },
-      {
-        "inPageMs": 25,
-        "domMs": 25.1,
-        "paintMs": 35.3,
-        "longestTaskMs": 9.5,
-        "longestTaskAfterPaintMs": 43.8
-      },
-      {
-        "inPageMs": 33,
-        "domMs": 33.5,
-        "paintMs": 57.5,
-        "longestTaskMs": 14.7,
-        "longestTaskAfterPaintMs": 23.3
-      }
-    ],
-    "delete": [
-      {
-        "inPageMs": 28,
-        "domMs": 28.5,
-        "paintMs": 55.7,
-        "longestTaskMs": 15.3,
-        "longestTaskAfterPaintMs": 43.6
-      },
-      {
-        "inPageMs": 31,
-        "domMs": 31.6,
-        "paintMs": 55.1,
-        "longestTaskMs": 18.6,
-        "longestTaskAfterPaintMs": 24.3
+        "inPageMs": 20,
+        "domMs": 20.5,
+        "paintMs": 38.1,
+        "longestTaskMs": 10.4,
+        "longestTaskAfterPaintMs": 20
       },
       {
         "inPageMs": 21,
         "domMs": 20.8,
-        "paintMs": 40.4,
-        "longestTaskMs": 11.1,
-        "longestTaskAfterPaintMs": 41.9
+        "paintMs": 37.4,
+        "longestTaskMs": 26.9,
+        "longestTaskAfterPaintMs": 20.7
       },
       {
-        "inPageMs": 35,
-        "domMs": 34.9,
-        "paintMs": 68.4,
-        "longestTaskMs": 18.2,
-        "longestTaskAfterPaintMs": 35.3
-      },
-      {
-        "inPageMs": 26,
-        "domMs": 25.9,
-        "paintMs": 50.8,
-        "longestTaskMs": 15.7,
-        "longestTaskAfterPaintMs": 37.9
-      },
-      {
-        "inPageMs": 27,
-        "domMs": 27.1,
-        "paintMs": 51.1,
-        "longestTaskMs": 17.5,
-        "longestTaskAfterPaintMs": 33
-      },
-      {
-        "inPageMs": 27,
-        "domMs": 27,
-        "paintMs": 47.9,
-        "longestTaskMs": 14.1,
-        "longestTaskAfterPaintMs": 37.9
-      },
-      {
-        "inPageMs": 26,
-        "domMs": 25.9,
-        "paintMs": 44.7,
-        "longestTaskMs": 13.3,
-        "longestTaskAfterPaintMs": 29.8
-      },
-      {
-        "inPageMs": 22,
-        "domMs": 21.7,
-        "paintMs": 39.1,
-        "longestTaskMs": 11.2,
-        "longestTaskAfterPaintMs": 23.4
-      },
-      {
-        "inPageMs": 26,
-        "domMs": 26.4,
-        "paintMs": 52,
-        "longestTaskMs": 0,
+        "inPageMs": 20,
+        "domMs": 19.8,
+        "paintMs": 34.2,
+        "longestTaskMs": 24.6,
         "longestTaskAfterPaintMs": 40.7
       },
       {
-        "inPageMs": 23,
-        "domMs": 23,
-        "paintMs": 45.1,
-        "longestTaskMs": 11.6,
-        "longestTaskAfterPaintMs": 40.8
+        "inPageMs": 17,
+        "domMs": 17,
+        "paintMs": 24.8,
+        "longestTaskMs": 7,
+        "longestTaskAfterPaintMs": 30.1
       },
       {
-        "inPageMs": 24,
-        "domMs": 24.2,
-        "paintMs": 42.8,
-        "longestTaskMs": 14.6,
-        "longestTaskAfterPaintMs": 53.7
+        "inPageMs": 21,
+        "domMs": 20.8,
+        "paintMs": 39.1,
+        "longestTaskMs": 10.2,
+        "longestTaskAfterPaintMs": 39.1
       },
       {
-        "inPageMs": 23,
-        "domMs": 22.9,
-        "paintMs": 36,
-        "longestTaskMs": 28.5,
-        "longestTaskAfterPaintMs": 38.3
+        "inPageMs": 18,
+        "domMs": 18.8,
+        "paintMs": 35.3,
+        "longestTaskMs": 24.4,
+        "longestTaskAfterPaintMs": 40.9
       },
       {
-        "inPageMs": 30,
-        "domMs": 29.9,
-        "paintMs": 56,
-        "longestTaskMs": 14.6,
-        "longestTaskAfterPaintMs": 23.4
-      },
-      {
-        "inPageMs": 24,
-        "domMs": 23.1,
-        "paintMs": 43.4,
-        "longestTaskMs": 10.7,
-        "longestTaskAfterPaintMs": 28.1
-      },
-      {
-        "inPageMs": 25,
-        "domMs": 25,
-        "paintMs": 42.9,
-        "longestTaskMs": 10.7,
-        "longestTaskAfterPaintMs": 23.9
-      },
-      {
-        "inPageMs": 25,
-        "domMs": 25.1,
-        "paintMs": 42.8,
-        "longestTaskMs": 12.2,
-        "longestTaskAfterPaintMs": 42.6
+        "inPageMs": 18,
+        "domMs": 18.7,
+        "paintMs": 33.3,
+        "longestTaskMs": 10.2,
+        "longestTaskAfterPaintMs": 47.6
       },
       {
         "inPageMs": 36,
-        "domMs": 35.6,
-        "paintMs": 63.6,
-        "longestTaskMs": 21.2,
+        "domMs": 36.1,
+        "paintMs": 46.9,
+        "longestTaskMs": 8.7,
+        "longestTaskAfterPaintMs": 42.5
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 18.7,
+        "paintMs": 27.3,
+        "longestTaskMs": 7,
+        "longestTaskAfterPaintMs": 18.8
+      },
+      {
+        "inPageMs": 20,
+        "domMs": 20,
+        "paintMs": 38.1,
+        "longestTaskMs": 10.6,
+        "longestTaskAfterPaintMs": 44.8
+      },
+      {
+        "inPageMs": 22,
+        "domMs": 22,
+        "paintMs": 41.1,
+        "longestTaskMs": 12.4,
+        "longestTaskAfterPaintMs": 19.9
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 18.7,
+        "paintMs": 33.8,
+        "longestTaskMs": 10.5,
+        "longestTaskAfterPaintMs": 47.1
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 19.4,
+        "paintMs": 31.1,
+        "longestTaskMs": 9.5,
         "longestTaskAfterPaintMs": 33.2
       },
       {
-        "inPageMs": 25,
-        "domMs": 25.2,
-        "paintMs": 48.2,
-        "longestTaskMs": 12.4,
-        "longestTaskAfterPaintMs": 29.9
+        "inPageMs": 18,
+        "domMs": 17.6,
+        "paintMs": 26,
+        "longestTaskMs": 7.2,
+        "longestTaskAfterPaintMs": 19.1
       },
       {
-        "inPageMs": 27,
-        "domMs": 27.6,
-        "paintMs": 46.9,
+        "inPageMs": 18,
+        "domMs": 18.2,
+        "paintMs": 33.4,
+        "longestTaskMs": 10.2,
+        "longestTaskAfterPaintMs": 31.6
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 19.1,
+        "paintMs": 32.7,
+        "longestTaskMs": 9.6,
+        "longestTaskAfterPaintMs": 21.5
+      },
+      {
+        "inPageMs": 18,
+        "domMs": 17.9,
+        "paintMs": 30.3,
+        "longestTaskMs": 10.1,
+        "longestTaskAfterPaintMs": 23.4
+      },
+      {
+        "inPageMs": 17,
+        "domMs": 17,
+        "paintMs": 26.2,
+        "longestTaskMs": 7.6,
+        "longestTaskAfterPaintMs": 28
+      },
+      {
+        "inPageMs": 23,
+        "domMs": 23.2,
+        "paintMs": 40.5,
+        "longestTaskMs": 28,
+        "longestTaskAfterPaintMs": 40.8
+      }
+    ],
+    "delete": [
+      {
+        "inPageMs": 20,
+        "domMs": 20.2,
+        "paintMs": 44.3,
+        "longestTaskMs": 16,
+        "longestTaskAfterPaintMs": 20.9
+      },
+      {
+        "inPageMs": 37,
+        "domMs": 37.5,
+        "paintMs": 53.5,
+        "longestTaskMs": 10.1,
+        "longestTaskAfterPaintMs": 21.3
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 18.9,
+        "paintMs": 33.5,
+        "longestTaskMs": 24.6,
+        "longestTaskAfterPaintMs": 39.9
+      },
+      {
+        "inPageMs": 20,
+        "domMs": 19.5,
+        "paintMs": 39.7,
+        "longestTaskMs": 10.1,
+        "longestTaskAfterPaintMs": 39.9
+      },
+      {
+        "inPageMs": 38,
+        "domMs": 38,
+        "paintMs": 56.4,
+        "longestTaskMs": 10.1,
+        "longestTaskAfterPaintMs": 26.5
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 18.8,
+        "paintMs": 36.5,
         "longestTaskMs": 0,
-        "longestTaskAfterPaintMs": 25.3
+        "longestTaskAfterPaintMs": 34.9
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 18.4,
+        "paintMs": 34.6,
+        "longestTaskMs": 24.7,
+        "longestTaskAfterPaintMs": 18.7
+      },
+      {
+        "inPageMs": 18,
+        "domMs": 18.2,
+        "paintMs": 31.3,
+        "longestTaskMs": 9.1,
+        "longestTaskAfterPaintMs": 24.7
+      },
+      {
+        "inPageMs": 25,
+        "domMs": 24.5,
+        "paintMs": 44.9,
+        "longestTaskMs": 47.7,
+        "longestTaskAfterPaintMs": 26.9
+      },
+      {
+        "inPageMs": 20,
+        "domMs": 19.1,
+        "paintMs": 38.3,
+        "longestTaskMs": 10.3,
+        "longestTaskAfterPaintMs": 41.3
+      },
+      {
+        "inPageMs": 20,
+        "domMs": 20.1,
+        "paintMs": 58.1,
+        "longestTaskMs": 45.4,
+        "longestTaskAfterPaintMs": 28
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 19.2,
+        "paintMs": 35.8,
+        "longestTaskMs": 0,
+        "longestTaskAfterPaintMs": 37.7
+      },
+      {
+        "inPageMs": 18,
+        "domMs": 17.2,
+        "paintMs": 31,
+        "longestTaskMs": 9.6,
+        "longestTaskAfterPaintMs": 20.5
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 18.7,
+        "paintMs": 30.4,
+        "longestTaskMs": 8.9,
+        "longestTaskAfterPaintMs": 39.8
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 19.2,
+        "paintMs": 38.7,
+        "longestTaskMs": 10.5,
+        "longestTaskAfterPaintMs": 19.1
+      },
+      {
+        "inPageMs": 19,
+        "domMs": 19,
+        "paintMs": 35.5,
+        "longestTaskMs": 25.4,
+        "longestTaskAfterPaintMs": 23.2
+      },
+      {
+        "inPageMs": 20,
+        "domMs": 19.7,
+        "paintMs": 34.6,
+        "longestTaskMs": 0,
+        "longestTaskAfterPaintMs": 21.6
+      },
+      {
+        "inPageMs": 17,
+        "domMs": 17.1,
+        "paintMs": 29.2,
+        "longestTaskMs": 9.2,
+        "longestTaskAfterPaintMs": 18.4
+      },
+      {
+        "inPageMs": 20,
+        "domMs": 19.5,
+        "paintMs": 39.4,
+        "longestTaskMs": 28,
+        "longestTaskAfterPaintMs": 41.2
+      },
+      {
+        "inPageMs": 20,
+        "domMs": 19.4,
+        "paintMs": 37.8,
+        "longestTaskMs": 10.4,
+        "longestTaskAfterPaintMs": 42
       }
     ]
   }

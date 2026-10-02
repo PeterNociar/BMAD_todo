@@ -1,7 +1,7 @@
 # QA report: performance
 
-- **Date:** 2026-10-02 (runs at 11:46 and 11:49 UTC). Re-measured for story 3.10; the first figures (story 3.8, runs at 10:48 and 10:52 UTC) are kept under Issue 1.
-- **Commit measured:** the commit that lands story 3.10 (row motion within NFR-2, on top of `dfe918f`). The test stack was rebuilt from that tree. The only change that reaches the running app is the row slide: `animate:slideRow` (`frontend/src/lib/motion.ts`) in place of `animate:flip`.
+- **Date:** 2026-10-02 (runs at 13:10 and 13:12 UTC). Re-measured after the epic 3 retrospective (actions A1 and A2); the first figures (story 3.8, runs at 10:48 and 10:52 UTC) are kept under Issue 1.
+- **Commit measured:** the commit that adds this refresh, on top of `c6c4872`. The test stack was rebuilt from that tree. The only change that reaches the running app is in `slideRow` (`frontend/src/lib/motion.ts`): it now tests the viewport before reduced motion, so a row that stays off-screen never calls `matchMedia`. The spec's gate changed too (see Gate).
 - **Target build:** the compose `test` profile on `:8082`: the production Vite bundle behind nginx, FastAPI and Postgres 18, all local. Data: 500 tasks seeded through the AD-14 router.
 - **Machine:** Intel Core i9-10885H @ 2.40 GHz (16 logical cores), 63 GiB RAM, Linux. Google Chrome 154.0.8037.57 (Playwright `channel: 'chrome'`, reported as `chromium 154.0.8037.57`), headless, 1280×800, no CPU or network throttling.
 - **Tooling:** Playwright plus the Chrome DevTools Protocol (a CDP session: `Tracing`, `Performance.getMetrics`, Network timing). Lighthouse was not used (user decision, 2026-10-02).
@@ -20,7 +20,7 @@ The spec is `e2e/qa/perf.spec.ts`. It runs the whole check twice, once with defa
 - `docs/qa-artifacts/perf-results.json` and `docs/qa-artifacts/perf-results-reduced-motion.json` are **committed**. They hold every figure below and each raw sample.
 - `docs/qa-artifacts/perf-tick-trace*.json` (the last kept tick) and `perf-load-trace*.json` (the last kept load) are gitignored, at 1–4 MB each. Open them in DevTools › Performance › Load profile.
 
-The run: `40 passed (6.1m)`, with no expected failures. That is 36 accessibility cells, 2 measurement tests, and 2 feedback gates.
+The run: `38 passed (5.8m)`, with no expected failures. That is 36 accessibility cells and 2 measurement tests, one per motion setting.
 
 ## Setup (in the spec's order)
 
@@ -72,49 +72,49 @@ NFR-2: feedback within 100 ms for every action; API under 300 ms locally; with 5
 
 | NFR-2 target                 | Measure                           | n   | p50 (ms) | p95 (ms) | max (ms) | Target | Result   |
 | ---------------------------- | --------------------------------- | --- | -------- | -------- | -------- | ------ | -------- |
-| API < 300 ms                 | `GET /api/tasks` (500 tasks)      | 25  | 23.3     | 37.7     | 42.2     | 300    | **pass** |
-|                              | `POST /api/tasks`                 | 25  | 11.1     | 21.0     | 27.8     | 300    | **pass** |
-|                              | `PUT /api/tasks/{id}/tick`        | 25  | 12.0     | 15.1     | 16.7     | 300    | **pass** |
-|                              | `PUT /api/tasks/{id}/untick`      | 25  | 11.6     | 18.7     | 20.7     | 300    | **pass** |
-|                              | `DELETE /api/tasks/{id}`          | 25  | 9.4      | 13.0     | 17.8     | 300    | **pass** |
-| 500 rows render < 200 ms     | `GET` resolved → 500 rows painted | 20  | 139.6    | 164.4    | 167.4    | 200    | **pass** |
-| Feedback < 100 ms (500 rows) | Enter → held row painted          | 20  | 76.4     | 94.5     | 95.5     | 100    | **pass** |
-|                              | tick click → row painted as done  | 20  | 47.7     | 62.7     | 63.5     | 100    | **pass** |
-|                              | delete click → row gone, painted  | 20  | 54.4     | 74.3     | 93.7     | 100    | **pass** |
+| API < 300 ms                 | `GET /api/tasks` (500 tasks)      | 25  | 21.2     | 40.8     | 41.8     | 300    | **pass** |
+|                              | `POST /api/tasks`                 | 25  | 10.5     | 19.8     | 22.4     | 300    | **pass** |
+|                              | `PUT /api/tasks/{id}/tick`        | 25  | 11.5     | 13.4     | 16.3     | 300    | **pass** |
+|                              | `PUT /api/tasks/{id}/untick`      | 25  | 10.8     | 13.0     | 13.0     | 300    | **pass** |
+|                              | `DELETE /api/tasks/{id}`          | 25  | 8.3      | 10.7     | 11.1     | 300    | **pass** |
+| 500 rows render < 200 ms     | `GET` resolved → 500 rows painted | 20  | 125.1    | 190.7    | 201.1    | 200    | **pass** |
+| Feedback < 100 ms (500 rows) | Enter → held row painted          | 20  | 60.8     | 79.0     | 92.6     | 100    | **pass** |
+|                              | tick click → row painted as done  | 20  | 39.0     | 56.3     | 59.6     | 100    | **pass** |
+|                              | delete click → row gone, painted  | 20  | 40.3     | 55.9     | 61.1     | 100    | **pass** |
 
 Supporting figures from the same run (p50 / p95):
 
 | Measure                                        | Render        | Enter       | Tick        | Delete      |
 | ---------------------------------------------- | ------------- | ----------- | ----------- | ----------- |
-| Start → change in the DOM and laid out (trace) | 113.9 / 131.3 | 45.8 / 56.7 | 24.4 / 32.2 | 25.8 / 42.4 |
-| The same, in-page                              | 114 / 131     | 46 / 57     | 25 / 32     | 26 / 42     |
-| Longest task in the span                       | 108.8 / 130.4 | 36.4 / 51.1 | 17.4 / 28.8 | 18.4 / 39.9 |
-| Longest task after paint                       | 103.7 / 180.9 | 38.7 / 43.8 | 40.1 / 55.6 | 38.3 / 41.1 |
+| Start → change in the DOM and laid out (trace) | 106.0 / 169.0 | 38.4 / 54.7 | 20.1 / 33.6 | 19.4 / 26.6 |
+| The same, in-page                              | 106 / 169     | 39 / 54     | 20 / 33     | 19 / 27     |
+| Longest task in the span                       | 99.5 / 167.8  | 28.6 / 34.1 | 14.9 / 34.1 | 14.5 / 27.5 |
+| Longest task after paint                       | 91.4 / 136.7  | 30.1 / 41.8 | 31.4 / 42.8 | 31.4 / 39.4 |
 
 ### Reduced motion (`prefers-reduced-motion: reduce`, same spec)
 
 | NFR-2 target             | Measure                           | n   | p50 (ms) | p95 (ms) | max (ms) | Target | Result   |
 | ------------------------ | --------------------------------- | --- | -------- | -------- | -------- | ------ | -------- |
-| API < 300 ms             | `GET`                             | 25  | 20.1     | 33.2     | 34.2     | 300    | **pass** |
-|                          | `POST`                            | 25  | 9.6      | 12.1     | 18.7     | 300    | **pass** |
-|                          | `PUT tick`                        | 25  | 10.7     | 13.0     | 27.7     | 300    | **pass** |
-|                          | `PUT untick`                      | 25  | 10.2     | 11.4     | 11.8     | 300    | **pass** |
-|                          | `DELETE`                          | 25  | 8.5      | 12.4     | 16.3     | 300    | **pass** |
-| 500 rows render < 200 ms | `GET` resolved → 500 rows painted | 20  | 142.0    | 180.2    | 253.2    | 200    | **pass** |
-| Feedback < 100 ms        | Enter → held row painted          | 20  | 70.9     | 87.7     | 96.0     | 100    | **pass** |
-|                          | tick → row painted as done        | 20  | 42.8     | 57.5     | 57.7     | 100    | **pass** |
-|                          | delete → row gone, painted        | 20  | 46.9     | 63.6     | 68.4     | 100    | **pass** |
+| API < 300 ms             | `GET`                             | 25  | 19.4     | 35.1     | 36.2     | 300    | **pass** |
+|                          | `POST`                            | 25  | 10.4     | 12.7     | 18.7     | 300    | **pass** |
+|                          | `PUT tick`                        | 25  | 10.4     | 13.5     | 20.8     | 300    | **pass** |
+|                          | `PUT untick`                      | 25  | 10.6     | 14.3     | 30.1     | 300    | **pass** |
+|                          | `DELETE`                          | 25  | 9.1      | 10.7     | 11.8     | 300    | **pass** |
+| 500 rows render < 200 ms | `GET` resolved → 500 rows painted | 20  | 124.1    | 158.9    | 159.5    | 200    | **pass** |
+| Feedback < 100 ms        | Enter → held row painted          | 20  | 59.7     | 87.4     | 98.5     | 100    | **pass** |
+|                          | tick → row painted as done        | 20  | 33.4     | 41.1     | 46.9     | 100    | **pass** |
+|                          | delete → row gone, painted        | 20  | 36.5     | 56.4     | 58.1     | 100    | **pass** |
 
 The longest tasks with reduced motion, p50 / p95:
 
 | Window      | Add            | Tick           | Delete         |
 | ----------- | -------------- | -------------- | -------------- |
-| In the span | 29.0 / 38.7 ms | 12.4 / 24.7 ms | 13.3 / 21.2 ms |
-| After paint | 29.9 / 65.6 ms | 39.0 / 46.1 ms | 33.2 / 43.6 ms |
+| In the span | 22.8 / 29.7 ms | 10.2 / 26.9 ms | 10.1 / 45.4 ms |
+| After paint | 38.0 / 42.9 ms | 30.1 / 47.1 ms | 26.5 / 41.3 ms |
 
 ### Gate
 
-`npm run qa` fails if any NFR-2 target regresses. The measurement test asserts that every API p95 is under 300 ms and the 500-row render p95 is under 200 ms, in both runs. A second test, "NFR-2 feedback under 100 ms with 500 rows", checks the three feedback p95s against 100 ms. It is a plain test under both motion settings. Under default motion it was marked `test.fail()` until story 3.10 fixed issue 1; the mark is gone, and the test passes. The gate is measured on this machine, and Enter's p95 clears 100 ms by only about 5.5 ms (94.5 ms), so a slower or throttled machine can fail it without a code change.
+`npm run qa` fails if any NFR-2 target regresses. All the asserts sit at the end of the measurement test, one per motion setting, and check that run's own samples in memory; nothing is read from disk. Every API p95 must be under 300 ms, the 500-row render p95 under 200 ms, and the three feedback p95s under 100 ms. The asserts are `expect.soft`, so one run reports every NFR-2 miss rather than stopping at the first. Until this refresh, the feedback p95s were checked by a separate test that read the committed `perf-results*.json`, so run alone it could pass on stale figures (retrospective findings F11 and F24); that test is gone. The gate is measured on this machine. The thinnest feedback margin is Enter under reduced motion: p95 87.4 ms (max 98.5 ms), about 13 ms under 100 ms; with default motion Enter is 79.0 ms. The default-motion render p95 clears 200 ms by only about 9 ms (190.7 ms), so a slower or throttled machine can fail it without a code change.
 
 ### CDP `Performance.getMetrics`
 
@@ -122,10 +122,10 @@ Snapshots taken right before the first feedback sample and right after the last,
 
 | Metric             | Default: before | Default: after | Reduced motion: before | Reduced motion: after |
 | ------------------ | --------------- | -------------- | ---------------------- | --------------------- |
-| `JSHeapUsedSize`   | 69.9 MB         | 23.0 MB        | 42.3 MB                | 64.2 MB               |
-| `LayoutCount`      | 2               | 1,407          | 2                      | 315                   |
-| `RecalcStyleCount` | 7               | 2,781          | 8                      | 532                   |
-| `ScriptDuration`   | 0.07 s          | 3.39 s         | 0.06 s                 | 3.03 s                |
+| `JSHeapUsedSize`   | 47.3 MB         | 38.2 MB        | 61.6 MB                | 23.8 MB               |
+| `LayoutCount`      | 2               | 1,388          | 2                      | 315                   |
+| `RecalcStyleCount` | 7               | 2,738          | 7                      | 530                   |
+| `ScriptDuration`   | 0.05 s          | 2.70 s         | 0.05 s                 | 2.29 s                |
 
 Loading the 500-row list took 2 layouts and 7–8 style recalculations.
 
@@ -133,13 +133,13 @@ Loading the 500-row list took 2 layouts and 7–8 style recalculations.
 
 ### 1. Action feedback missed NFR-2 with 500 rows under default motion (fixed in story 3.10)
 
-**Before and after.** Default motion, 500 rows, p50 / p95 / max from input to paint. Before is story 3.8 (runs at 10:48 and 10:52 UTC); after is this run:
+**Before and after.** Default motion, 500 rows, p50 / p95 / max from input to paint. Before is story 3.8 (runs at 10:48 and 10:52 UTC); after is this run, which supersedes the first after-fix figures from story 3.10:
 
 | Action | Before (ms)           | After (ms)         |
 | ------ | --------------------- | ------------------ |
-| Enter  | 179.7 / 201.8 / 216.8 | 76.4 / 94.5 / 95.5 |
-| Tick   | 75.4 / 118.8 / 132.7  | 47.7 / 62.7 / 63.5 |
-| Delete | 109.8 / 168.4 / 189.0 | 54.4 / 74.3 / 93.7 |
+| Enter  | 179.7 / 201.8 / 216.8 | 60.8 / 79.0 / 92.6 |
+| Tick   | 75.4 / 118.8 / 132.7  | 39.0 / 56.3 / 59.6 |
+| Delete | 109.8 / 168.4 / 189.0 | 40.3 / 55.9 / 61.1 |
 
 Before the fix:
 
@@ -153,15 +153,15 @@ Before the fix:
 
 **Fix.** Only rows a person can see slide. `slideRow` in `frontend/src/lib/motion.ts` returns `{ duration: 0 }`, so neither `flip` nor `element.animate()` runs, for a row whose old and new boxes are both outside the viewport (visible means `bottom > 0 && top < innerHeight`). Rows on screen, including one sliding into or out of view, keep the 200 ms ease-out slide, and reduced motion stays instant. At 1280×800 that is about 20 animated rows per action instead of a few hundred.
 
-**After (this run).** Every feedback p95 is under 100 ms (table above). Over 62 actions Chrome ran 1,405 layouts and 2,774 style recalculations, about 23 and 45 per action, against about 5 and 8 per action with reduced motion (313 and 524 over 62 actions). The longest task after paint fell from 438 / 167 / 271 ms to 39 / 40 / 38 ms at the median. Enter has the least margin: p95 94.5 ms, max 95.5 ms. The E2E `rows.spec.ts` › "motion: only rows on screen slide" pins the rule, and the default-motion feedback gate is now a plain test.
+**After (this run).** Every feedback p95 is under 100 ms (table above). Over 62 actions Chrome ran 1,386 layouts and 2,731 style recalculations, about 22 and 44 per action, against about 5 and 8 per action with reduced motion (313 and 523 over 62 actions). The longest task after paint fell from 438 / 167 / 271 ms to 30 / 31 / 31 ms at the median. Enter has the least margin: p95 79.0 ms, max 92.6 ms. The E2E `rows.spec.ts` › "motion: only rows on screen slide" pins the rule, and `motion.test.ts` pins that a row which stays off-screen never queries the motion setting.
 
 ### 2. First render passes, with some margin (observation)
 
-From `GET` resolved to 500 rows painted takes 140 / 164 ms (p50 / p95) with default motion, and 142 / 180 ms with reduced motion, where one sample reached 253 ms (the maximum, not the p95). Both include the body download and JSON parse. One main-thread task builds and lays out all 500 rows, 91–213 ms of it. A slower machine, or CPU throttling, could miss the 200 ms target. This build was not measured under throttling.
+From `GET` resolved to 500 rows painted takes 125 / 191 ms (p50 / p95) with default motion, and 124 / 159 ms with reduced motion. The default-motion p95 is within about 9 ms of the 200 ms target, and one sample reached 201 ms (the maximum, not the p95). Both include the body download and JSON parse. One main-thread task builds and lays out all 500 rows, 91–172 ms of it. A slower machine, or CPU throttling, could miss the 200 ms target. This build was not measured under throttling.
 
 ### 3. Heap figures vary between runs (no finding)
 
-The JS heap snapshots move in both directions between runs. In story 3.8's runs the default-motion heap once rose from 23 to 46 MB over the feedback samples and once fell from 30.0 to 23.9 MB; in this run it fell from 69.9 to 23.0 MB, while the reduced-motion heap rose from 42.3 to 64.2 MB. No forced GC or heap snapshot was taken, so these numbers show when garbage collection happened, not a leak. A heap snapshot would be needed to say more.
+The JS heap snapshots move in both directions between runs. In story 3.8's runs the default-motion heap once rose from 23 to 46 MB over the feedback samples and once fell from 30.0 to 23.9 MB; in story 3.10's run it fell from 69.9 to 23.0 MB, while the reduced-motion heap rose from 42.3 to 64.2 MB. In this run both fell: from 47.3 to 38.2 MB with default motion, and from 61.6 to 23.8 MB with reduced motion. No forced GC or heap snapshot was taken, so these numbers show when garbage collection happened, not a leak. A heap snapshot would be needed to say more.
 
 ## Not measured
 

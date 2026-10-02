@@ -27,7 +27,8 @@ export function slideRow(
   node: Element,
   { from, to }: { from: DOMRect; to: DOMRect },
 ): AnimationConfig {
-  if (prefersReducedMotion()) return { duration: 0 }
+  // The viewport test first: most moved rows are off-screen, and it is cheaper than matchMedia.
   if (!onScreen(from) && !onScreen(to)) return { duration: 0 }
+  if (prefersReducedMotion()) return { duration: 0 }
   return flip(node, { from, to }, { duration: SLIDE_MS, easing: cubicOut })
 }

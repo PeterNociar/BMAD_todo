@@ -89,6 +89,16 @@ describe('slideRow', () => {
     expect(computedStyle).not.toHaveBeenCalled()
   })
 
+  it('never queries the motion setting for a row that stays off-screen', () => {
+    const query = vi.fn(() => ({ matches: false }))
+    vi.stubGlobal('matchMedia', query)
+
+    slideRow(node, { from: box(VIEWPORT + 200), to: box(VIEWPORT + 248) })
+    slideRow(node, { from: box(-500), to: box(-452) })
+
+    expect(query).not.toHaveBeenCalled()
+  })
+
   it('treats the viewport edges as outside (bottom 0, top innerHeight)', () => {
     expect(slideRow(node, { from: box(-48), to: box(-96) })).toEqual({ duration: 0 })
     expect(slideRow(node, { from: box(VIEWPORT), to: box(VIEWPORT + 48) })).toEqual({
