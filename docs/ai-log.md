@@ -943,6 +943,7 @@ The author didn't record exact timings.
 - Done when 2 was checked with a simulated remote task, not a real second device; the device run in 3.3 covers the real path.
 
 **Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 23 findings: 2 medium, 19 low, 2 false. Twelve were patched, none were deferred, and the rest were rejected with evidence.
+
 - A missing `/assets/` file's 404 was being stamped `immutable` for a year. That `Cache-Control` line no longer uses `always`, and the static test and E2E now pin the 404.
 - `check-infra.sh`:
   - restores only the services it started (`db` included);
