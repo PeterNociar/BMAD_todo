@@ -12,7 +12,9 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json && tsc -p tsconfig.tests.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check . && npm run docs:format:check",
+    "docs:format": "prettier --config .prettierrc --write ../docs",
+    "docs:format:check": "prettier --config .prettierrc --check ../docs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
