@@ -3,7 +3,7 @@ title: 'The task store: confirmed state and op queues'
 type: 'feature'
 ticket: '8'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: 'e91a474f2d941a4273827024dd47fa88cf35734e'
 route: 'full'
 route_source: 'auto'

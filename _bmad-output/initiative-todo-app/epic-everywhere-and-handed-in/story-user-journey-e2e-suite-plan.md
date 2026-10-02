@@ -3,7 +3,7 @@ title: 'User-journey E2E suite'
 type: 'feature'
 ticket: '7'
 created: '2026-10-02'
-status: 'built'
+status: done
 baseline_revision: 'a63179ad4e4fe1a32c62fb0c63434cc169c6b0b3'
 route: 'full'
 route_source: 'auto'

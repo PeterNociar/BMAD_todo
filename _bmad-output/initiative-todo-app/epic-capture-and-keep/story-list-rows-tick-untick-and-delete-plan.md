@@ -3,7 +3,7 @@ title: 'List rows: tick, untick and delete'
 type: 'feature'
 ticket: '10'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '6af555cfea5a562003810104b97ed84c97b2089f'
 route: 'full'
 route_source: 'auto'

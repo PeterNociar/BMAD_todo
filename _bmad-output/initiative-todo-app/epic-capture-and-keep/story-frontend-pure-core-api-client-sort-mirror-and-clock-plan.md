@@ -3,7 +3,7 @@ title: 'Frontend pure core: api client, sort mirror and clock'
 type: 'feature'
 ticket: '6'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '0c45d2aae00b2c2e350053cf151b3c9a680e5605'
 route: 'full'
 route_source: 'auto'

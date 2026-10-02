@@ -3,7 +3,7 @@ title: 'Refactor sweep (epic-everywhere-and-handed-in)'
 type: 'chore'
 ticket: '6'
 created: '2026-10-02'
-status: 'built'
+status: done
 baseline_revision: 'da5ca39769816ed3b3ec813664c9a7f0289490df'
 route: 'full'
 route_source: 'auto'

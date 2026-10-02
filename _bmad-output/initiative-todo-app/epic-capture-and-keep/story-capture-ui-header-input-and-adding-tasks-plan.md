@@ -3,7 +3,7 @@ title: 'Capture UI: header, input and adding tasks'
 type: 'feature'
 ticket: '9'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '43d662e0e097b868f485952283303b2aced8edcf'
 route: 'full'
 route_source: 'auto'

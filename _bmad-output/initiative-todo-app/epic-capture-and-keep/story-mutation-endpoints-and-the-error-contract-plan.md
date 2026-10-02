@@ -3,7 +3,7 @@ title: 'Mutation endpoints and the error contract'
 type: 'feature'
 ticket: '3'
 created: '2026-09-30'
-status: 'built'
+status: done
 baseline_revision: '184324d759b16606494dccd6cfe66359922df884'
 route: 'full'
 route_source: 'auto'

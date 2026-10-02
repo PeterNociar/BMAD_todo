@@ -3,7 +3,7 @@ title: 'Dark theme and pre-paint theme script'
 type: 'feature'
 ticket: '4'
 created: '2026-10-02'
-status: 'built'
+status: done
 baseline_revision: 'd30b06c0e84b584660de4875234d4b8530bf09fe'
 route: 'full'
 route_source: 'auto'

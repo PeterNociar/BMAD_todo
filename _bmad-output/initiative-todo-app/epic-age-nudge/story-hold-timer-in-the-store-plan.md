@@ -3,7 +3,7 @@ title: 'Hold timer in the store'
 type: 'feature'
 ticket: '4'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '0c0b1a4a2c10d574622946dd075f20457a86db74'
 route: 'oneshot'
 route_source: 'auto'

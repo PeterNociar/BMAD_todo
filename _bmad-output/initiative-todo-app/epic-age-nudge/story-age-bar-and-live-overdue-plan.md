@@ -3,7 +3,7 @@ title: 'Age bar and live overdue'
 type: 'feature'
 ticket: '3'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: 'c13749a2d1dc7d422085e349ba8b757ff1c1feed'
 route: 'full'
 route_source: 'auto'

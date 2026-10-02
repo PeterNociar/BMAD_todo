@@ -3,7 +3,7 @@ title: 'Age label on every row'
 type: 'feature'
 ticket: '1'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '1c9382b17539fe8712f23021d97e03316574d036'
 route: 'full'
 route_source: 'auto'

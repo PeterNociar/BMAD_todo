@@ -3,7 +3,7 @@ title: 'Age colour function for light and dark'
 type: 'feature'
 ticket: '2'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '9003529130f33f63b7a4c2153361fc8afe317d2b'
 route: 'full'
 route_source: 'auto'

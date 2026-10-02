@@ -3,7 +3,7 @@ title: 'Theme toggle'
 type: 'feature'
 ticket: '5'
 created: '2026-10-02'
-status: 'built'
+status: done
 baseline_revision: '751fbf57383a4de9f19b25f7b8b2bf7fc5415dc3'
 route: 'full'
 route_source: 'auto'

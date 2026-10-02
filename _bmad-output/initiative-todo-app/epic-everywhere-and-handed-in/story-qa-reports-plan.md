@@ -3,7 +3,7 @@ title: 'QA reports'
 type: 'chore'
 ticket: '8'
 created: '2026-10-02'
-status: 'built'
+status: done
 baseline_revision: 'a1953b822a08593ca2116832c14065afe2d34960'
 route: 'full'
 route_source: 'auto'

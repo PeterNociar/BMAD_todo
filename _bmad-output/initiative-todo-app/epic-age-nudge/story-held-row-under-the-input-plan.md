@@ -3,7 +3,7 @@ title: 'Held row under the input'
 type: 'feature'
 ticket: '5'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '5e278965b17fbd7484ee61dd9d8a370389e6d3fe'
 route: 'full'
 route_source: 'auto'

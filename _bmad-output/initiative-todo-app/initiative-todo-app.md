@@ -6,6 +6,7 @@ covers: [CAP-1, CAP-2, CAP-3, CAP-4, CAP-5, CAP-6, CAP-7, CAP-8, CAP-9, CAP-10, 
 after: []
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Todo App v1: a personal list that nudges neglected tasks

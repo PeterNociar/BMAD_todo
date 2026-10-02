@@ -6,6 +6,7 @@ covers: [CAP-4, CAP-2]
 after: []
 assignee: ""
 risk: medium
+status: done
 ---
 
 # The age nudge
@@ -52,3 +53,4 @@ This epic covers the age cue and the new-task hold on top of epic 1's store and 
 - Decision: the tracer bullet is entry 1, from the age label through the row to E2E. It doesn't touch the store, which only the hold lane (4 → 5) uses; that lane runs beside entries 1–3 (2026-10-01).
 - Decision: entry 2, the colour function, follows the tracer as the least certain piece. Entry 5 waits for entry 3, because they share the row edge and the specs (2026-10-01).
 
+- Decision: epic closed as done after the closure check (2026-10-02). All 6 entries are done and every Done-when item is met. Since epic 3, the age colour follows the resolved theme (`TaskRow.svelte` passes `theme.current`), which replaces the light-only interim noted above (user, 2026-10-02).

@@ -3,7 +3,7 @@ title: 'Task model, ordering and the shared ordering fixtures'
 type: 'feature'
 ticket: '2'
 created: '2026-09-30'
-status: 'built'
+status: done
 baseline_revision: '518dd2f83422701d443ae0cae52df450e127287f'
 route: 'full'
 route_source: 'auto'

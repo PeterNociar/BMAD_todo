@@ -3,7 +3,7 @@ title: 'Store sync: sequence merge, tombstones and recovery GET'
 type: 'feature'
 ticket: '12'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: 'a12c6950081894110cbfa63342a97ff44933784a'
 route: 'full'
 route_source: 'auto'

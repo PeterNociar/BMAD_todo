@@ -3,7 +3,7 @@ title: 'Hand-in documentation'
 type: 'chore'
 ticket: '9'
 created: '2026-10-02'
-status: 'built'
+status: done
 baseline_revision: '7ae9b391c70bf4477b4337858996cc4eba8e98ac'
 route: 'full'
 route_source: 'auto'
