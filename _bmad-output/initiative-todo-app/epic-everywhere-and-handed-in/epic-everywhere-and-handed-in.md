@@ -6,6 +6,7 @@ covers: [CAP-9, CAP-10, CAP-11]
 after: []
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Everywhere, and handed in
@@ -58,3 +59,4 @@ This epic covers sync, resilience, the theme and the hand-in, on top of epics 1 
 - Decision: font preload (deferred from 1.9) is part of entry 4's theme work; the performance report is scripted by the agent through the Chrome DevTools Protocol, on the test profile seeded with 500 tasks; Tailscale is its own hitl story after sync (2026-10-01).
 - Decision: the tracer bullet is entry 1 (load failure, from the store through the toast and App to E2E). The store lane (1 → 2 → 3) runs beside the theme lane (4 → 5); the reports and hand-in docs follow the sweep and the journey suite, because they audit the finished app (2026-10-01).
 - Decision: entry 8 measured an NFR-2 miss (action feedback with 500 rows under default motion, caused by the row FLIP animation). It is fixed before the hand-in by entry 10, which entry 9 now waits on (user, 2026-10-02).
+- Decision: epic closed as done (2026-10-02). All 10 entries are done. The retrospective (`epic-everywhere-and-handed-in-retrospective.md`) verified every Done-when item, with the verdict accepted-with-open-items confirmed by the user. Retro actions A1 and A2 shipped in #34; the rest stay tracked in the retro (user, 2026-10-02).

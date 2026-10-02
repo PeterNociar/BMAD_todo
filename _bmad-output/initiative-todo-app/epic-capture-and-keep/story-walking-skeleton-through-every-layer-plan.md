@@ -3,7 +3,7 @@ title: 'Walking skeleton through every layer'
 type: 'feature'
 ticket: '1'
 created: '2026-09-30'
-status: 'built'
+status: done
 baseline_revision: 'ef37c720358be45dddb47564b717f2964f150371'
 route: 'full'
 route_source: 'auto'

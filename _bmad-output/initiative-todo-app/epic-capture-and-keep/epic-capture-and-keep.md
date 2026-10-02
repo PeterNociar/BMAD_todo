@@ -6,6 +6,7 @@ covers: [CAP-1, CAP-3, CAP-5, CAP-6, CAP-7, CAP-8, CAP-12]
 after: []
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Capture and keep tasks
@@ -61,3 +62,4 @@ This epic owns the platform baseline, the backend, and the frontend store and li
 - Touch point: `docs/ai-log.md`. Created here, and appended to as each story is built.
 
 - Unknown: whether Vitest 5 works with @testing-library/svelte 5.4. The scaffold story spikes it, with Vitest 4.1 as the fallback (spine Stack).
+- Decision: epic closed as done after the closure check (2026-10-02). All 12 entries are done and every Done-when item is met. The user accepted manual evidence for Done when 3 (tasks survive `docker compose down`/`up`: ticket 1.10, and the 3.9 clean-clone run) and inferred evidence for CAP-7's "survives a browser restart" (server-side storage plus the reload E2E tests; no dedicated test) (user, 2026-10-02).

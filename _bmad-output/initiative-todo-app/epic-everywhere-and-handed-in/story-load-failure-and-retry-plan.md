@@ -3,7 +3,7 @@ title: 'Load failure and Retry'
 type: 'feature'
 ticket: '1'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '12bb0d7990386b4fc0f4ec9c76e3d804ac8d60dc'
 route: 'full'
 route_source: 'auto'

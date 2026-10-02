@@ -3,7 +3,7 @@ title: 'Row motion within NFR-2 at 500 rows'
 type: 'bugfix'
 ticket: '10'
 created: '2026-10-02'
-status: 'built'
+status: done
 baseline_revision: 'dfe918f710956b4064fb6eb5c4dcf3a8bd1d80a9'
 route: 'full'
 route_source: 'auto'

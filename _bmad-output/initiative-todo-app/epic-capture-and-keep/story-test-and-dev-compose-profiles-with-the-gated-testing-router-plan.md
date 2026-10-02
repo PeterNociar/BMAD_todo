@@ -3,7 +3,7 @@ title: 'Test and dev compose profiles with the gated testing router'
 type: 'feature'
 ticket: '4'
 created: '2026-09-30'
-status: 'built'
+status: done
 baseline_revision: '9cedf8d52dabbf5805b24dac765800773c7458a6'
 route: 'full'
 route_source: 'auto'

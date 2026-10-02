@@ -3,7 +3,7 @@ title: 'Toasts, live regions and focus modules'
 type: 'feature'
 ticket: '7'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '3695b1d7544b01642c97227c51a14b513eb29e32'
 route: 'full'
 route_source: 'auto'

@@ -3,7 +3,7 @@ title: 'Background polling'
 type: 'feature'
 ticket: '2'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: '5eb9101117688e32a243398a0d0aeaf9391d703d'
 route: 'full'
 route_source: 'auto'

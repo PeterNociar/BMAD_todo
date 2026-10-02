@@ -3,7 +3,7 @@ title: 'E2E harness against the test profile'
 type: 'feature'
 ticket: '5'
 created: '2026-09-30'
-status: 'built'
+status: done
 baseline_revision: '7e465776890dda273e64e314d37fae0794d6b7d0'
 route: 'full'
 route_source: 'auto'

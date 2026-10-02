@@ -3,7 +3,7 @@ title: 'Phone access over Tailscale'
 type: 'chore'
 ticket: '3'
 created: '2026-10-01'
-status: 'built'
+status: done
 baseline_revision: 'b1a1dfc8d2f6a6c4a87b927bd1d15848d916514f'
 route: 'oneshot'
 route_source: 'auto'
