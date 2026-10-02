@@ -2,9 +2,10 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { svelteTesting } from '@testing-library/svelte/vite'
 import { defineConfig } from 'vite'
+import { preloadFonts } from './vite-plugins/preload-fonts.ts'
 
 export default defineConfig({
-  plugins: [svelte(), svelteTesting()],
+  plugins: [svelte(), svelteTesting(), preloadFonts()],
   build: {
     // The CSP is `default-src 'self'` (AD-19): small font subsets inlined as `data:` URIs
     // would be blocked, so every asset ships as its own file.

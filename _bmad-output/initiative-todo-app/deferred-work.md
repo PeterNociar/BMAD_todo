@@ -55,3 +55,6 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-age-nudge/story-refactor-sweep-plan.md`
   summary: `rows.spec.ts` "motion: tick slides the rows for about 200 ms" (from 1.10) failed once in a full E2E run under load, then passed 10 of 10 in isolation and 75 of 75 in a second full run.
   evidence: Likely timing: it samples `getAnimations()` 40 ms after a click, so a busy runner can miss the flip. Raise the sample window, or poll until an animation appears. Low; seen during 2.6 verification.
+- source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-dark-theme-and-pre-paint-theme-script-plan.md`
+  summary: `public/theme-init.js` is a render-blocking script at a fixed, unhashed URL, and nginx sends no `Cache-Control` for it, so after a change a browser may run a heuristically cached old copy.
+  evidence: `frontend/nginx/default.conf.template` sets no cache headers. Add `Cache-Control: no-cache` for `/theme-init.js` (and `immutable` for the hashed `/assets/`); fits the performance report in entry 8 or the sweep in entry 6. Low until the script changes.

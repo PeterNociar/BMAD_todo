@@ -3,6 +3,7 @@ import { tick } from 'svelte'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ageColour } from '../lib/age'
 import { clock } from '../lib/clock.svelte'
+import { theme } from '../lib/theme.svelte'
 import type { Row } from '../lib/tasks.svelte'
 import TaskRow from './TaskRow.svelte'
 
@@ -233,6 +234,43 @@ describe('TaskRow: age bar', () => {
 
     expect(colour(container)).toBe('#8F7506') // DESIGN age-12h
     expect(colour(container)).toBe(ageColour(row().added_at, NOW, false, 'light'))
+  })
+
+  describe('under the dark theme', () => {
+    afterEach(() => {
+      // Pins a stored light choice (the module singleton can't be unset); light is also what
+      // jsdom, with no matchMedia, resolves to, so the light tests are unaffected.
+      theme.set('light')
+      delete document.documentElement.dataset.theme
+      localStorage.clear()
+    })
+
+    it('sets --age-colour to the dark ageColour of added_at', () => {
+      theme.set('dark')
+      const { container } = render(TaskRow, { row: row() })
+
+      expect(colour(container)).toBe(ageColour(row().added_at, NOW, false, 'dark'))
+      expect(colour(container)).not.toBe(ageColour(row().added_at, NOW, false, 'light'))
+    })
+
+    it('recolours an open row when the theme changes', async () => {
+      const { container } = render(TaskRow, { row: row() })
+      expect(colour(container)).toBe('#8F7506') // DESIGN age-12h
+
+      theme.set('dark')
+      await tick()
+
+      expect(colour(container)).toBe(ageColour(row().added_at, NOW, false, 'dark'))
+    })
+
+    it('uses the dark overdue stop at 24 h', async () => {
+      theme.set('dark')
+      vi.setSystemTime(NOW + 12 * HOUR)
+      clock.sample()
+      const { container } = render(TaskRow, { row: row() })
+
+      expect(colour(container)).toBe('#EA6A64') // DESIGN age-24h-dark
+    })
   })
 
   it('the only declaration on the bar is --age-colour', () => {
