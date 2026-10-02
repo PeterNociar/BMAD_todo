@@ -171,6 +171,25 @@ Playwright doesn't read `.env`, so set these two variables in the shell:
 
 Every spec imports `test` and `expect` from `e2e/fixtures.ts`, not from `@playwright/test`. The harness resets the test data before each test, installs `page.clock` before the first navigation, and fails a test on any CSP violation. It also provides `seed()`, `advance(ms)` (moves the browser and server clocks together), `failApi()` and `expectNoA11yViolations()`. `tests/harness.spec.ts` shows each one in use; its CSP test is an expected failure.
 
+## QA reports
+
+The hand-in QA reports live in `docs/`. Each one starts with its date, the commit it measured and the commands that produced it:
+
+- [Coverage](docs/qa-coverage.md): backend, frontend and E2E coverage, and how each NFR-7 behaviour is tested.
+- [Accessibility](docs/qa-accessibility.md): an axe sweep of every UI state, in light and dark, at 320 and 1280 px.
+- [Security](docs/qa-security.md): findings with evidence, the fixes, probes and dependency audits.
+- [Performance](docs/qa-performance.md): NFR-2 with 500 tasks, measured through the Chrome DevTools Protocol.
+
+The accessibility sweep and the performance check are Playwright specs in `e2e/qa/`, with their own config (`e2e/playwright.qa.config.ts`), so `npm test` doesn't run them. Run them against the test profile:
+
+```sh
+COMPOSE_PROFILES=test docker compose up -d --build --wait
+cd e2e
+E2E_BROWSER_CHANNEL=chrome npm run qa    # about 5 minutes
+```
+
+They write their output to `docs/qa-artifacts/`. The summary JSONs the reports quote (`a11y-summary.json`, `perf-results*.json`) are committed. The bulky DevTools traces and the per-cell accessibility files are gitignored. `npm run qa` fails if a target that is met today regresses. The known miss, feedback with 500 rows under default motion, shows as an expected failure.
+
 ## Phone access
 
 The app has no login, so by default it listens only on `127.0.0.1`. To use it from your phone, put the laptop and the phone on the same [Tailscale](https://tailscale.com) tailnet. Then use one of the two options below.
@@ -209,6 +228,6 @@ backend/    FastAPI app (app/), Alembic migrations, pytest suite, Dockerfile
 frontend/   Svelte 5 + Vite SPA, Vitest suite, nginx template, Dockerfile
 db-test/    init script that creates the todo_e2e database
 e2e/        Playwright package
-docs/       Exercise, original PRD, AI integration log
+docs/       Exercise, original PRD, AI integration log, QA reports
 _bmad-output/  BMad planning artifacts and ticket plans
 ```

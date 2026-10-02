@@ -109,6 +109,19 @@ def test_add_rejects_2001_characters_as_text_too_long(api: TestClient) -> None:
         {"json": ["buy milk"]},
         {"content": "not json", "headers": {"content-type": "application/json"}},
         {"content": "text=buy+milk", "headers": {"content-type": "text/plain"}},
+        # Story 3.8 security review: a cross-site form or no-cors fetch can send a JSON body
+        # with any of these content types (or none) without a CORS preflight. It must never be
+        # parsed as JSON (CSRF).
+        {"content": '{"text": "buy milk"}', "headers": {"content-type": "text/plain"}},
+        {
+            "content": '{"text": "buy milk"}',
+            "headers": {"content-type": "application/x-www-form-urlencoded"},
+        },
+        {
+            "content": '{"text": "buy milk"}',
+            "headers": {"content-type": "multipart/form-data; boundary=x"},
+        },
+        {"content": '{"text": "buy milk"}', "headers": {"content-type": ""}},
         {},
     ],
     ids=[
@@ -121,6 +134,10 @@ def test_add_rejects_2001_characters_as_text_too_long(api: TestClient) -> None:
         "array",
         "bad-json",
         "not-json",
+        "json-as-text-plain",
+        "json-as-form-urlencoded",
+        "json-as-multipart",
+        "json-no-content-type",
         "none",
     ],
 )

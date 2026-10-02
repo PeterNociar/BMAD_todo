@@ -9,8 +9,11 @@ server {
     server_tokens off;
 
     # A location that sets its own add_header drops these, so every static location repeats them.
+    # X-Frame-Options (with the CSP's frame-ancestors on static files) stops another site from
+    # framing the app or /api/docs and tricking clicks on it (clickjacking; story 3.8).
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer" always;
+    add_header X-Frame-Options "DENY" always;
 
     location /api/ {
         # Docker's DNS, re-asked every 10 s: a recreated backend gets a new IP, and a
@@ -34,7 +37,8 @@ server {
     location / {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "no-referrer" always;
-        add_header Content-Security-Policy "default-src 'self'" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'" always;
         try_files $uri $uri/ /index.html;
     }
 
@@ -43,7 +47,8 @@ server {
     location = /index.html {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "no-referrer" always;
-        add_header Content-Security-Policy "default-src 'self'" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'" always;
         add_header Cache-Control "no-cache" always;
     }
 
@@ -51,7 +56,8 @@ server {
     location = /theme-init.js {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "no-referrer" always;
-        add_header Content-Security-Policy "default-src 'self'" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'" always;
         add_header Cache-Control "no-cache" always;
     }
 
@@ -59,7 +65,8 @@ server {
     location /assets/ {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "no-referrer" always;
-        add_header Content-Security-Policy "default-src 'self'" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'" always;
         # No `always`: a missing asset's 404 must not be cached as immutable.
         add_header Cache-Control "public, max-age=31536000, immutable";
         try_files $uri =404;

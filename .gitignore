@@ -10,3 +10,5 @@ node_modules/
 coverage/
 dist/
 .env
+docs/qa-artifacts/*-trace*.json
+docs/qa-artifacts/a11y/

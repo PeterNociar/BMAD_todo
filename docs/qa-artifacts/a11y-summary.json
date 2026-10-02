@@ -1,0 +1,775 @@
+{
+  "generatedAt": "2026-10-02T10:48:40.717Z",
+  "runId": "2026-10-02T10:47:42.101Z",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa"
+  ],
+  "cells": 36,
+  "violationsByImpact": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0
+  },
+  "rules": {},
+  "incompleteByRule": {
+    "color-contrast": 22
+  },
+  "incompleteNodes": [
+    {
+      "cell": "dark-1280-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-1280-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-1280-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-1280-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "p",
+      "reason": "Element's background color could not be determined because it partially overlaps other elements"
+    },
+    {
+      "cell": "dark-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(2) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(2) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-320-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "dark-320-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-1280-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-1280-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-1280-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-1280-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "p",
+      "reason": "Element's background color could not be determined because it partially overlaps other elements"
+    },
+    {
+      "cell": "light-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(2) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-320-action-error-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(2) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-320-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .text",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    },
+    {
+      "cell": "light-320-add-failure-toast",
+      "rule": "color-contrast",
+      "target": "li:nth-child(1) > .task-row > .age",
+      "reason": "Element's background color could not be determined because it is overlapped by another element"
+    }
+  ],
+  "grid": [
+    {
+      "state": "action-error-toast",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 2
+    },
+    {
+      "state": "add-failure-toast",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 2
+    },
+    {
+      "state": "empty",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "held-row",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "load-failure-toast",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "loading-skeleton",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "populated",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "retry-loading",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "row-control-focus",
+      "theme": "dark",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "action-error-toast",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 5
+    },
+    {
+      "state": "add-failure-toast",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 2
+    },
+    {
+      "state": "empty",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "held-row",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "load-failure-toast",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "loading-skeleton",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "populated",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "retry-loading",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "row-control-focus",
+      "theme": "dark",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "action-error-toast",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 2
+    },
+    {
+      "state": "add-failure-toast",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 2
+    },
+    {
+      "state": "empty",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "held-row",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "load-failure-toast",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "loading-skeleton",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "populated",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "retry-loading",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "row-control-focus",
+      "theme": "light",
+      "width": 1280,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "action-error-toast",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 5
+    },
+    {
+      "state": "add-failure-toast",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 2
+    },
+    {
+      "state": "empty",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "held-row",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "load-failure-toast",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "loading-skeleton",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "populated",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "retry-loading",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    },
+    {
+      "state": "row-control-focus",
+      "theme": "light",
+      "width": 320,
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "incomplete": 0
+    }
+  ],
+  "manualContrast": [
+    {
+      "cell": "dark-1280-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-1280-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "dark-1280-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-1280-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "dark-1280-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-1280-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "dark-1280-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-1280-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "dark-320-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-320-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "dark-320-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-320-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "dark-320-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-320-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "dark-320-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(228, 233, 239)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 11.15
+    },
+    {
+      "cell": "dark-320-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(152, 172, 200)",
+      "bg": "rgb(56, 42, 48)",
+      "ratio": 5.88
+    },
+    {
+      "cell": "light-1280-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-1280-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    },
+    {
+      "cell": "light-1280-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-1280-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    },
+    {
+      "cell": "light-1280-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-1280-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    },
+    {
+      "cell": "light-1280-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-1280-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    },
+    {
+      "cell": "light-320-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-320-action-error-toast",
+      "target": "[data-toast-kind=\"action_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    },
+    {
+      "cell": "light-320-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-320-add-failure-toast",
+      "target": "[data-toast-kind=\"add_failed\"] .close × glyph",
+      "kind": "graphic",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    },
+    {
+      "cell": "light-320-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-320-load-failure-toast",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    },
+    {
+      "cell": "light-320-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .message",
+      "kind": "text",
+      "fg": "rgb(24, 32, 44)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 14.31
+    },
+    {
+      "cell": "light-320-retry-loading",
+      "target": "[data-toast-kind=\"load_failed\"] .retry",
+      "kind": "text",
+      "fg": "rgb(74, 94, 124)",
+      "bg": "rgb(252, 236, 235)",
+      "ratio": 5.76
+    }
+  ]
+}

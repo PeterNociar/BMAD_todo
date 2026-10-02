@@ -55,8 +55,21 @@ function headers(body: string): Record<string, string> {
 const SHARED = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
-  'Content-Security-Policy': "default-src 'self'",
+  'X-Frame-Options': 'DENY',
+  // frame-ancestors: no other site may frame the app (clickjacking, story 3.8).
+  'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
 }
+
+describe('nginx server-level headers', () => {
+  it('are the shared headers minus the CSP, so /api/ (and /api/docs) can never be framed', () => {
+    // The server block's own add_header lines: everything before the first location.
+    const firstLocation = template.search(/^\s*location /m)
+    const serverLevel = template.slice(0, firstLocation).replace(/#.*$/gm, '')
+    const withoutCsp: Record<string, string> = { ...SHARED }
+    delete withoutCsp['Content-Security-Policy']
+    expect(headers(serverLevel)).toEqual(withoutCsp)
+  })
+})
 
 describe('nginx static locations', () => {
   it.each([

@@ -13,8 +13,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check . && npm run docs:format:check",
-    "docs:format": "prettier --config .prettierrc --write ../docs",
-    "docs:format:check": "prettier --config .prettierrc --check ../docs"
+    "docs:format": "prettier --config .prettierrc --write ../docs '!../docs/qa-artifacts/**'",
+    "docs:format:check": "prettier --config .prettierrc --check ../docs '!../docs/qa-artifacts/**'"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -280,6 +280,27 @@ test('names: Mark "milk" done and Delete "milk", then Mark "milk" not done', asy
   await expect(untick(page, 'milk')).toHaveAccessibleName('Mark "milk" not done')
 })
 
+/**
+ * XSS probe (story 3.8 security review, NFR-5, AD-13): markup in task text, seeded through the
+ * API so it reaches the page exactly as stored, renders as literal text. No element is created
+ * from it, no handler runs, and the fixture's teardown check finds no CSP violation.
+ */
+test('markup in task text renders as literal text and never runs', async ({ page, seed }) => {
+  const payloads = ['<img src=x onerror=alert(1)>', '<script>alert(2)</script>', '"><b>bold</b>']
+  for (const [i, text] of payloads.entries()) await seed({ text, addedAgoMs: (3 - i) * HOUR })
+  const dialogs: string[] = []
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message())
+    void dialog.dismiss()
+  })
+  await page.goto('/')
+
+  await expect(rowTexts(page)).toHaveText(payloads)
+  await expect(list(page).locator('img, script, b')).toHaveCount(0)
+  await expect(del(page, payloads[0]!)).toHaveAccessibleName(`Delete "${payloads[0]}"`)
+  expect(dialogs).toEqual([])
+})
+
 test('long text: a 300-character word wraps at 320 px, with no horizontal scroll', async ({
   page,
   seed,

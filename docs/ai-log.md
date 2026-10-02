@@ -1001,3 +1001,68 @@ After the fixes, `journeys.spec.ts --repeat-each 3` passed 15 of 15, and the fiv
 **What AI missed or could not do.**
 
 - UJ-3's "not yet red" is shown by the "23h" label only. At 23 h 59 m `ageColour` already returns the overdue hex (`#C43F3E`), so no colour check can tell it from 24 h, as the `age-bar.spec.ts` UJ-3 test also notes.
+
+## Ticket 3.8 — QA reports
+
+**Agents.** The dev persona (bmad-build) wrote the plan. A Claude Code subagent (Claude Opus) implemented it from the plan, after loading its two `context:` files: the architecture spine and `deliverables.md`.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan's "Never" list did the most work: no Lighthouse, no QA specs against `:8081`, and "a miss is reported as a miss". When the performance check failed, that line ruled out loosening the measurement until it passed.
+
+**MCP servers.** None. The Chrome DevTools part ran through the Chrome DevTools Protocol from Playwright (a CDP session for `Tracing`, `Performance.getMetrics` and Network timing), not through a DevTools MCP server.
+
+**What was built.**
+
+- `e2e/playwright.qa.config.ts` and `npm run qa`: the QA runner, with `testDir: './qa'`. `npm test` is unchanged.
+- `e2e/qa/a11y.spec.ts`: 9 states × 2 themes × 2 widths, 36 axe runs that record every violation and every "needs review" node, plus a computed contrast check on the toasts, where axe can't work out the background.
+- `e2e/qa/perf.spec.ts`: 500 seeded tasks, then API timing (25 per call type), 20 traced first loads and 20 traced actions of each kind. It runs twice: default motion and reduced motion.
+- `docs/qa-coverage.md`, `docs/qa-accessibility.md`, `docs/qa-security.md`, `docs/qa-performance.md`, the README "QA reports" section, and the trace files and per-cell files under `docs/qa-artifacts/` in `.gitignore`.
+- **Security fixes**, each with regression tests:
+  - **Clickjacking:** `X-Frame-Options: DENY` everywhere, and `frame-ancestors 'none'` in the static CSP. Tests: `nginx-template.test.ts`, the `headers.spec.ts` header checks, and a new framing E2E test.
+  - **`.env` in the build context:** `frontend/.dockerignore` now excludes `.env` files. `backend/.dockerignore` gains `**/.env.*`. Test: `tests/dockerignore.test.ts`.
+- **New guard tests:** an XSS E2E test in `rows.spec.ts`, and backend cases for a JSON body sent as `text/plain`, form-encoded, multipart or with no content type (CSRF).
+- **Results:**
+  - Backend: 122 passed, 99.08%.
+  - Frontend: 444 passed, 99.29% statements, 96.53% branches.
+  - E2E: 114 passed.
+  - `npm run qa`: 40 passed, including one expected failure, the default-motion feedback gate. The accessibility sweep found zero violations of any impact. The performance check met the API and render targets and missed the 100 ms feedback target with 500 rows under default motion.
+
+**Debugging with AI.**
+
+- Probing showed what the fixture's fake clock replaces. `performance.now`, `performance.mark` (a stub returning 0), `requestAnimationFrame` (even inside a fresh iframe) and the Resource Timing buffer are all replaced, so none of them could time the app. The spec instead uses `console.timeStamp` markers (not faked) inside a CDP trace, and `request.timing()` for the API.
+- The first in-page numbers (tick 20 ms) looked like an easy pass. A single trace showed the paint landing 125 ms after the click, behind a long task. Tracing every sample made input → paint the pass/fail figure. A second run with `prefers-reduced-motion: reduce` showed the cost was the row animation: layouts fell from 16,297 to 229, and every target passed.
+- The first framing test used a page fulfilled by `page.route` as the attacker. Chrome treats that page as public and refuses every loopback frame, headers or not, so even the unfixed build looked "protected". Switching to real loopback servers, with a control frame, made the test meaningful.
+
+**What AI decided beyond the plan.**
+
+- The performance check also runs under reduced motion, to isolate the cause of the miss rather than only report it.
+- The accessibility sweep records axe's "needs review" nodes and computes toast contrast itself.
+- The `.dockerignore` gap (S-2) and the `Host` header (S-3) were not on the plan's checklist. One was fixed, the other accepted with a follow-up.
+
+**What AI missed or could not do.**
+
+- The feedback miss (issue 1 in `qa-performance.md`) is reported, not fixed. Fixing `animate:flip` for long lists is its own ticket.
+- Not checked: base-image CVEs (no scanner installed), throttled or phone performance, and a screen-reader pass by hand.
+
+**Review.** The coordinator's review asked for these fixes, all made:
+
+- **Performance spec:**
+  - API probes carry a unique `?qa=<n>` tag, so the app's 30 s poll can't be taken for one.
+  - A traced span that sees a background poll is dropped and replaced, and the drops are counted (default motion: 0/1/1/2 for render, add, tick and delete).
+  - A `-1` timing throws instead of being recorded. A failed probe `fetch` surfaces its own error.
+  - A `Paint` must be a complete event or a begin/end pair.
+  - The longest task is bounded at the span's paint, and the task after paint is reported separately.
+  - Long texts are now on open tasks too: 40 open, 10 completed.
+  - The samples went from 10 and 15 to 20.
+  - A gate fails `npm run qa` on a regression in a target that is met today. The default-motion feedback miss is a `test.fail()` test.
+- **Accessibility spec:**
+  - The summary counts only the current run's cells (`QA_RUN_ID`).
+  - The held-GET routes are released in `finally`.
+  - Each toast state must check at least one element by hand, and the close × glyph is checked at 3:1.
+- **Security:** backend cases for form-encoded, multipart and no-content-type bodies, and `**/.env.*` in `backend/.dockerignore`.
+- **Reports:**
+  - Every number comes from the new run.
+  - The performance report says the render span includes the body download and JSON parse.
+  - S-3 is now Medium, because only Chrome enforces Local Network Access.
+  - The `:8081` probes are listed as hitting the pre-3.8 build.
+  - The summary JSONs are committed; the traces stay gitignored.
+- **Result:** the second run gave the same verdicts as the first. The heap growth seen in the first run did not reproduce, so the report no longer calls it a finding.
