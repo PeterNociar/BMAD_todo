@@ -1111,3 +1111,74 @@ After the fixes, `journeys.spec.ts --repeat-each 3` passed 15 of 15, and the fiv
 - `qa-performance.md`: per-action units on both sides, a before-and-after table label, and a Gate note on Enter's margin.
 
 Unexplained heap figures were deferred, pending a heap snapshot. Ten findings were rejected, among them "a row crossing the whole viewport jumps": the approved rule is old and new boxes both outside the viewport. No runtime code changed after the QA run (comments only), so the measured figures stand.
+
+## Ticket 3.9 — Hand-in documentation
+
+**Agents.** The dev persona (bmad-build) wrote the plan, and the user decided how the clean-checkout check could touch their running stack (2026-10-02): stop the app profile briefly, bring a fresh clone up under its own project name on the real `:8081`, remove only the clone's project, then start the app profile again. A Claude Code subagent (Claude Opus) implemented the plan alone, after loading its one `context:` file, `deliverables.md`.
+
+**Prompt that worked.** The same prompt as earlier tickets. The plan's "Never" list did the most work: no rewriting earlier log sections, no re-running `qa/perf.spec.ts`, and "a skipped check is recorded as skipped".
+
+**MCP servers.** None. The checks used the shell, git, Docker Compose, curl, Vitest and Playwright on the system Chrome.
+
+**What was built.**
+
+- `README.md`: the full prerequisites (Docker with Compose v2 only, git, Node 24, uv, Chrome, Tailscale), the clean-checkout path (AD-16), the missing `npm run build` and e2e `format:check`, a "Verify everything" block, a "Hand-in" section, `contracts/` and `scripts/` in the layout, "four side effects" and "about 6 minutes".
+- `docs/bmad-process.md`: the BMad chain from the exercise brief to the story plans and reviews, with two decisions traced end to end (AD-10's seq merge, and the NFR-2 miss fixed by 3.10).
+- `docs/hand-in-checklist.md`: one row per `deliverables.md` item, with a status and links to the evidence.
+- Refreshed QA figures on `7ae9b39`: `qa-coverage.md` (frontend 456 tests and a per-file table that includes `motion.ts`; E2E 115 tests), `qa-accessibility.md` (a re-run of the accessibility sweep alone), and the `GET` p95 in `qa-security.md` (37.7 ms, the 3.10 figure).
+- The summary below.
+
+**Verification.**
+
+- Clean checkout: a fresh `git clone` of `origin/main` (`7ae9b39`), `cp .env.example .env`, then `docker compose -p todo-clean up -d --build --wait`. `db`, `backend` and `frontend` were healthy after 23 s, and `GET /`, `/api/tasks` and `/api/health` answered 200 on `127.0.0.1:8081`. The build reused cached image layers, so 23 s is not a cold-build time. The clone's project was then removed with `down -v`, and the app profile came back with its tasks.
+- `npm run test:coverage`: 456 passed. `npx playwright test --list`: 115 tests in 13 files. `E2E_BROWSER_CHANNEL=chrome npm test`: 115 passed. `qa/a11y.spec.ts`: 36 passed, zero violations. The backend re-run gave 122 passed and 99.08%, as in 3.8.
+
+**What AI missed or could not do.**
+
+- `scripts/check-infra.sh` was not run for this ticket. It resets the test stack and starts the dev profile against the app's database, and the 3.6 runs are the evidence the checklist cites.
+- `qa/perf.spec.ts` was not re-run, on purpose: its figures come from the 3.10 run.
+
+## Summary
+
+This closes the log. Each claim below cites the ticket section it comes from. Epic 1's sections are headed "Ticket N", which is story 1.N; epics 2 and 3 use "Ticket E.N".
+
+### The three epics
+
+**Epic 1, capture and keep (PRs #1–#14).** The platform and a usable list: the walking skeleton through nginx, FastAPI and Postgres (Ticket 1), the ordering fixtures and the error contract (Tickets 2 and 3), the compose profiles with the gated testing router (Ticket 4), the E2E harness (Ticket 5), the frontend core, toasts and focus (Tickets 6 and 7), the optimistic store and its sync (Tickets 8 and 12), and the capture UI and rows (Tickets 9 and 10). Plus AD-21, the PR #7 refactor and the Ticket 11 sweep. **Wins:** the implementers checked their own tests with deliberate breaks, then reverted them (Tickets 2, 6, 7, 8, 12), and Ticket 11 proved the nginx stale-IP risk with a repro before fixing it. Review caught two 500s that the AI's tests had missed: a NUL character and a tick racing a delete (Ticket 3). **Misses:** tests that passed for the wrong reason (Ticket 1's DB-down test, Ticket 5's CSP test under `test.fail()`), `crypto.randomUUID` breaking adds over plain HTTP (Ticket 8), and test-only methods shipping in the production `TaskService`, which the user spotted and the review lenses had not (Refactor PR #7).
+
+**Epic 2, the age nudge (PRs #15–#21).** The age label, the colour function for both themes, the age bar with live overdue, the 3 s hold timer, the held row under the input, and a sweep (Tickets 2.1 to 2.6). **Wins:** the AI showed that the plan's bisection rule could not meet the user's ±2/255 tolerance, and that a fixed 0.002 chroma step reproduces all 14 DESIGN stops (Ticket 2.2). Mutation runs found that `overflow-anchor: none` and a `keepFocus()` were needed (Ticket 2.5). **Misses:** a NaN timestamp that looped forever in dark mode (Ticket 2.2), exact-colour E2E checks against a colour that moves with real time (Ticket 2.3), the age label and the task text running together for screen readers (Ticket 2.1), and settle tests that could pass after the hold had already ended (Ticket 2.6).
+
+**Epic 3, everywhere and handed in (PRs #22–#31).** Load failure with Retry, background polling, phone access over Tailscale, the dark theme and its toggle, a sweep, the user-journey suite, the QA reports, and the row-motion fix (Tickets 3.1 to 3.8 and 3.10), then this hand-in. **Wins:** the CDP-traced performance check found the NFR-2 miss that in-page timing had hidden, and a reduced-motion run isolated its cause (Ticket 3.8). Story 3.10 then fixed it with a clear target (Ticket 3.10). The security review found and fixed clickjacking and the `.env` build-context gap (Ticket 3.8). **Misses:** a "no way back" E2E test that could not fail (Ticket 3.5), a motion-test flake that took until the 3.6 sweep to fix (Tickets 3.1 and 3.6), and Enter's thin margin after the fix, 94.5 ms against 100 ms on an unthrottled machine (Ticket 3.10).
+
+### MCP servers
+
+None were used in any ticket; every section that records MCP servers says None. The exercise suggests three, and each had a scripted equivalent:
+
+- **Chrome DevTools MCP:** the performance check drives Chrome through the Chrome DevTools Protocol from Playwright (a CDP session for `Tracing`, `Performance.getMetrics` and Network timing) (Ticket 3.8). The epic decided that the performance report is scripted by the agent through CDP (epic-everywhere-and-handed-in, Notes, 2026-10-01).
+- **Playwright MCP:** the Playwright suite itself, run with the system Chrome, plus throwaway Playwright scripts for screenshots and one-off checks (Tickets 5, 9 and 3.6).
+- **Postman MCP:** pytest integration tests for every endpoint and the error contract (Tickets 1, 3 and 4), with `curl` for manual probes (Tickets 1 and 11).
+
+Why: the epic chose the scripted route, and it leaves evidence in the repo that anyone can re-run. Each QA report starts with the commands that produced it, and the API contract is checked on every `uv run pytest`. An interactive MCP session would have left only its transcript.
+
+### How AI generated tests, and what it missed
+
+- **One test per plan row.** The plans' I/O matrices became the tests almost one to one (Tickets 1, 3, 6, 7, 8, 2.3, 2.5, 3.1, 3.2, 3.5).
+- **Proving a test can fail.** Implementers broke the code on purpose and reverted it (Tickets 2, 6, 7, 8, 9, 12, 2.4). Where they did not, review found tests that could never fail: the DB-down test (Ticket 1), four AD-21 tests (AD-21), the CSP row (Ticket 5), the UJ-3 colour check (Ticket 2.3), a clearance test (Ticket 2.5), the double-Retry test (Ticket 3.1) and "no way back" (Ticket 3.5).
+- **Shared fixtures and controlled time.** One ordering fixture serves pytest and Vitest (Tickets 2 and 6). Time is injected everywhere: a fixed server clock (Ticket 3), `advance()` moving both clocks (Ticket 5), and fake timers in Vitest (Ticket 6).
+- **What it missed most:** edge cases outside the plan (NUL text in Ticket 3, a same-timestamp tie in Ticket 2, NaN in Ticket 2.2), and platform behaviour that jsdom and desktop Chrome don't show: secure-context APIs (Ticket 8), forced colours (Ticket 9), older iOS media queries (Ticket 10) and touch-synthesised hover (Ticket 7).
+
+### Debugging with AI
+
+- **The fake clock hides timing.** Playwright's installed clock replaces `performance.now`, `performance.mark`, `requestAnimationFrame` and the Resource Timing buffer. The AI found that by probing and moved the timing to `console.timeStamp` markers in a CDP trace (Tickets 9 and 3.8).
+- **A framing test that couldn't fail.** Chrome treats a page fulfilled by `page.route` as public and blocks every loopback frame, so even the unfixed build looked protected. Real loopback servers made the test meaningful (Ticket 3.8).
+- **A stalled response body.** The fetch signal never reaches a hand-built `Response`, so `api.ts` races the body read against the abort as well (Ticket 6).
+- **Two Svelte runtimes.** Re-importing App after `vi.resetModules()` loaded a second Svelte runtime and every test failed with `effect_orphan`; the fix was a getter mock (Ticket 9).
+- **Restarted animations.** A server re-render aborts a slide and starts a new one, which misled the 3.10 E2E twice before it counted animated rows (Ticket 3.10).
+
+### Limitations, and where human expertise was critical
+
+- **The user's decisions.** The epic split by usable outcome and the store built once in epic 1 (initiative, Notes, 2026-09-30). A silent failed poll once the list has loaded (epic-everywhere-and-handed-in, Notes, 2026-10-01). Fixing the NFR-2 miss before the hand-in (same Notes, 2026-10-02). In the tickets: the host ports (Ticket 1), reading `backend/.env` and no longer committing `.env` (AD-21), the error-code vocabulary (Ticket 3), recreating only the `db-test` volume (Ticket 4), the ±2/255 colour tolerance and sign-off on the 0.002 step (Ticket 2.2), the scope of each sweep (Tickets 11, 2.6, 3.6), no Lighthouse ([qa-performance.md](qa-performance.md), 2026-10-02), and how the clean-checkout check could touch the running stack (Ticket 3.9).
+- **What only a human could check.** The phone run over Tailscale on real devices (Ticket 3.3). The test-only code in the production service, which four review lenses missed (Refactor PR #7).
+- **Dev-machine constraints.** The default host ports were taken, so the stack moved to `8081`, `5436` and `8082` (Ticket 1). Playwright's Chromium download timed out, so every E2E run used the system Chrome (Tickets 1 and 5). No CVE scanner was installed, so base images were not scanned (Ticket 3.8).
+- **What the review lenses caught that the AI's tests missed.** Two 500s (Ticket 3), a health check that ignored a missing database (Ticket 4), Alembic silently disabling the app's loggers (Ticket 2), same-tick announcements overwriting each other (Ticket 7), and the twin fold resurrecting a ticked task as open (Ticket 12).
+- **Not checked at all.** Throttled or phone-class performance, and a screen-reader pass by hand (Ticket 3.8).

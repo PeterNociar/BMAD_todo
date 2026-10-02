@@ -1,7 +1,7 @@
 # QA report: test coverage
 
 - **Date:** 2026-10-02
-- **Commit measured:** the commit that adds this report (story 3.8, on top of `a1953b8`). Story 3.8 changed no app code except the nginx template (`frontend/nginx/default.conf.template`, the clickjacking fix in [qa-security.md](qa-security.md)). It also added tests: four backend cases, two frontend test files changed (`tests/nginx-template.test.ts`, the new `tests/dockerignore.test.ts`) and two E2E tests.
+- **Commit measured:** `7ae9b39` (story 3.10), refreshed for story 3.9. The report was first written in story 3.8 (on top of `a1953b8`), which changed no app code except the nginx template (`frontend/nginx/default.conf.template`, the clickjacking fix in [qa-security.md](qa-security.md)). Story 3.10 added `frontend/src/lib/motion.ts` (the row slide) with its unit tests and one E2E test in `rows.spec.ts`, so the frontend and E2E figures below were re-run on `7ae9b39`. The backend re-run on `7ae9b39` gave the same coverage as story 3.8 (122 tests, 99.08%).
 - **Machine:** Intel Core i9-10885H (16 logical cores), Linux, Python 3.14.3, Node 25.9 (the engines field asks for >= 24), Google Chrome 154.0.8037.57.
 - **Gate:** at least 70% meaningful coverage (deliverables, PRD NFR-7). The backend and frontend commands below enforce 70% themselves and fail under it.
 
@@ -25,7 +25,7 @@ E2E_BROWSER_CHANNEL=chrome npm test
 
 ### Backend (pytest + pytest-cov, branch coverage)
 
-`122 passed in 4.97s`. `Required test coverage of 70% reached. Total coverage: 99.08%`.
+`122 passed in 6.53s`. `Required test coverage of 70% reached. Total coverage: 99.08%`.
 
 | Scope               | Statements | Missed | Branches | Partial branches | Cover |
 | ------------------- | ---------- | ------ | -------- | ---------------- | ----- |
@@ -35,26 +35,45 @@ The only lines not covered are `app/errors.py:127` and `:135`, two branches of t
 
 ### Frontend (Vitest + coverage-v8)
 
-`Test Files 21 passed (21)`, `Tests 444 passed (444)`.
+`Test Files 22 passed (22)`, `Tests 456 passed (456)`.
 
 | Metric     | Covered   | Percent |
 | ---------- | --------- | ------- |
-| Statements | 709 / 714 | 99.29%  |
-| Branches   | 362 / 375 | 96.53%  |
-| Functions  | 168 / 168 | 100%    |
-| Lines      | 557 / 557 | 100%    |
+| Statements | 717 / 722 | 99.3%   |
+| Branches   | 372 / 385 | 96.62%  |
+| Functions  | 171 / 171 | 100%    |
+| Lines      | 563 / 563 | 100%    |
 
 The run lists the uncovered branches by file and line: `TaskRow.svelte:69`, `focus.ts:49,89-91,131,137`, `sort.ts:12`, `tasks.svelte.ts:164,197,446,457` and `toasts.svelte.ts:117`.
 
+Per file (from `frontend/coverage/coverage-final.json`; every file is at 100% of lines and functions):
+
+| File                            | Statements | Branches  | Functions |
+| ------------------------------- | ---------- | --------- | --------- |
+| `components/LiveRegions.svelte` | 6 / 6      | 0 / 0     | 1 / 1     |
+| `components/TaskRow.svelte`     | 50 / 50    | 15 / 16   | 11 / 11   |
+| `components/ThemeToggle.svelte` | 14 / 14    | 6 / 6     | 4 / 4     |
+| `components/ToastLayer.svelte`  | 29 / 29    | 6 / 6     | 9 / 9     |
+| `lib/age.ts`                    | 37 / 37    | 19 / 19   | 4 / 4     |
+| `lib/api.ts`                    | 45 / 45    | 17 / 17   | 12 / 12   |
+| `lib/clock.svelte.ts`           | 12 / 12    | 2 / 2     | 3 / 3     |
+| `lib/focus.ts`                  | 85 / 87    | 80 / 86   | 21 / 21   |
+| `lib/motion.ts`                 | 8 / 8      | 10 / 10   | 3 / 3     |
+| `lib/oklch.ts`                  | 47 / 47    | 16 / 16   | 15 / 15   |
+| `lib/sort.ts`                   | 17 / 17    | 21 / 22   | 3 / 3     |
+| `lib/tasks.svelte.ts`           | 262 / 264  | 136 / 140 | 57 / 57   |
+| `lib/theme.svelte.ts`           | 17 / 17    | 16 / 16   | 4 / 4     |
+| `lib/toasts.svelte.ts`          | 88 / 89    | 28 / 29   | 24 / 24   |
+
 ### E2E (Playwright, Chrome)
 
-`npx playwright test --list`: `Total: 114 tests in 13 files`. `E2E_BROWSER_CHANNEL=chrome npm test`: `114 passed (1.5m)`.
+`npx playwright test --list`: `Total: 115 tests in 13 files`. `E2E_BROWSER_CHANNEL=chrome npm test`: `115 passed (1.6m)` (re-run on `7ae9b39` for story 3.9).
 
 | Spec              | Tests | Spec                   | Tests |
 | ----------------- | ----- | ---------------------- | ----- |
 | `age-bar.spec.ts` | 9     | `journeys.spec.ts`     | 5     |
 | `age.spec.ts`     | 4     | `load-failure.spec.ts` | 1     |
-| `capture.spec.ts` | 16    | `rows.spec.ts`         | 19    |
+| `capture.spec.ts` | 16    | `rows.spec.ts`         | 20    |
 | `harness.spec.ts` | 13    | `smoke.spec.ts`        | 1     |
 | `headers.spec.ts` | 9     | `sync.spec.ts`         | 2     |
 | `hold.spec.ts`    | 11    | `theme.spec.ts`        | 9     |
