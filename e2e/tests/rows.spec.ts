@@ -340,21 +340,45 @@ test('sticky clearance: a row control focused from below the fold clears the sti
 
 /**
  * Clicks `button` in the page and lists the durations of the row animations (targets inside
- * `[data-task-row]`) running 40 ms later.
+ * `[data-task-row]`) it starts. From just before the click, every `Element.animate()` call is
+ * recorded and `document.getAnimations()` is sampled at once and on every frame, so an
+ * animation that has already finished on a slow runner is still counted. Sampling stops at the
+ * first frame with a row animation, or after 1 s (the reduced-motion case, which gets `[]`).
  */
 async function animationsAfterClick(button: Locator): Promise<number[]> {
   const handle = await button.elementHandle()
   return handle!.evaluate(async (el) => {
-    ;(el as HTMLButtonElement).click()
-    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 40)))
-    return document
-      .getAnimations()
-      .filter((a) => {
-        const target = (a.effect as KeyframeEffect | null)?.target
-        return target instanceof Element && target.closest('[data-task-row]') !== null
-      })
-      .map((a) => Number(a.effect?.getComputedTiming().duration ?? 0))
-      .filter((d) => d > 0)
+    // Durations are read when an animation is first seen: Svelte may detach a finished
+    // animation's effect (`effect` becomes null) before sampling ends.
+    const seen = new Map<Animation, number>()
+    const record = (a: Animation) => {
+      if (seen.has(a)) return
+      const target = (a.effect as KeyframeEffect | null)?.target
+      const duration = Number(a.effect?.getComputedTiming().duration ?? 0)
+      if (target instanceof Element && target.closest('[data-task-row]') !== null && duration > 0)
+        seen.set(a, duration)
+    }
+    const sample = () => {
+      for (const a of document.getAnimations()) record(a)
+    }
+    const animate = Element.prototype.animate
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
+      const animation = animate.apply(this, args)
+      record(animation)
+      return animation
+    }
+    try {
+      ;(el as HTMLButtonElement).click()
+      sample()
+      const deadline = performance.now() + 1_000
+      while (seen.size === 0 && performance.now() < deadline) {
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        sample()
+      }
+    } finally {
+      Element.prototype.animate = animate
+    }
+    return [...seen.values()]
   })
 }
 

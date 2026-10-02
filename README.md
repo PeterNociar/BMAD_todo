@@ -75,6 +75,23 @@ COMPOSE_PROFILES=test docker compose up -d --build --wait
 curl -s -XPOST -H 'content-type: application/json' -d '{"text":"old","added_ago_ms":90000000,"completed_ago_ms":null}' http://127.0.0.1:8082/api/test/tasks
 ```
 
+### Infra smoke checks
+
+`scripts/check-infra.sh` checks what no test suite reaches: the compose profiles themselves, and that nginx follows a recreated backend. Run it from the repo root with the test profile up (and the app profile too, if you want its probe), and with host ports `8000` and `5173` free:
+
+```sh
+COMPOSE_PROFILES=test docker compose up -d --build --wait
+scripts/check-infra.sh
+```
+
+It prints one `PASS`, `FAIL` or `SKIP` line per check and exits 1 if any check fails.
+
+- **Test profile:** `POST :8082/api/test/reset` is `204`. If the app profile is running, `POST :8081/api/test/reset` is `404`. That probe is the only HTTP request it sends to the app stack (the dev check below does migrate the app's `db`).
+- **Stale IP:** it briefly stops `backend-test`, starts `busybox` containers on the compose network (up to 8; Docker hands out the lowest free address, so the first ones fill any lower gaps) until one takes its IP, then starts `backend-test` again on a new IP. `GET :8082/api/health` must answer `200` within 15 s. If no squatter gets the old IP, the check reports `SKIP`.
+- **Dev profile:** it starts `backend-dev` and `frontend-dev` (`--build`; the first `npm ci` takes a minute), checks that uvicorn runs with `--reload` and that `GET :5173/api/health` is `200` through Vite. `backend-dev` uses the app's `db`, so its start runs `alembic upgrade head` there, a no-op when `app` runs the same code. It then stops whichever of `db`, `backend-dev` and `frontend-dev` it started; any that were already running stay up.
+
+On exit, even after a failure, it removes the squatters, makes sure `backend-test` is running and stops the dev-profile services it started (and only those). It resets the test stack's data, so don't run it during an E2E run.
+
 ### Existing `db-test` volume: recreate it once
 
 `db-test` creates `todo_e2e` from `db-test/init/01-create-e2e.sql`. Postgres runs init scripts only on an empty data directory, so a `db-test-data` volume created before this script existed has no `todo_e2e`, and `backend-test` fails to start. The volume holds only pytest scratch data, so recreate it once:
@@ -129,6 +146,7 @@ npm run test:coverage    # coverage-v8, thresholds 70% over src/lib and src/comp
 npm run check            # svelte-check + tsc
 npm run lint             # ESLint; {@html} is an error
 npm run format           # Prettier (format:check to verify only)
+npm run docs:format:check  # Prettier over ../docs with this config (docs:format to fix; format:check runs it too)
 npm run dev              # Vite dev server on :5173, proxies /api to $API_UPSTREAM or localhost:8000
                          # (or run it in Docker: the dev profile above)
 ```

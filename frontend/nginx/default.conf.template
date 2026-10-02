@@ -8,7 +8,7 @@ server {
     client_max_body_size 64k;
     server_tokens off;
 
-    # A location that sets its own add_header drops these, so location / repeats them.
+    # A location that sets its own add_header drops these, so every static location repeats them.
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer" always;
 
@@ -29,10 +29,39 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Static files. Every location below sets its own add_header, so each repeats the shared
+    # headers and the CSP (AD-16, AD-19).
     location / {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "no-referrer" always;
         add_header Content-Security-Policy "default-src 'self'" always;
         try_files $uri $uri/ /index.html;
+    }
+
+    # The page itself: `/` (through `index`) and every deep link (through try_files) redirect
+    # internally here. no-cache: always revalidated, so a rebuild's new asset hashes are seen.
+    location = /index.html {
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'" always;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # The render-blocking pre-paint script has a fixed, unhashed URL: never run a stale copy.
+    location = /theme-init.js {
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'" always;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Vite's content-hashed bundle: a changed file gets a new name, so cache it for a year.
+    location /assets/ {
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'" always;
+        # No `always`: a missing asset's 404 must not be cached as immutable.
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
     }
 }

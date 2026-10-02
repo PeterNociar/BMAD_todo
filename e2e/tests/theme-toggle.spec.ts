@@ -11,7 +11,7 @@ import {
   test,
   themeAtBody,
 } from '../fixtures.ts'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 /** DESIGN bg-dark `#0E131A` and bg `#F2F4F7`, as computed CSS colours. */
 const BG_DARK = 'rgb(14, 19, 26)'
@@ -188,3 +188,34 @@ for (const mode of ['light', 'dark'] as const) {
     }
   })
 }
+
+// Fills, box-shadows and the inset hairline drop under forced colours, so outlines carry the
+// state: the active segment's `CanvasText` outline (ThemeToggle) and App's transparent input
+// ring, which forced colours repaint. jsdom ignores media queries, so only E2E can pin these.
+test.describe('under forced colours', () => {
+  test.use({ forcedColors: 'active' })
+
+  const outline = (locator: Locator) =>
+    locator.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return { style: style.outlineStyle, width: style.outlineWidth }
+    })
+
+  test('the active segment has a 1 px solid outline and the other none', async ({ page }) => {
+    await open(page)
+    expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true)
+
+    await expect(toggle(page).locator('.seg.on')).toHaveCount(1)
+    expect(await outline(toggle(page).locator('.seg.on'))).toEqual({ style: 'solid', width: '1px' })
+    expect((await outline(toggle(page).locator('.seg:not(.on)'))).style).toBe('none')
+  })
+
+  test('the focused input keeps a visible outline', async ({ page }) => {
+    await open(page)
+
+    // `solid` is App's own ring (Chrome's default focus ring is `auto`), and it has a width.
+    const { style, width } = await outline(input(page))
+    expect(style).toBe('solid')
+    expect(width).not.toBe('0px')
+  })
+})

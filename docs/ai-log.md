@@ -906,3 +906,53 @@ The author didn't record exact timings.
 - `themeAtBody` now throws if its recorder was never installed.
 - Deferred: an E2E pass under forced colours (the active segment's `CanvasText` outline, and App's focus ring).
 - After the fixes, 435 Vitest tests pass with 99.29% statement coverage, and all 100 E2E tests pass.
+
+## Ticket 3.6 — Refactor sweep
+
+**Agents.** The dev persona (bmad-build) planned the sweep from the epic's build records and deferred review findings, and the user picked the scope (2026-10-02): de-flake the motion test, cache headers in nginx, a forced-colours E2E describe, a Prettier check for `docs/`, resolution notes in `deferred-work.md`, and a script for the compose profile and stale-IP checks. A Claude Code subagent (Claude Opus) implemented it from the plan alone, with the architecture spine as its only `context:` file.
+
+**Prompt that worked.** The same prompt as earlier tickets. The Code Map named the sampler's line range, the `index`/`try_files` internal redirect that lets `location = /index.html` cover `/` and deep links, the stylesheet-href extraction to copy for an `/assets/` URL, and the two forced-colours rules under test, so little exploration was needed.
+
+**MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier (code and `docs/`), Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, the rebuilt test stack with Playwright on the system Chrome, `scripts/check-infra.sh`, and the rebuilt app profile.
+
+**What was built.**
+
+- `e2e/tests/rows.spec.ts`: `animationsAfterClick` no longer takes one sample 40 ms after the click. From just before the click it records every row `Element.animate()` call and samples `document.getAnimations()` at once and on every frame, until a row animation appears or 1 s passes, then restores `Element.prototype.animate`. Both motion tests keep their assertions.
+- `frontend/nginx/default.conf.template`: `location = /index.html` and `location = /theme-init.js` send `Cache-Control: no-cache`; `location /assets/` sends `public, max-age=31536000, immutable`. Each repeats `X-Content-Type-Options`, `Referrer-Policy` and the CSP, because an `add_header` in a location drops the inherited ones. `location /` keeps its `try_files … /index.html` fallback, and `/` and deep links reach the exact `/index.html` location through internal redirects.
+- Tests for the headers: `frontend/tests/nginx-template.test.ts` parses each static location and checks its exact header set, plus the fallback; `e2e/tests/headers.spec.ts` checks the served headers on `/`, a deep link, `/theme-init.js` and a hashed `/assets/*.js` from `index.html`.
+- `e2e/tests/theme-toggle.spec.ts` "under forced colours" (`forcedColors: 'active'`): the active segment has a 1px solid outline and the other none, and the focused input's outline style is `solid`.
+- `frontend/package.json`: `docs:format` and `docs:format:check` run Prettier over `../docs` with `frontend/.prettierrc`. One write pass reformatted `ai-log.md` (blank lines before lists), `bmad_exercise.md` (padded tables, `_` emphasis) and `PRD.md` (leading and trailing blank lines); a word-level comparison found no wording change. The README's frontend section lists the check.
+- `scripts/check-infra.sh`: bash with `set -euo pipefail`, one PASS/FAIL/SKIP line per check, exit 1 on any failure. It checks the test profile (`:8082` reset 204, and `:8081` reset 404 when the app profile is running), the stale IP (stop `backend-test`, `busybox` squatters on the compose network until one holds its IP, `backend-test` back on a new IP, `:8082/api/health` 200 within 15 s, SKIP if none got the old IP), and the dev profile (`--reload` on the running uvicorn, `:5173/api/health` 200 through Vite, then stop). An `EXIT` trap removes the squatters, makes sure `backend-test` runs and stops only the dev-profile services the script started. The README documents it under Compose profiles.
+- `deferred-work.md`: six "Resolved by entry 3.6" entries: the 1.8 `load()` race (closed by 1.12), the font preloads (3.4), the hold countdown during a reload (3.1), and the motion flake, `Cache-Control` and forced colours (3.6). Two more say the compose profiles and the nginx re-IP test are covered by the manual smoke script, which no CI runs.
+- **Results:** 440 Vitest tests pass, with coverage at 99.29% statements, 96.53% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier, the docs check and build are green. All 106 E2E tests pass, and `rows.spec.ts` passed `--repeat-each 10` (180 of 180). `scripts/check-infra.sh` printed PASS on all five lines and exited 0, three times; its stale-IP check moved `backend-test` from 172.27.0.6 to 172.27.0.8, and later from 172.27.0.8 to 172.27.0.9. On the rebuilt app profile, `/` and `/theme-init.js` send `no-cache`, and a throwaway read-only Playwright run against `:8081` confirmed Done when 1–3: the Retry toast with `GET /api/tasks` failed and the list after Retry, a simulated remote task shown after one 30 s poll with focus still on the input, and the theme following a dark OS and keeping the light choice after a reload, with no CSP violations.
+
+**What AI decided beyond the plan.**
+
+- The sampler also wraps `Element.prototype.animate`, not only `getAnimations()`, because a finished animation can drop out of `getAnimations()` before the next sample, while a recorded `animate()` call cannot be missed.
+- `location /assets/` has `try_files $uri =404`: a missing hashed file is a 404 instead of `index.html` served with a one-year `immutable` header.
+- The forced-colours input test asserts `solid`, not only "not `none`": Chrome's own focus ring is `auto`, so only `solid` proves App's transparent ring is the one painted.
+- `headers.spec.ts` also checks a deep link, the I/O matrix's "Deep link" row.
+- The docs scripts pass `--config .prettierrc`, since Prettier would otherwise look for a config above `docs/` and find none.
+- `check-infra.sh` reads `--reload` from the running process (`docker top`), not the compose `command`, so it proves the `entrypoint.sh` pass-through; it reads `APP_BIND` from the shell or `.env` for the app probe; it pulls `busybox` quietly on first use.
+- `check-infra.sh` starts up to 8 squatters instead of one. With a single squatter the second run reported SKIP: Docker gave it a lower free address left by the first run, not `backend-test`'s.
+- The Done-when check on the app profile simulated the API failure and the other device with `page.route`, so it wrote nothing to the app's data.
+
+**What AI missed or could not do.**
+
+- The dev check runs `backend-dev` against the app's `db`, so it runs `alembic upgrade head` there (a no-op on the same code). The README says so; the plan allowed running the dev profile.
+- Done when 2 was checked with a simulated remote task, not a real second device; the device run in 3.3 covers the real path.
+
+**Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 23 findings: 2 medium, 19 low, 2 false. Twelve were patched, none were deferred, and the rest were rejected with evidence.
+- A missing `/assets/` file's 404 was being stamped `immutable` for a year. That `Cache-Control` line no longer uses `always`, and the static test and E2E now pin the 404.
+- `check-infra.sh`:
+  - restores only the services it started (`db` included);
+  - prints a FAIL line instead of aborting under `set -e`;
+  - captures `docker top` output before grepping it, avoiding a false FAIL under `pipefail`;
+  - removes squatters on every path;
+  - caps each health curl at 2 s;
+  - accepts a quoted or CRLF `APP_BIND`.
+- Stricter assertions: `Referrer-Policy`, and the forced-colours outline width.
+- `format:check` now runs `docs:format:check`.
+- The two infra entries in deferred-work say "covered by the manual smoke script" rather than "Resolved".
+- **One more fix after review.** The repeat run caught the new motion sampler crashing once in 180: Svelte had detached a finished animation's `effect` before the final read. The sampler now records each duration when it first sees the animation. Two more runs of `rows.spec.ts --repeat-each 10` passed 180 of 180 each.
+- After the fixes, 441 Vitest tests pass with 99.29% statement coverage, all 107 E2E tests pass, and `check-infra.sh` prints PASS on all 5 lines.
