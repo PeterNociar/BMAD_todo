@@ -6,12 +6,20 @@
  * passing on a settled row. CSP-clean is checked by the fixture at teardown for every test
  * (AD-19).
  */
-import { expect, expectNoA11yViolations, failApi, test, type Seed, type Task } from '../fixtures.ts'
+import {
+  expect,
+  expectNoA11yViolations,
+  failApi,
+  HOLD_MS,
+  stillHeld,
+  test,
+  type Seed,
+  type Task,
+} from '../fixtures.ts'
 import type { Page } from '@playwright/test'
 
 const ACTION_FAILED = "Couldn't update that task. It's back as it was."
 const HOUR = 3_600_000
-const HOLD_MS = 3_000
 
 const input = (page: Page) => page.getByLabel('New task')
 const list = (page: Page) => page.getByRole('list', { name: 'Tasks' })
@@ -27,20 +35,6 @@ const row = (page: Page, text: string) => rows(page).filter({ has: del(page, tex
 
 /** The `li.held` row holding `text`. */
 const heldRow = (page: Page, text: string) => held(page).filter({ has: del(page, text) })
-
-/**
- * Asserts there is exactly one held row and that it holds `text`, and returns it for the
- * measurements to read. The page clock also flows in real time, so the hold can end mid-test on
- * a slow run; call this before every `runFor(HOLD_MS)` and around every hold-time measurement,
- * so neither silently reads a settled row. A short timeout: a held row never comes back.
- */
-async function stillHeld(page: Page, text: string) {
-  const message = `no single held row for "${text}" — the ${HOLD_MS / 1000} s hold may have ended (slow run; AD-8 forbids pausing the page clock)`
-  await expect(held(page), message).toHaveCount(1, { timeout: 500 })
-  const row = heldRow(page, text)
-  await expect(row, message).toHaveCount(1, { timeout: 500 })
-  return row
-}
 
 /** `count` open tasks, oldest first: "task 0" … */
 async function seedOpen(seed: Seed, count = 30): Promise<Task[]> {

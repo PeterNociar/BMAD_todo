@@ -957,3 +957,47 @@ The author didn't record exact timings.
 - The two infra entries in deferred-work say "covered by the manual smoke script" rather than "Resolved".
 - **One more fix after review.** The repeat run caught the new motion sampler crashing once in 180: Svelte had detached a finished animation's `effect` before the final read. The sampler now records each duration when it first sees the animation. Two more runs of `rows.spec.ts --repeat-each 10` passed 180 of 180 each.
 - After the fixes, 441 Vitest tests pass with 99.29% statement coverage, all 107 E2E tests pass, and `check-infra.sh` prints PASS on all 5 lines.
+
+## Ticket 3.7 — User-journey E2E suite
+
+**Agents.** The dev persona (bmad-build) planned the ticket for the epic's Done when 5 (at least 5 E2E tests covering UJ-1 to UJ-3, plus CAP-9 and CAP-10). A Claude Code subagent (Claude Opus) implemented it from the plan alone; the plan listed no `context:` files.
+
+**Prompt that worked.** The same prompt as earlier tickets. The Code Map pointed at the helpers to copy (`stillHeld`, `expectBarColour`, `nextPoll`, the second-context set-up) and at EXPERIENCE › Key Flows for the step names, so each journey's `test.step` titles follow the numbered steps.
+
+**MCP servers.** None. Verification used the shell, Docker and Playwright on the system Chrome.
+
+**What was built.**
+
+- `e2e/tests/journeys.spec.ts`: five tests, one per journey, each with a `test.step` per Key Flows step and an axe check at the end.
+  - UJ-1: eight older tasks, then type and Enter. The input clears and keeps focus. The task is the held row, with "now" and a green bar. It settles last after `runFor(3_000)`. Then a failed `POST` shows the add toast and puts the text back in the input, and Enter after clearing the failure saves it.
+  - UJ-2: two overdue tasks, two fresher ones and one completed task. Tick the 2-day task ("done now", top of the completed tasks), untick it (back in place, "2d", red), tick it again. A rejected tick on the 1-day task leaves it as it was, with the action toast. Every remaining task is then deleted with its ×, and the run ends on the empty state.
+  - UJ-3: a 23 h 59 m task reads "23h". After `advance(60_000)` it reads "1d", its bar is overdue red, it has not moved, the document was not reloaded and the input keeps focus.
+  - CAP-9: a failed first `GET` shows the Retry toast with no list and no empty state. After clearing the failure, Retry shows the list, closes the toast and focuses the input.
+  - CAP-10: a second context with the Pixel 7 profile, set up with `preparePage`. It adds a task through its UI, and the laptop shows it after one poll. It deletes a task, and the laptop drops it after the next poll. The laptop's focus stays on the input, and the phone's axe and CSP checks run.
+- `e2e/fixtures.ts` now holds the helpers that had copies in two or more specs: `near` and `expectBarColour` (from `age-bar` and `theme`), `settled` (from `age-bar` and `rows`), `stillHeld` with `HOLD_MS` (from `hold`), and `nextPoll` with `POLL_MS` (from `sync`). Those specs import them now, with no change in behaviour.
+- **Results:** typecheck and Prettier check are green. All 112 E2E tests pass, and `journeys.spec.ts --repeat-each 3` passed 15 of 15.
+
+**What AI decided beyond the plan.**
+
+- Row order is read from the `Delete "<text>"` buttons' names, and an age label with `getByText(label, { exact: true })` inside the row, so no locator uses `.text` or `.age`.
+- UJ-2 seeds one already-completed task, so "moves to the top of the completed tasks" is a real check.
+- UJ-2 dismisses the action toast before the deletes. The toast sits over the top row's ×, and the mouse resting on it holds it open, so the first delete click was intercepted until the test timed out.
+- UJ-3 proves "no reload" with a flag set on `window` before `advance` and read back after.
+
+**Review.** The coordinator's review asked for nine fixes, all made:
+
+- CAP-10 reads the laptop's order once before the poll, so the check can't pass by waiting for a poll the laptop ran on its own.
+- The "30m" label also accepts "31m".
+- The duplicated helpers moved to `fixtures.ts`.
+- Docblock fixes, and a redundant position check dropped.
+- UJ-1 runs at 1280×360 and asserts the bottom open row is below the fold, which proves "older tasks fill the screen".
+- UJ-2 now follows Key Flows: delete the second overdue task, assert the top open row is no longer overdue red, then clear the rest.
+- UJ-3 asserts both live regions are empty and no toast shows.
+- The phone's CSP check runs in `finally`.
+- Axe now also runs on a populated list (UJ-2) and with the add-failure toast showing (UJ-1).
+
+After the fixes, `journeys.spec.ts --repeat-each 3` passed 15 of 15, and the five specs that lost their copies pass.
+
+**What AI missed or could not do.**
+
+- UJ-3's "not yet red" is shown by the "23h" label only. At 23 h 59 m `ageColour` already returns the overdue hex (`#C43F3E`), so no colour check can tell it from 24 h, as the `age-bar.spec.ts` UJ-3 test also notes.

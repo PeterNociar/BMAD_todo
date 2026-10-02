@@ -5,8 +5,16 @@
  * checked by the fixture at teardown for every test (AD-19), including the pages the time-zone
  * test opens itself; the bar's colour reaching CSS at all proves the CSSOM path survives the CSP.
  */
-import { expect, expectNoA11yViolations, preparePage, test } from '../fixtures.ts'
-import { devices, type Locator, type Page } from '@playwright/test'
+import {
+  expect,
+  expectBarColour,
+  expectNoA11yViolations,
+  near,
+  preparePage,
+  settled,
+  test,
+} from '../fixtures.ts'
+import { devices, type Page } from '@playwright/test'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -17,9 +25,6 @@ const AGE_12H = 'rgb(143, 117, 6)'
 /** 12 h 30 m (`#927302`). */
 const AGE_12H30 = 'rgb(146, 115, 2)'
 const OVERDUE = 'rgb(196, 63, 62)'
-/** Per-channel tolerance: the colour moves continuously with real time between seed and read. */
-const CHANNEL_TOLERANCE = 2
-
 const input = (page: Page) => page.getByLabel('New task')
 const list = (page: Page) => page.getByRole('list', { name: 'Tasks' })
 const rows = (page: Page) => list(page).getByRole('listitem')
@@ -30,36 +35,6 @@ const row = (page: Page, text: string) =>
     has: page.getByRole('button', { name: `Delete "${text}"`, exact: true }),
   })
 const bar = (page: Page, text: string) => row(page, text).locator('[data-age-bar]')
-
-function channels(rgb: string): number[] {
-  const match = /^rgba?\((\d+), (\d+), (\d+)/.exec(rgb)
-  if (!match) throw new Error(`Not an rgb() colour: ${rgb}`)
-  return match.slice(1, 4).map(Number)
-}
-
-/** True when every channel of `actual` is within ±2 of `expected`. */
-function near(actual: string | null, expected: string): boolean {
-  if (actual === null || !/^rgba?\(/.test(actual)) return false
-  const [a, e] = [channels(actual), channels(expected)]
-  return a.every((v, i) => Math.abs(v - e[i]) <= CHANNEL_TOLERANCE)
-}
-
-/** Polls the bar's computed background until each channel is within ±2 of `expected`. */
-async function expectBarColour(el: Locator, expected: string): Promise<void> {
-  await expect
-    .poll(async () => {
-      const actual = await el.evaluate((e) => getComputedStyle(e).backgroundColor)
-      return near(actual, expected) ? expected : actual
-    })
-    .toBe(expected)
-}
-
-/** Waits for the response to the first request matching `method` and `path`. */
-function settled(page: Page, method: string, path: RegExp) {
-  return page.waitForResponse(
-    (r) => r.request().method() === method && path.test(new URL(r.url()).pathname),
-  )
-}
 
 /** Starts recording every write to the two live regions; `liveWrites` reads them back. */
 async function watchLiveRegions(page: Page): Promise<void> {
