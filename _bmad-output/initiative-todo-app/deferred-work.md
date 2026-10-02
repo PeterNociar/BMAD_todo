@@ -85,3 +85,12 @@
 - source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-refactor-sweep-plan.md`
   summary: No automated test that nginx follows a recreated backend's new IP (the entry-11 sweep entry): covered by the manual smoke script `scripts/check-infra.sh` (no CI runs it), entry 3.6.
   evidence: `scripts/check-infra.sh` stops `backend-test`, starts `busybox` squatters on the compose network until one takes the old IP (up to 8), then starts `backend-test` on a new one and requires `GET :8082/api/health` 200 within 15 s (SKIP if none did). Runs moved `backend-test` from 172.27.0.6 to 172.27.0.8 and from 172.27.0.8 to 172.27.0.9 (the second squatter filling a lower gap) and passed.
+- source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-qa-reports-plan.md`
+  summary: NFR-2 miss — with 500 rows and default motion, action feedback p95 exceeds 100 ms (Enter, tick, delete) because `animate:flip` on every row forces hundreds of layouts per action; reduced motion passes.
+  evidence: `docs/qa-performance.md` (CDP traces, layout counts per action). Architecture defers rendering optimisations "until NFR-2 fails" — it now fails. A fix (flip only rows near the viewport, or skip flip above a row count, or a cheaper FLIP) needs its own story; `npm run qa` marks the miss as an expected failure until then.
+- source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-qa-reports-plan.md`
+  summary: Security follow-ups accepted in `docs/qa-security.md`: a `Host` allowlist against DNS rebinding (S-3; browsers other than Chrome don't enforce Local Network Access), pinning or SRI for the CDN Swagger UI on `/api/docs` (S-4), and a base-image CVE scan (no scanner installed).
+  evidence: each is recorded with its reason in `docs/qa-security.md`; none is exploitable on the default `127.0.0.1` bind, but S-3 matters once the app is reached over Tailscale.
+- source_plan: `_bmad-output/initiative-todo-app/epic-everywhere-and-handed-in/story-qa-reports-plan.md`
+  summary: `frontend/tests/dockerignore.test.ts` checks the `.env` exclusion by the file's wording, not by what Docker actually sends in the build context.
+  evidence: a re-include line or a moved build context would leak `.env` with the test green; a real check needs a `docker build` of the context with a dummy `.env`, which no suite runs (verification-gap lens, 3.8).
