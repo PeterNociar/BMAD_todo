@@ -13,16 +13,19 @@ This log records how AI agents were used to build the Todo app: which agents and
 **Test generation.** The AI wrote the backend tests from the plan's I/O matrix: empty list, one row, healthy, and DB down (a `Session` subclass whose `execute` raises). It wrote the frontend tests for `api.ts` and `App.svelte`, including a load-failure case with no empty state and a task text containing HTML, which must render as plain text. It also wrote the Playwright smoke test that fails on any `securitypolicyviolation`.
 
 **Debugging with AI.**
+
 - The first App tests leaked DOM between tests. The fix was Testing Library's `svelteTesting()` Vite plugin, which adds automatic cleanup and the browser resolve condition.
 - svelte-check did not know the jest-dom matcher types until `@testing-library/jest-dom/vitest` was added to `tsconfig.app.json` `types`.
 - Starlette deprecated `httpx` for its TestClient, so the dev dependency is `httpx2`.
 
 **What AI missed or could not do.**
+
 - The default host ports (`5433` for `db-test`, `8080` for the app) were already taken on the dev machine by a local Postgres and another server. The agent kept the committed defaults and verified through a throwaway compose override on other ports. A human should confirm the stack on the real ports.
 - The Playwright browser download timed out in the agent's sandbox, so the smoke test was run against the system Google Chrome (`channel: 'chrome'`) through a temporary config. The committed config uses Playwright's bundled Chromium.
 - ESLint's `svelte/require-each-key` forced a key on the task list. The spine says rows key by a client `key`, which does not exist yet. For tasks that come from a GET the key is the server `id`, so the list keys by `id` until the store arrives.
 
 **Review.** Four independent reviewer subagents (blind, edge-case, verification-gap and intent-alignment lenses) read the diff. The main session checked each of their 22 findings against the code before acting on it.
+
 - AI-written tests that passed for the wrong reason:
   - The DB-down test overrode `Session.execute`, which SQLModel's `exec` bypasses, so it passed on an unrelated `UnboundExecutionError`.
   - The load-failure App test asserted before the rejection was handled. A mutant that shows the empty state after a failed load still passed.
@@ -37,6 +40,7 @@ This log records how AI agents were used to build the Todo app: which agents and
 **Agents.** The architect persona (bmad-architecture, update mode) added AD-21 after the user asked for Pydantic Settings. It put three choices to the user: a separate test settings class, whether to also read `backend/.env`, and a strict `APP_ENV`. Three reviewer subagents (rubric, currency, adversarial) then attacked the draft. All three found the same critical flaw: config read at import time can't be reached by `dependency_overrides`. That led to `create_app(settings)` with `uvicorn --factory`. The dev persona (bmad-build) then planned the refactor, and a subagent implemented it from the plan alone.
 
 **Test generation and what AI missed.** The implementer wrote one test per matrix row. Four review lenses then showed that several of those tests could pass without proving anything:
+
 - The import check passed on any machine that has a `backend/.env`.
 - The any-working-directory test returned early.
 - The `TEST_DATABASE_URL` override was never exercised.
@@ -55,6 +59,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Test generation.** The AI wrote `contracts/ordering-cases.json`, with inputs listed out of order so an unordered query can't pass by luck, plus a parametrized HTTP test, unit tests for the `.sssZ` serializer and the clock, and an AD-15 migration guard on a scratch `*_pytest` database. The guard also covers the Alembic passed-connection path that the AD-21 build had deferred.
 
 **What AI missed.**
+
 - The migration test loads `alembic.ini`, and Alembic's `fileConfig` then silently disabled the app's loggers for the rest of the pytest session. An edge-case reviewer caught it, and the main session reproduced it before fixing it.
 - The fixtures lacked a case where an open task and a completed task share a timestamp. Without it, a merged sort key would pass every case, and that is the likely mistake when the frontend mirrors the order in entry 1.6.
 - The implementer edited an existing `deferred-work.md` entry. That file is append-only, so the edit was reverted and a new entry appended instead.
@@ -66,6 +71,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Test generation.** The AI wrote one integration test per matrix row: add, the 2000- and 2001-character limits, invalid bodies, idempotent tick and untick, delete, and missing or malformed ids. It stamped times from a fixed clock injected through `dependency_overrides`, the first real use of the AD-7 clock. It also wrote error-contract tests: DB down gives 503 on every route, framework 404 and 405, an unhandled 500 with no traceback, and an OpenAPI check.
 
 **What AI missed, and what review caught.**
+
 - **NUL character.** Text containing NUL passed validation, then Postgres rejected it, and the API returned a 500. The main session reproduced it before routing it to a fix.
 - **Tick racing a delete.** A tick committed after a concurrent delete raised `StaleDataError`, also a 500. The main session reproduced it with two sessions.
 - **OpenAPI rewrite.** The rewrite silently dropped FastAPI's generator arguments.
@@ -78,12 +84,14 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Agents.** The dev persona (bmad-build) planned the ticket and asked the user one question before starting: may the one-time `db-test` volume be recreated so the `todo_e2e` init script runs? The user said yes, limited to `todo_db-test-data`; `docker compose down -v` was forbidden because it could also delete the app's data. A subagent implemented the plan, then four review lenses read the diff.
 
 **What was built.**
+
 - The AD-14 testing router (seed, reset, clock offset), imported and mounted only in test mode.
 - One shared `Clock` on `app.state` that holds the offset.
 - The `dev` profile: `backend-dev` with `--reload` and read-only bind mounts, and `frontend-dev` on `node:24-alpine`, which runs `npm ci` inside the container so no glibc host binaries end up in musl.
 - The `test` profile: `backend-test` on `todo_e2e`, and `frontend-test` on `:8082`.
 
 **What AI missed, and what review caught.**
+
 - The first `db-test` health check used `pg_isready -d todo_e2e`, which ignores whether the database exists. An old volume would have looked healthy while `backend-test` crash-looped. It now runs a real query.
 - The seed and clock bodies silently ignored misspelled keys, and they accepted negative offsets that could stamp `completed_at` before `added_at`.
 - The README didn't warn that `dev` and `app` share one database and both migrate it at startup.
@@ -107,11 +115,13 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **What was built.** One `e2e/fixtures.ts` that every spec imports. It resets the test data before each test, installs `page.clock` before the first `goto`, fails a test at teardown on any CSP violation, and provides `seed()`, `advance(ms)` (browser and server clocks together), `failApi()` and an axe helper. The suite now targets the test profile on `:8082` with one worker, and `E2E_BROWSER_CHANNEL=chrome` works around the Playwright Chromium download that times out on this machine.
 
 **Debugging with AI.**
+
 - Under `module: nodenext`, relative ESM imports need an extension, so specs import `'../fixtures.ts'` and `tsconfig.json` sets `allowImportingTsExtensions`.
 - `AxeBuilder` has to be a named import: the default import resolves to the CJS module object, and TypeScript rejects `new` on it.
 - The reset asserts `204`. Against the app stack on `:8081` it gets a `404`, so the suite fails before it touches real data (checked by hand).
 
 **What AI missed, and what review caught.** Review found 28 items (3 medium, 25 low or false): 11 were patched, 1 deferred, 16 rejected on evidence.
+
 - **A test that passed for the wrong reason.** The CSP row ran under `test.fail()`, which also accepts a failure in the test body. With the listener removed, the poll timed out and the row still reported green. A normal test now asserts that the listener recorded the violation.
 - **Lost violations.** Violations from an earlier document were lost after a `goto` or `reload`, because the init script replaced the page's array. They are now collected Node-side through `exposeBinding`, with a reload test.
 - **Unpinned failure path.** The axe failure path was proved only by a throwaway spec. It is now pinned by a test that injects an `<img>` with no alt.
@@ -127,12 +137,14 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Vitest with coverage, and `vite build`.
 
 **What was built.**
+
 - `lib/api.ts`: the five AD-3 calls. Every rejection is an `ApiError` with a client `code`, mapped status-first (AD-5) under a 10 s `AbortController` timeout that covers the body read as well as the fetch.
 - `lib/sort.ts`: the AD-6 mirror. Id-less (pending) tasks sort after confirmed ones on a tie and break ties by `key`, so the comparator stays a total order.
 - `lib/clock.svelte.ts`: `clock.now` and `clock.sample()`, refreshed every 30 s and on `visibilitychange`, `focus` and `pageshow`.
 - ESLint rules (`no-restricted-properties` for `Date.now`, `no-restricted-syntax` for `new Date()` and `Date()`) that make the clock the only wall-clock read in `src/`.
 
 **Test generation.** The AI wrote one test per matrix row. The sort tests import `contracts/ordering-cases.json` directly (through `resolveJsonModule`), so there is no copy of the fixtures in `frontend/`. The clock tests use `vi.useFakeTimers()`, `vi.setSystemTime()` and a fresh module import per test, so the clock needs no test hook. The AI checked that the tests can fail with deliberate breaks, which it then reverted:
+
 - Flipping the id tie-break failed the fixture tie cases.
 - Dropping 503 from the status list, or the 413 rule, failed those rows.
 - Not clearing the timeout failed the timer-count test.
@@ -141,11 +153,13 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Debugging with AI.** A stalled response body never settles on its own, because the fetch signal does not reach a hand-built `Response`. So `api.ts` races both the fetch and the body read against the abort, rather than relying on `fetch` to honour the signal.
 
 **What AI missed or could not do.**
+
 - The lint rule banned only the literal `Date.now`. A `new Date()` with no arguments, or a bare `Date()`, also reads the wall clock and passed lint. `no-restricted-syntax` now bans both, and `new Date(ms)` stays allowed.
 - No test showed that `clock.now` is reactive: swapping `$state` for a plain `let` passed every test. A test in `clock.svelte.test.ts` now runs an `$effect` on `clock.now` and asserts that it re-runs after the 30 s tick.
 - The first attempt at that test failed even with `$state`. `vi.resetModules()` gave the clock a fresh copy of the Svelte runtime, so the test file's effect could not track it. The reactivity test now lives in its own file, which installs fake time in `vi.hoisted` and imports the clock statically.
 
 **Review.** Four lenses (blind, edge-case, verification-gap and intent-alignment) produced about 30 findings, each checked against the code.
+
 - **Patched (5):**
   - the `new Date()` lint gap;
   - the clock reactivity test;
@@ -164,21 +178,25 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, and the plan's grep for `aria-live`, `role`, and `.focus(`.
 
 **What was built.**
+
 - `lib/toasts.svelte.ts`: the AD-17 API and the verbatim copy as `COPY`. It shows at most two toasts, newest first. The load-failure toast is pinned, and a third toast drops the oldest transient one. Toasts dismiss after 5 s, and `hold`/`release` pause and resume from the time that remained. It also holds `politeText` and `alertText`.
 - `components/LiveRegions.svelte`, which owns the only `role="status"` (polite) region and the only `role="alert"` region. `components/ToastLayer.svelte` renders the toasts: a decorative icon, the message, and either Dismiss or Retry (`onretry`). Hover or focus inside a toast pauses it.
 - Light toast tokens as `--color-*` custom properties on `:root` in `app.css`.
 - `lib/focus.ts`: `registerInput`, `returnToInput` (gated on `(hover: hover)`), `installSafetyNet`, `installTypeToFocus`, `onInputKeydown` and `onRowKeydown`, following the row contract `data-task-row` / `data-row-control`.
 
 **Test generation.** The AI wrote one test per matrix row, plus edge cases: nested holds, a dropped toast's timer, a delegated row listener, and DOM order changed at keypress. The AI checked that the tests can fail with deliberate breaks, which it then reverted:
+
 - Not clearing the polite region failed the repeat-announce test.
 - Removing the hover gate from `returnToInput` failed the phone tests.
 - Removing either path of the safety net (the MutationObserver, or the `focusout` listener) failed its own test.
 
 **Debugging with AI.**
+
 - The module is a singleton, so a test that rendered `LiveRegions` after an earlier test had announced something found the region already filled. The first-paint test moved to its own file, which gets a fresh module.
 - Svelte leaves an empty text node in each region, so `toBeEmptyDOMElement()` fails on a region that is in fact empty. The test asserts `textContent === ''` instead.
 
 **What AI decided beyond the plan.**
+
 - Holds nest: hover and focus each hold the toast, and the timer resumes only after both are released. Without this, a pointer leaving a toast whose Dismiss button still has focus would restart the timer.
 - The safety net also uses a MutationObserver, because not every engine fires `focusout` when the focused element is removed (jsdom does not).
 - Type-to-focus ignores Space, so Space still scrolls the page.
@@ -186,10 +204,12 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - Each toast element needed a `svelte-ignore a11y_no_static_element_interactions`: its hover handlers only pause the timer, and adding a role would change the semantics.
 
 **What AI missed.**
+
 - **Same-tick announcements.** Two announcements in one tick (for example an action-error toast and a success message) each set the region on their own timeout, so the first was overwritten before a screen reader read it.
 - **Touch-synthesised hover.** On touch, a tap fires a synthetic `mouseenter` and no `mouseleave` until the next tap elsewhere, so a tapped toast never dismissed itself.
 
 **Review.** Four lenses read the diff, and each of about 40 findings was checked against the code.
+
 - **Patched:**
   - Same-tick announcements are merged into one message: a call made while a region has a pending text joins its text to it.
   - On recovery, `hideLoadFailure` clears the stale alert text and cancels any pending alert.
@@ -214,6 +234,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, and the plan's grep for importers of `lib/api.ts`.
 
 **What was built.**
+
 - `lib/tasks.svelte.ts`: `createTasks()` and the `tasks` singleton. Each entry is `{key, confirmed, base, pending, inFlight}`. `rows` is derived: the held row first, then `sortTasks` of the rest.
 - A per-task pump. It sends the head op only when nothing is in flight and the entry has a server id, so ops on an unconfirmed add wait for its POST.
 - Rollback: a failed op clears that task's queue and raises one `action_failed` toast. A failed add removes the row, clears the hold if it was that row, picks `add_too_long` or `add_failed`, and rejects with `{text}`, or `{text: null}` when ops were queued behind it.
@@ -224,16 +245,19 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Debugging with AI.** Svelte's deep state proxy means an object pushed into the entries array is not the object that is tracked. The store therefore looks every entry up by key before mutating it, which also handles an entry that disappeared while its request was in flight.
 
 **What AI decided beyond the plan.**
+
 - `load()` returns a promise, so callers and tests can await it. A failure resolves it silently.
 - Unticking the held task leaves the hold in place; only tick and remove clear it, as the plan says.
 - A failed add keeps a newer add's hold.
 - The provisional base of an unconfirmed add uses an empty `id`. `Row.id` comes from `confirmed`, so it is `null` until the POST returns.
 
 **What AI missed.**
+
 - `crypto.randomUUID` exists only in a secure context. Phone access through `APP_BIND` on a Tailscale IP serves plain http, so `add()` threw a TypeError and nothing was added.
 - The GET/POST ordering that drops a confirmed add: if an add is confirmed while the first GET is in flight, the plain replace in `load()` drops it, or duplicates it under a new key.
 
 **Review.** Four lenses produced about 30 findings, each checked against the code. The plan's grep confirmed that only `App.svelte` and `tasks.svelte.ts` import the api.
+
 - **Patched:**
   - The key falls back to a module counter (`local-N`) when `crypto.randomUUID` is unavailable.
   - `listEmpty` is passed only once the list has loaded (`loadState === 'ready'`), so deleting the last unconfirmed add during loading doesn't announce the empty state.
@@ -244,6 +268,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - `load()` re-entrancy.
 
   1.12 replaces the plain replace with the AD-10 merge.
+
 - **Rejected:**
   - 404 handling, because AD-11 belongs to 1.12.
   - Wrapping `add`'s `{text}` rejection in an Error, because AD-9 specifies that shape.
@@ -257,6 +282,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the compose test stack and Playwright with the system Chrome. Screenshots of the built page at 1024 px and 320 px, taken with a throwaway Playwright script, served as the visual check against the DESIGN mockups.
 
 **What was built.**
+
 - `app.css`: the full light `--color-*` palette, the DESIGN spacing scale and radii as custom properties, base `html`/`body` styles, and the "Inter Fallback" and "JetBrains Mono Fallback" faces with `size-adjust` and the ascent, descent and line-gap overrides.
 - `main.ts` imports `@fontsource/inter` 400 and 600 and `@fontsource/jetbrains-mono` 400. Vite bundles them.
 - `App.svelte` as the composition root: a sticky top block (wordmark header, input, the toast layer positioned absolutely under it), a `main` list area with `aria-busy`, the delayed skeleton, the empty state and a plain-text `ul` keyed by `row.key`, and `LiveRegions`. On mount it registers the input, installs the safety net and type-to-focus, focuses the input and calls `tasks.load()`.
@@ -266,11 +292,13 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Test generation.** The component tests run the real store on top of a mocked `lib/api`. The `tasks` singleton is mocked as a getter over a fresh `createTasks()` for each test. The AI checked that the tests can fail by breaking the code on purpose, then reverting: dropping the empty-input check on restore, the skeleton delay, the `isComposing` guard or the `returnToInput()` call each failed at least one test.
 
 **Debugging with AI.**
+
 - The first test setup re-imported App after `vi.resetModules()`. That loaded a second copy of the Svelte runtime, and every test failed with `effect_orphan`. The fix was the getter mock above.
 - In the E2E suite, `getByText("Couldn't save new task.")` sometimes matched both the toast and the polite live region. Whether it did depended on timing, because the region merges announcements made in the same tick. The specs now target the toast card through `[data-toast-kind]`.
 - Playwright's installed clock runs at real speed and also fakes `performance`, so resource-timing entries come back empty. The skeleton spec instead records, on `document.timeline`, when the first `GET /api/tasks` starts (a wrapped `fetch`) and when the skeleton first appears (a `MutationObserver`). It asserts the gap between the two.
 
 **What AI decided beyond the plan.**
+
 - `build.assetsInlineLimit: 0`. Several fontsource subsets are smaller than Vite's 4 KB inlining limit, and a `data:` font would break the `default-src 'self'` CSP.
 - The skeleton bar widths are CSS classes, not `style:` directives, because a static inline style attribute would need `'unsafe-inline'`.
 - The 36 px top padding sits on the sticky block, not on the page, so the header keeps its gap from the top edge while the page scrolls.
@@ -278,10 +306,12 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - The E2E "type right after load" spec waits for `aria-busy="false"` before typing, because the store's deferred GET/POST race could otherwise make it flaky.
 
 **What AI missed.**
+
 - Forced-colors mode drops `box-shadow`. The input's focus ring used `outline: none` plus a shadow, so in Windows High Contrast it had no focus indicator at all.
 - The skeleton delay timer was tied to mount, not to the loading state. Any later load (Retry) would have shown the skeleton at once.
 
 **Review.** Four lenses read the diff, and each of about 40 findings was checked against the code.
+
 - **Patched:**
   - A transparent 2 px outline on the focused input, which forced-colors mode paints. The box-shadow ring stays.
   - The skeleton delay restarts on every transition into `loading`, through an `$effect` on the loading state.
@@ -317,6 +347,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Vitest with coverage, `vite build`, and the E2E suite against the compose `test` stack.
 
 **What was built.**
+
 - `lib/tasks.svelte.ts`:
   - A `seq` counter, bumped on every confirmed add, tick, untick and delete, and on every 404 removal. Each entry carries the `stamp` that confirmed it.
   - Tombstones: a plain `Map<id, seq>`, left by confirmed deletes and 404 removals, pruned once a GET sent at S ≥ their seq has merged.
@@ -331,15 +362,18 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Test generation.** The AI wrote one unit test per store matrix row, plus tests for a pruned tombstone, an untick 404 that clears the hold, the twin's ops queuing behind the add's own ops, no GET for non-recoverable failures, and no announcement on a merge. It checked that the tests can fail by applying eight deliberate breaks one at a time and reverting each one: ignoring stamps, ignoring tombstones, skipping the twin fold, treating 404 as an ordinary failure, dropping the recovery GET, letting the queue grow past one, sending while the twin's op is in flight, and keeping entries the server no longer lists. Every break failed at least one test. The changed E2E spec passed 15 runs in a row.
 
 **What AI decided beyond the plan.**
+
 - An entry created by a GET has a server id, so an op on it is sent at once. When the add's POST then returns the same id, that op is still in flight. Each op therefore carries an `n`, and a response finds its entry by `n`, not by key. The merged entry stays in flight until that op settles, so it never sends two requests at once.
 - A 404 removal also clears the hold if the removed task was held.
 - Tombstones and the merge's lookup maps are plain `Map`/`Set` with a scoped `svelte/prefer-svelte-reactivity` disable, because nothing renders them.
 
 **What AI missed.**
+
 - The twin fold overwrote the twin's newer state with the POST's creation state, so a twin whose tick had already settled showed open again.
 - The first version of the E2E spec didn't force the race, so it would also have passed on the 1.8 store.
 
 **Review.** Four lenses produced about 30 findings, each checked against the code.
+
 - **Patched:**
   - The twin fold keeps the twin's `confirmed` state (GET-seen or op-confirmed), which is never older than the POST's. It uses the POST Task only when there is no twin.
   - If the twin was deleted (tombstoned) before the POST returned that id, the add drops its row, clears its hold and resolves, with no toast.
@@ -365,6 +399,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the rebuilt compose test stack and Playwright with the system Chrome.
 
 **What was built.**
+
 - `components/TaskRow.svelte`: the tick button (an SVG ring, or the filled check when done), the plain-text task text that wraps anywhere, and the delete ×. The controls carry `data-row-control`, and their names are `Mark "X" done`, `Mark "X" not done` and `Delete "X"`, with every icon `aria-hidden`. Tick calls `tasks.tick` or `tasks.untick` by state, delete calls `tasks.remove`, and each then calls `returnToInput()`. Completed rows get muted text and no strike-through. Under `(hover: hover)` the row takes the hover tint, and the delete is at opacity 0 with `pointer-events: none` until the row is hovered or holds focus. Under `(hover: none)` the delete is always visible, and both hit areas stretch over the row padding to the full row height.
 - `App.svelte`: each `<li data-task-row>` is keyed by `key`, with `animate:flip` (200 ms, `cubicOut`, and a duration function that reads `prefers-reduced-motion` when the animation runs). `onRowKeydown` is on the `ul`. A border-box `ResizeObserver` on the sticky header keeps `--sticky-height` on the page, set through the CSSOM, which the row controls use as `scroll-margin-top`.
 - `e2e/tests/rows.spec.ts`: one test per matrix row, plus a sticky-clearance test, a companion motion test that sees a 200 ms animation, and a test that turns reduced motion on after load, which proves the duration is read when the animation runs.
@@ -372,16 +407,19 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **Test generation.** `TaskRow.test.ts` mocks the store and `lib/focus` and checks names, icons, state styling, plain text, and that each action calls the store by key before `returnToInput()`. `App.test.ts` runs the real store on a mocked api for reorder on tick and untick, delete, tick rollback, focus return, the arrow keys and Esc, and the sticky-height observer. The rows spec (18 tests) passed five runs in a row (90 test runs). A deliberate break, zeroing `scroll-margin-top`, failed the sticky test. The first version of that test passed without the margin, because Chrome centres an element it scrolls into view on `focus()`.
 
 **What AI decided beyond the plan.**
+
 - The `li` lives in App and `TaskRow` fills it, because Svelte allows `animate:` only on an element that is the keyed each block's direct child. The hover tint and the delete reveal therefore hang off TaskRow's root `div`, which fills the `li`.
 - `vitest-setup.ts` stubs `Element.prototype.getAnimations`, which jsdom lacks. Svelte's flip calls it when a keyed row leaves. In jsdom every rect is zero, so no animation ever runs.
 - On touch, the ring and the glyph stay on the first text line (padding-top inside the stretched button) rather than centring in the row, to match DESIGN's first-line alignment on wrapped rows.
 
 **What AI missed.**
+
 - The first touch styles used a `button` selector inside the media query, which lost to the `.tick`/`.delete` margins on specificity, so the hit areas did not stretch. The touch E2E test caught it.
 - The touch block used the Level 4 `@media not (hover: hover)`, which iOS Safari before 16.4 drops, so those phones would have lost the touch hit areas.
 - The reduced-motion check emulated the setting before load, so it couldn't fail if the setting were read only once at load.
 
 **Review.** Four lenses produced about 30 findings, each checked against the code.
+
 - **Patched:**
   - `(hover: none)` for the touch styles, for older iOS.
   - The sticky-height observer watches the border box, so a padding change at the 600 px breakpoint updates `--sticky-height`.
@@ -406,6 +444,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell and Docker: ruff and pytest, `svelte-check`, ESLint, Vitest with coverage, `vite build`, the rebuilt test stack with Playwright on the system Chrome, and the rebuilt app profile.
 
 **What was built.**
+
 - nginx: the stale-IP risk was real (502, with nginx still dialling the old IP). `default.conf.template` now re-resolves through Docker's DNS every 10 s and proxies through a variable with no URI part. The same repro then gave 200, and the path, query, error bodies and headers passed through unchanged.
 - Alembic: `env.py` documents the `%%` contract. Tests migrate a scratch database owned by a role whose password is `p%w`, once through an escaped `sqlalchemy.url` and once through `DATABASE_URL` with a raw `%`; only a password that arrives intact can log in. A third test shows an unescaped `set_main_option` is refused.
 - `frontend/tests/lint-rules.test.ts` pins the AD-8 and AD-18 bans with ESLint's `lintText`.
@@ -413,17 +452,20 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - The spine diagram gains dotted annotation-only arrows from routers to services and models, and AD-16's nginx line describes the resolver and its side effects.
 
 **What AI decided beyond the plan.**
+
 - The lint test overrides `projectService` to `false` for `src/X.svelte` only, because that file is not on disk and the typed project service refuses it. The bans are syntax rules, so the real config is otherwise used unchanged. Only ban-rule errors are counted, and any parse error fails the test, so an "allowed" case cannot pass by linting nothing.
 - The `failApi` test also sends a page `POST` and expects the injected 503, so it fails if the route were never installed.
 - The `%` tests use a real role and password rather than inspecting the parsed URL, after checking that `db-test` enforces passwords on the forwarded port.
 - AD-16's `proxy_pass` sentence in the spine was updated to match the new config.
 
 **What AI missed.**
+
 - The first lint test also failed on `svelte/prefer-svelte-reactivity`, which flags `new Date()` in `.svelte.ts` files, so it now ignores rules other than the two bans.
 - The spine arrows were first labelled "type-only", but `routers/tasks.py` imports `TaskService` and `Task` at runtime, because FastAPI reads the annotations.
 - The first `env.py` docstring said `DATABASE_URL` is used "exactly as given, raw `%` included". SQLAlchemy's `make_url` percent-decodes the password (`p%41w` becomes `pAw`); `p%w` only survived because `%w` is no valid escape.
 
 **Review.** Four lenses produced about 30 findings, each checked against the code.
+
 - **Patched:**
   - The `env.py` docstring: URL passwords are URL-encoded (a literal `%` is `%25`) on both paths, plus `%%` for `set_main_option`. A new test migrates through `DATABASE_URL` with a `%25`-encoded password.
   - The settings-path test proves the path: `sqlalchemy.url` is empty before the upgrade, and `get_settings` was called once.
@@ -445,6 +487,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Vitest with coverage, `vite build`, the rebuilt test stack, the e2e typecheck and Playwright on the system Chrome.
 
 **What was built.**
+
 - `lib/age.ts`: pure `ageLabel(timestamp, now, done)` → `{ label, words }`. The age is clamped to 0 and rounded down to whole days, hours or minutes. Completed tasks get `done …` and `completed … ago`, and the words are singular for 1.
 - `TaskRow`: a `$derived` age from `clock.now` (`completed_at` on done rows, `added_at` otherwise). The label is an `aria-hidden` column between the text and the delete button: 12 px tabular JetBrains Mono, at least `9ch` wide, right-aligned, in `text-secondary` (open) or `text-muted` (done), and centred on the first text line. Its size and width come from new `app.css` tokens (`--font-size-age-label`, `--space-age-column-min`). The words sit in a `.visually-hidden` span right after the task text, led by ", " so the two don't run together. Neither is in a live region.
 - Epic 1's whole-row text assertions (the rows, capture and harness E2E specs, plus `App.test.ts`) now target the task-text element through a `rowTexts` helper, so the age doesn't change their meaning.
@@ -458,17 +501,20 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
   - E2E: 55 Playwright tests pass, including 4 for age. One harness test fails on purpose (`test.fail()`).
 
 **What AI decided beyond the plan.**
+
 - The words span carries `data-age-words`, so tests can find it without relying on its CSS class.
 - The not-live E2E uses the 24 h crossing (23h → 1d), so the same test also covers the UJ-3 label change.
 - TaskRow unit tests drive time with `vi.setSystemTime` and `clock.sample()`, because the clock's interval is registered with real timers at import. They sample again after restoring real timers.
 - The accessibility tree reads "aged , added 5 hours ago": the hidden span is its own box, so a space separates it from the text even with no whitespace in the markup. The comma provides the pause.
 
 **What AI missed.**
+
 - The label and the task text ran together for screen readers ("aged added 5 hours ago").
 - The wide-label test seeded added and completed both at 100 d, so it couldn't tell which timestamp was used.
 - Running the frontend's Prettier over the e2e specs reformatted them wholesale (e2e has no Prettier config). The specs were restored and edited again by hand.
 
 **Review.** Four lenses produced about 25 findings, each checked against the code.
+
 - **Patched:**
   - The screen-reader separator.
   - The age tokens in `app.css`.
@@ -495,6 +541,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell: `svelte-check` and `tsc`, ESLint, Prettier, Vitest with coverage, and `vite build`. Throwaway Node scripts compared gamut-reduction methods against the stored stops.
 
 **What was built.**
+
 - `lib/age.ts`: pure `ageColour(timestamp, now, done, theme)` → `#RRGGBB`, or `null` for a completed task. Below 1 h it returns the fresh endpoint, from 24 h the overdue one, and in between `t = (hours − 1) / 23` with L, C and H linear (hue 155 → 25).
   - The colour maths lives in the same file: OKLCH → OKLab → linear sRGB (Ottosson's matrices), the sRGB transfer functions, WCAG relative luminance and contrast, and `hexToOklch` for the tests.
   - `fitGamut` reduces chroma, keeping L and H. `nudgeContrast` (exported) moves L away from the backgrounds in 0.005 steps until every background reaches 3:1, and stops at the end of the L range.
@@ -504,15 +551,18 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - **Results:** 293 Vitest tests in 15 files pass, with coverage at 98.65% statements, 94.75% branches, 100% functions and 99.57% lines against the 70% gate. Check, lint, Prettier and build are green.
 
 **What AI decided beyond the plan.**
+
 - **Gamut reduction uses a fixed 0.002 chroma step, not bisection.** Bisection to the gamut edge gives light 12 h `#8F7500`, which is 6/255 off DESIGN's `#8F7506` on blue and breaks the user's ±2/255 decision. No bisection margin brings every stop within tolerance in both themes: light 12 h wants blue 6 and dark 12 h wants blue 0. A 0.002 step reproduces all 14 stops exactly, so it's very likely the method that rendered them. The plan's design note had it backwards: a fixed step lands inside the edge, and that is where the stored stop sits.
 - The OKLCH helpers stay in `age.ts`, not in a sibling `oklch.ts`. The node tsconfig type-checks whatever `tests/` imports and requires file extensions, while `src/` imports never use them.
 - The hue test measures the hue from the output hex, so it checks the result rather than the formula's input.
 
 **What AI missed.**
+
 - An unparseable timestamp made `Date.parse` return NaN, which flowed into L, C and H. Light returned `#NANNANNAN`, and dark looped forever in `nudgeContrast` because NaN never trips the L-range exit.
 - A plan rule that couldn't meet its own tolerance: bisection to the gamut edge misses light 12 h by 6/255. The user signed off on the 0.002 chroma step instead.
 
 **Review.** Four lenses produced about 30 findings, each checked against the code.
+
 - **Patched:**
   - A non-finite age now counts as 0 (the fresh colour), and the nudge loop exits on a non-finite L.
   - `hexToRgb` throws on anything that isn't `#RRGGBB`.
@@ -536,6 +586,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the rebuilt test stack, the e2e typecheck and Playwright on the system Chrome.
 
 **What was built.**
+
 - `TaskRow`: an `aria-hidden` `[data-age-bar]` span on open rows only, absolutely positioned on the row's left edge, 3 px wide (new `--space-age-bar` token in `app.css`) and full row height, inside the existing 15 px inset. Its `background` is `var(--age-colour)`, which an `$effect` sets with `style.setProperty` on a `bind:this` element, so no `style` attribute is ever written from markup (CSP `default-src 'self'`). `clock.now` is read once into a `$derived` `now`, and both `ageLabel` and `ageColour(…, 'light')` derive from it. A comment says epic 3 switches the theme argument.
 - `TaskRow.test.ts`: seven new tests: the bar's presence and position, `--age-colour` equal to `ageColour` (12 h → `#8F7506`), the only declaration on the bar, no bar when done, the colour and label moving together on `clock.sample()` (12 h → 24 h → `#C43F3E` and `1d`), a future `added_at` → fresh and `now`, and the bar leaving on tick and returning on untick. The row-order test now skips the bar, which sits outside the flex flow.
 - `e2e/fixtures.ts`: a `serverClock` fixture owns the one offset counter. `advance(ms)` shifts it and then fast-forwards the page; the new `skewServer(ms)` shifts only the server, with a docstring naming it the single, deliberate exception to AD-8. The page set-up (CSP listener, binding, `clock.install()`) moved into an exported `preparePage(page)`, so a spec that opens its own contexts gets the same checks.
@@ -543,16 +594,19 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 - **Results:** 311 Vitest tests in 15 files pass, with coverage at 98.69% statements, 94.93% branches, 100% functions and 99.57% lines against the 70% gate. Check, lint, Prettier and build are green. All 63 E2E tests passed before review (two full runs); after review `age-bar.spec.ts` passed three runs in a row.
 
 **What AI decided beyond the plan.**
+
 - The colour derives from `added_at` only, since only open rows have a bar; the label keeps `completed_at ?? added_at`.
 - A `preparePage` helper, so the time-zone test's own contexts install the fake clock and fail on CSP violations like the `page` fixture.
 - The UJ-3 test tags the row's element before the crossing and checks the same element is still at index 1, which proves no remount as well as no move.
 - The future test reads the POST response and asserts the confirmed `added_at` is more than 55 minutes ahead of the browser's `Date.now()`, so it can't pass on the optimistic row alone.
 
 **What AI missed.**
+
 - Exact-colour E2E checks (`toHaveCSS('background-color', …)`) against a colour that moves continuously with real time between seeding and reading.
 - A UJ-3 colour assertion that couldn't see a change: at 23 h 59 m 30 s the bar is already the overdue colour, and the seed sat only 30 s from the boundary.
 
 **Review.** Four lenses produced about 25 findings, each checked against the code.
+
 - **Patched:**
   - A ±2-per-channel colour helper, used for every bar-colour assertion.
   - The UJ-3 and time-zone seeds now have minutes of slack; UJ-3 says honestly that its recolour is proved by the label and the TaskRow unit test.
@@ -573,6 +627,7 @@ All four were fixed. One gap was deferred to entry 1.2: the Alembic "caller-pass
 **What was built.** The store's `heldKey` gets its 3 s countdown (FR-4). One `setHeld` helper now owns every change to the hold and cancels any running timer. The timer releases only the key it started for. It counts down only once the list is ready, so a hold taken while loading starts its 3 s when the first GET lands. Untick keeps the hold.
 
 **Test generation.** A fake-timer suite covers:
+
 - release at exactly 3 s;
 - a newer add restarting the countdown;
 - tick, delete and a failed add cancelling it;
@@ -595,6 +650,7 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the rebuilt test stack, the e2e typecheck and Playwright on the system Chrome.
 
 **What was built.**
+
 - `App.svelte`: the `li` whose key is `tasks.heldKey` gets `class:held`, which is `position: sticky` at `top: var(--sticky-height)` on a `surface` background, `z-index: 1` (below the header and its toasts). `.list` is `overflow: clip`, so the corners stay rounded without a scroll container.
 - A `watchHeight` helper watches one element's border box at a time, and writes `--sticky-height`, `--held-height` and `--toast-height` on `.page` through `setProperty` (CSP). `--held-height` is the held row plus the 8 px gap, 0 with nothing held, so the toast stack's `top: calc(100% + var(--held-height, 0px))` puts toasts 8 px below the held row, or at the list top as before.
 - `TaskRow.svelte`: the controls' `scroll-margin-top` is the sum of the three heights. Inside the held row both extra heights are reset to 0, so its own controls only clear the header.
@@ -603,17 +659,20 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 - **Results:** 325 Vitest tests pass, with coverage at 98.88% statements, 95.01% branches, 100% functions and 99.59% lines against the 70% gate. Check, lint, Prettier and build are green. All 74 E2E tests pass, and `hold.spec.ts` passed three repeats in a row.
 
 **What AI decided beyond the plan.**
+
 - `overflow-anchor: none` on `.list`. Without it, Chrome's scroll anchoring moved `scrollY` by one row when the held row was inserted at the top, and the "visible on add" test failed. A mutation run proved it.
 - `keepFocus()` in `lib/focus.ts`. The plan expected focus to stay on the held tick by itself. But Svelte's keyed `{#each}` moves the row with `before()`, which blurs it, and the "focused held control" test failed without the restore. Focus still moves only through `lib/focus.ts` (AD-18).
 - The 8 px gap is folded into `--held-height` rather than toggling a class on the toast anchor. The gap then also counts in the controls' clearance.
 - Overriding `--held-height` and `--toast-height` to 0 on the held row itself, so tabbing to its tick never asks the browser to scroll a sticky row clear of itself.
 
 **What AI missed or could not do.**
+
 - The tap-focus path after an early tick. On phone, `returnToInput` does nothing, so the tapped tick keeps focus. The first settle restored that focus and scrolled the page to where the done row landed.
 - A clearance test that couldn't fail: it focused the last row, which can never scroll under the header.
 - The fixture's page clock also runs in real time, so a hold ends after 3 s of wall time. Each E2E test checks `li.held` is still present when it measures, so a slow run fails loudly instead of passing on a settled row.
 
 **Review.** Four lenses raised about 30 findings, each checked against the code.
+
 - **Patched:**
   - The settle restores only keyboard focus, so a tap-tick on phone no longer makes the page jump.
   - `overflow: hidden` before `overflow: clip`, as a fallback for Safari before 16.
@@ -637,6 +696,7 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check` with `tsc -p tsconfig.node.json`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e Prettier check and typecheck, the rebuilt test stack with Playwright on the system Chrome, and the rebuilt app profile.
 
 **What was built.**
+
 - `e2e/` gets `prettier` (`^3.9.9`, the frontend's), an `.prettierrc` with the frontend's options and no Svelte plugin, and `format` / `format:check`. One mechanical pass, in its own commit, reformatted `fixtures.ts` (one signature) and `tests/hold.spec.ts` (double quotes and semicolons left by an earlier default-options reformat); every other file was already clean.
 - `frontend/.gitignore` ignores `.vitest/`, where the rtk CLI wrapper writes its Vitest JSON report, so wrapper runs never show as untracked.
 - `lib/oklch.ts` now holds the OKLab/OKLCH conversion, `fitGamut`, `toHex`, `hexToRgb`, `hexToOklch`, `relativeLuminance` and `contrastRatio`; only comments changed in the moved code. After review, `fitGamut` and `toHex` throw a `RangeError` on a non-finite L, C or H (and `fitGamut` on a chroma too large to step down, which used to loop forever), and `relativeLuminance` is no longer exported. `lib/age.ts` keeps the labels, `ageColour`, `nudgeContrast`, `THEME_SURFACES` and the endpoints, and imports `./oklch`. The two maths tests (`hexToRgb` rejects, `fitGamut` clamps a negative chroma) moved to `oklch.test.ts`; every other test stayed in `age.test.ts`, with only its imports changed. After review, `oklch.test.ts` also pins known contrast values (21 for black on white, 1 for a colour on itself), a `hexToOklch` → `toHex` round trip on the 14 DESIGN stops, a hue in [0, 360) where atan2 is negative, and the non-finite throws.
@@ -645,15 +705,18 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 - **Results:** 329 Vitest tests before the sweep (2.5's verification) and 329 after the split, since tests only moved; after the review fixes the run prints 356, at 98.89% statements, 95.69% branches, 100% functions and 99.59% lines. Before review, coverage was 98.88% statements, 95.32% branches, 100% functions and 99.59% lines against the 70% gate; check, lint, Prettier and build were green, all 75 E2E tests passed, and `hold.spec.ts` passed three repeats in a row (and again after the review fixes). The app profile rebuilt healthy, with `:8081` serving the app and `/api/health` at 200.
 
 **What AI decided beyond the plan.**
+
 - `stillHeld` runs before and after the hold-time reads: a check after a measurement is what proves the hold was still on while it was taken, and a check before turns a `boundingBox` timeout on a missing row into the clear message.
 - The "Exported for tests and story 2.3" notes went from the functions `age.ts` now imports; `hexToOklch` keeps "For tests and review".
 - A mutation run, a `runFor(3_000)` slipped in before a `stillHeld`, showed the test failing with the guard's message.
 
 **What AI missed.**
+
 - Settle tests ("settles", both motion tests, "no follow") that could pass after the hold had already ended on its own, because nothing checked the row was still held before `runFor(HOLD_MS)`.
 - A tsconfig fix that loosened checks for the Node-run files: putting all of `tsconfig.node.json` on bundler resolution would have let an extensionless import there typecheck and then fail at run time.
 
 **Review.** Four lenses produced about 30 findings, each checked against the code.
+
 - **Patched:**
   - Guards on the settle tests: `stillHeld` before every `runFor(HOLD_MS)`.
   - A stricter and faster `stillHeld`: exactly one held row, the returned locator used by the measurements, a 500 ms timeout, a message built from `HOLD_MS` that no longer blames a slow run for every missing row, and no redundant guard straight after `add()`.
@@ -675,6 +738,7 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
 
 **What was built.**
+
 - `lib/tasks.svelte.ts`: `LoadState` gains `load_failed`. A failed GET goes through `loadFailed()`: silent unless the state is `loading`; if a GET is queued behind it, that GET decides; otherwise the state becomes `load_failed` and the store raises the load-failure toast, or, after a failed Retry, keeps it and calls `toasts.alert(COPY.retryFailed)`. Every successful GET sets `ready` and hides the toast. `retry()` acts only in `load_failed` and delegates to `load()`. Under `load_failed`, `rows` is the held row alone, if any. The hold countdown now runs whenever the state is not `loading`, and entering `loading` cancels a running countdown while keeping `heldKey`, so a full 3 s starts when the load settles. The header comment states the failure rules.
 - `App.svelte`: `onretry` calls `tasks.retry()`. No other change: the empty state was already `ready`-only, the skeleton follows `loading`, and the focus safety net returns focus to the input when Retry disappears.
 - `e2e/fixtures.ts`: `failApi` keeps its handler in a const and returns `() => page.unroute('**/api/**', handler)`. Existing call sites ignore the return value.
@@ -683,14 +747,17 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 - **Results:** 366 Vitest tests pass, with coverage at 99.23% statements, 96.16% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green. All 76 E2E tests pass.
 
 **What AI decided beyond the plan.**
+
 - The store tracks whether it raised the toast in a private `loadFailureShown` flag instead of reading `toasts.items`. Only the store raises or hides that toast, it cannot be dismissed, and the flag keeps the rule testable with the toast calls mocked.
 - `load()` itself cancels the running hold countdown, and `retry()` is `load()` behind the `load_failed` guard, so every entry into `loading` follows the same rule.
 - Three tests written for the old "a failed GET changes nothing" behaviour were rewritten for `load_failed`: the first-load failure, the recovery GET after a failed load, and the hold that never counted down while loading.
 
 **What AI missed or could not do.**
+
 - One full E2E run failed `rows.spec.ts` "motion: tick slides the rows for about 200 ms" (no animation captured). The spec passed three repeats on its own and the next full run was green. It is a timing flake in an older test that this change does not touch.
 
 **Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 18 findings: 2 medium, 9 low, 7 false. Nine were patched and nothing was deferred.
+
 - Rows hidden under `load_failed` came back while the Retry GET was loading. `rows` now hides the list whenever the load-failure toast is up, so the list stays hidden until a GET succeeds.
 - The double-Retry test passed without the guard. It now settles the GET, and an App test double-clicks Retry, which pins `onretry` to `retry()`.
 - After a load that lasted over 300 ms failed, `skeletonDue` stayed true, so Retry skipped the anti-flash delay. The effect's cleanup now resets it.
@@ -708,6 +775,7 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
 
 **What was built.**
+
 - `lib/tasks.svelte.ts`: exports `POLL_MS = 30_000`. The first successful GET calls `startPolling()`, which runs once per store: it adds the store's own `visibilitychange` listener and, if the tab is visible, starts a `setInterval`. Hidden clears the interval; visible again polls once and starts a fresh interval, so the next tick is 30 s later. `poll()` is skipped, never queued, while a GET is in flight, or while any entry has `confirmed === null` (an add's POST); tick, untick and delete ops do not block it. A poll goes through `refresh()` and the existing merge, and a failure is silent because `loadFailed()` already ignores failures once `ready`. `dispose()` clears the interval and removes the listener; the app singleton never calls it. The header comment gains the polling rules.
 - `tasks.svelte.test.ts`: the global `afterEach` calls `store.dispose()`. A new `background polling (AD-10)` suite fakes `setInterval` and stubs `document.visibilityState` as `clock.test.ts` does, with one test per store matrix row (no poll while loading or under `load_failed`, the 30 s/60 s cadence, a remote add, a remote delete that ends the hold, hidden for 90 s, the visible-refetch, GET in flight on a tick and on visible, an add's POST in flight, a tick op in flight, a silent failure, `dispose()`), plus one cadence per store across several successful GETs and a first load that lands while hidden.
 - `e2e/tests/sync.spec.ts`: the test's `request` context plays the other device. A POST shows up on the idle tab after `advance(30 s)` with focus still on the input; a DELETE removes the row after one poll and it stays gone after a second. Each step waits for the poll's `GET /api/tasks` response.
@@ -715,11 +783,13 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 - **Results:** 388 Vitest tests pass, with coverage at 99.26% statements, 96.33% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green. All 78 E2E tests pass, including the existing ones that `advance` past 30 s.
 
 **What AI decided beyond the plan.**
+
 - The listener is added when polling starts rather than when the store is created, so the module singleton, which tests never load, registers nothing.
 - If the first load lands while the tab is hidden, no interval starts; the first visible change polls and starts it.
 - The resolved Open Questions keep their heading with "None open." and a short Resolved list, in both the spec and the architecture spine.
 
 **Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 15 findings: 1 medium, 9 low, 5 false. Five were patched and nothing was deferred.
+
 - `App.test.ts` never disposed the store it swapped out, so each test left a polling interval and a listener behind. `resetTasks()` now disposes the old store first.
 - The `visibilityState` stub leaked into later suites. It is deleted after each test.
 - The `getQueued` guard in `poll()` could never fire, so it was dropped.
@@ -733,6 +803,7 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
 **MCP servers.** None. The checks used the `tailscale` CLI (`version`, `status`, `serve status`) and `docker compose ps`.
 
 **What was built.**
+
 - `README.md` › Phone access is split into three subsections:
   - **Tailscale Serve:**
     - rebuild the app profile first;
@@ -748,6 +819,7 @@ Mutation checks on the ready gate and on `clearTimeout` each failed tests. Front
   - **Sync between devices:** usually within 30 s, and up to a minute while the tab is saving a task of its own.
 
 **Device run (author, 2026-10-02).** The author followed the README's Tailscale Serve steps on the laptop and their phone. They report that every check passed:
+
 - the phone loaded the app over the tailnet;
 - a task added on the phone appeared in the idle laptop tab within the expected window, without a reload;
 - the stop step worked.
@@ -767,6 +839,7 @@ The author didn't record exact timings.
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
 
 **What was built.**
+
 - `app.css`: `:root` gets `color-scheme: light`. Two dark blocks, `:root[data-theme='dark']` and `@media (prefers-color-scheme: dark) { :root:not([data-theme]) }`, each set `color-scheme: dark` and the 16 DESIGN `-dark` hexes, written out literally.
 - `public/theme-init.js`: a plain ES5 script. Inside `try/catch` it reads `localStorage.theme` and sets `data-theme` only for `'light'` or `'dark'`. `index.html` loads it with a blocking `<script src>` as the first element after `<meta charset>`.
 - `lib/theme.svelte.ts`: `theme.current` is the painted `data-theme` if valid, otherwise the `prefers-color-scheme` query, followed live; with no `matchMedia` it is light. `theme.set(t)` sets the attribute and `current`, then stores the choice inside `try/catch`. Exports `THEME_STORAGE_KEY`.
@@ -782,12 +855,14 @@ The author didn't record exact timings.
 - **Results:** 422 Vitest tests pass, with coverage at 99.28% statements, 96.43% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green, and `dist/index.html` has 3 preloads. All 87 E2E tests pass.
 
 **What AI decided beyond the plan.**
+
 - `tests/theme-init.test.ts`, a unit test of the pre-paint script itself, which the plan did not list. It reads the file through `import.meta.dirname`, because under jsdom `import.meta.url` is not a `file:` URL, and it adds `/// <reference lib="dom" />` because `tsconfig.tests.json` has no DOM lib.
 - An ESLint override for `public/theme-init.js` allows an unused `catch (e)`, because ES5 has no optional catch binding. ESLint cannot enforce ES5 here: the typescript-eslint parser ignores `ecmaVersion`, and `espree` is not a direct dependency.
 - `preloadTags` also fails when a face matches more than one woff2, not only when it matches none.
 - E2E: the extra matrix rows (invalid value, throwing `getItem`) run in the browser too, and a `pageerror` listener proves no error escapes.
 
 **Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 18 findings: 13 low and 5 false. Six were patched, one was deferred, and the rest were rejected with evidence.
+
 - A test now ties `theme-init.js`'s storage key to `THEME_STORAGE_KEY`.
 - The drift test now checks every dark token against DESIGN.md's `-dark` values, not just `surface` and `hover`. It also matches token names whatever their value, so a non-hex token can't slip out of the parity check.
 - `theme.svelte.ts` falls back to `addListener` where `addEventListener` is missing (Safari < 14).
@@ -805,6 +880,7 @@ The author didn't record exact timings.
 **MCP servers.** None. Verification used the shell and Docker: `svelte-check`, ESLint, Prettier, Vitest with coverage, `vite build`, the e2e typecheck and Prettier check, and the rebuilt test stack with Playwright on the system Chrome.
 
 **What was built.**
+
 - `components/ThemeToggle.svelte`: one `<button type="button">` with two `aria-hidden` segments (sun, then moon), each a 16 px stroke SVG copied from the laptop mockup. `aria-label` is "Switch to dark theme" or "Switch to light theme" from `theme.current`; no `aria-pressed`. A click calls `theme.set` with the other mode, then `returnToInput()` only when `event.detail > 0`, so Enter or Space leave focus on the toggle. CSS per DESIGN `theme-toggle`: a divider pill with `--space-1` padding, 22×18 border-box segments with `1px 3px` padding and no gap, the active segment filled `--color-surface` with an inset divider hairline and a primary icon, the other icon muted. No hover state; a `:focus-visible` accent outline as in `TaskRow`; a `1px solid CanvasText` outline on the active segment under `forced-colors: active`. No inline styles.
 - `App.svelte`: `<ThemeToggle />` after the wordmark in `.header`, which already spaces them apart, so the toggle comes before the input in the DOM.
 - Tests:
@@ -815,12 +891,14 @@ The author didn't record exact timings.
 - **Results:** 435 Vitest tests pass, with coverage at 99.29% statements, 96.53% branches, 100% functions and 100% lines against the 70% gate. Check, lint, Prettier and build are green. All 99 E2E tests passed before the review fixes, the layout specs included (87 earlier plus 12 new). The fixes brought the toggle spec to 13 tests.
 
 **What AI decided beyond the plan.**
+
 - Each segment carries `data-segment="light|dark"`, so the tests can name the active segment without depending on order.
 - The storage-blocked matrix row is also covered by a unit test, not only E2E.
 - The "no way back" E2E test stores the choice with a click, flips the emulated OS so it ends up differing from the stored theme (waiting until `matchMedia` reports each scheme), and checks the name, the active segment and the background stay on the stored theme.
 - `themeAtBody` throws when `recordThemeAtBody` was never installed, so a missing set-up never reads as "no data-theme".
 
 **Review.** Four lenses (blind hunter, edge-case hunter, verification gap, intent alignment) gave 14 findings: 1 medium, 12 low, 1 false. Five were patched, one was deferred, and the rest were rejected with evidence.
+
 - The "no way back" E2E could not fail. It now waits for each emulated OS change, and ends with the stored theme differing from the OS, in both directions.
 - `expectTheme` now retries its checks.
 - A unit-test assertion that could never fail was dropped.
